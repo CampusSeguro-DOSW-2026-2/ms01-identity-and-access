@@ -5,6 +5,6 @@ import edu.eci.dosw.login.entity.*;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CampusRepository extends JpaRepository<UserEntity, Long>{
+public interface UserRepository extends JpaRepository<UserEntity, Long>{
     
 }

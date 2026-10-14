@@ -8,17 +8,18 @@ import edu.eci.dosw.login.dto.LoginRequest;
 import edu.eci.dosw.login.dto.LoginResponse;
 import edu.eci.dosw.login.dto.RegisterRequest;
 import edu.eci.dosw.login.dto.RegisterResponse;
+import edu.eci.dosw.login.dto.RegisterUpdateRequest;
 import edu.eci.dosw.login.entity.UserEntity;
 import edu.eci.dosw.login.exception.UserNotFoundException;
-import edu.eci.dosw.login.repository.CampusRepository;
+import edu.eci.dosw.login.repository.UserRepository;
 
 @Service 
 public class AccessServiceImpl implements AccessService{
     
-    private CampusRepository campusRepository;
+    private UserRepository userRepository;
 
-    public AccessServiceImpl(CampusRepository campusRepository){
-        this.campusRepository = campusRepository;
+    public AccessServiceImpl(UserRepository userRepository){
+        this.userRepository = userRepository;
     }
 
     /**
@@ -27,7 +28,7 @@ public class AccessServiceImpl implements AccessService{
      */
     @Override
     public List<RegisterResponse> findAll(){
-        return campusRepository.findAll().stream()
+        return userRepository.findAll().stream()
                 .map(entity -> RegisterResponse.fromEntity(entity))
                 .toList();
     }
@@ -39,7 +40,7 @@ public class AccessServiceImpl implements AccessService{
      */
     @Override
     public RegisterResponse findById(Long id){
-        UserEntity user = campusRepository.findById(id)
+        UserEntity user = userRepository.findById(id)
                         .orElseThrow(() -> new UserNotFoundException(id));
         return RegisterResponse.fromEntity(user);
     }
@@ -50,7 +51,30 @@ public class AccessServiceImpl implements AccessService{
      */
     @Override
     public RegisterResponse register(RegisterRequest request){
-        return null;
+        UserEntity entity = new UserEntity();
+        entity.setEmail(request.getEmail());
+        entity.setPassword(request.getPassword());
+        entity.setRol(request.getRol());
+        
+        UserEntity saved = userRepository.save(entity);
+        return RegisterResponse.fromEntity(saved);
+    }
+
+    /**
+     * Metodo que se encarga de actualizar la informacion de un usuario dentro de la base de datos
+     * dada
+     *
+     */
+    @Override 
+    public RegisterResponse update(RegisterUpdateRequest request, Long id){
+        UserEntity entity = userRepository.findById(id)
+                            .orElseThrow(() -> new UserNotFoundException(id));
+        entity.setEmail(request.getEmail());
+        entity.setPassword(request.getPassword());
+        entity.setRol(request.getRol());
+
+        UserEntity updated = userRepository.save(entity);
+        return RegisterResponse.fromEntity(updated);
     }
 
     /**
@@ -69,8 +93,8 @@ public class AccessServiceImpl implements AccessService{
      */
     @Override
     public void delete(Long id){
-        UserEntity user = campusRepository.findById(id)
+        UserEntity user = userRepository.findById(id)
                         .orElseThrow(() -> new UserNotFoundException(id));
-        campusRepository.delete(user);
+        userRepository.delete(user);
     }
 }
