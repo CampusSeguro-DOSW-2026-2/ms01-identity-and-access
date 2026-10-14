@@ -25,8 +25,22 @@
 hs_err_pid*
 replay_pid*
 
-# Files
-HELP.md
-mvnw
+# Maven (esential)
 target/
-.gitattributes
+
+# IntelliJ IDEA (esential)
+.idea/
+*.iml
+out/
+
+# Visual Studio Code (esential)
+.vscode/
+*.code-workspace
+
+# Environment and secrets variables
+.env
+*.env
+
+# System files
+.DS_Store
+Thumbs.db
