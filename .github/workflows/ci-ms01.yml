@@ -1,0 +1,40 @@
+name: CI MS01 - Identity and Access (MVP)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and Test with Maven
+        run: mvn -B clean verify
+
+      - name: Upload JaCoCo Report
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build -t ms01-identity-access:ci .
+        timeout-minutes: 5
