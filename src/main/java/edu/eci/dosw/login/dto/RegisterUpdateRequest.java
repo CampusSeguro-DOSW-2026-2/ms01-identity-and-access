@@ -1,34 +1,31 @@
 package edu.eci.dosw.login.dto;
 
 import edu.eci.dosw.login.entity.UserRol;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public class RegisterUpdateRequest {
+/**
+ * Actualizacion completa de un usuario (PUT). Todos los campos son obligatorios.
+ */
+@Schema(description = "Datos para la actualizacion completa de un usuario")
+public record RegisterUpdateRequest(
 
-    @NotBlank(message = "El correo es obligatorio")
-    @Size(max = 120, message = "El correo no puede superar los 120 caracteres")
-    private String email;
+        @Schema(description = "Correo electronico", example = "jdoe@mail.escuelaing.edu.co")
+        @NotBlank(message = "El correo es obligatorio")
+        @Email(message = "El correo debe tener un formato valido")
+        @Size(max = 120, message = "El correo no puede superar los 120 caracteres")
+        String email,
 
-    @NotBlank(message = "La contraseña es obligatoria")
-    @Size(max = 10, message = "La contraseña no puede superar los 10 caracteres")
-    private String password;
+        @Schema(description = "Nueva contrasena", example = "Secreta456")
+        @NotBlank(message = "La contrasena es obligatoria")
+        @Size(min = 8, max = 72, message = "La contrasena debe tener entre 8 y 72 caracteres")
+        String password,
 
-    @NotNull(message = "El rol es obligatorio")
-    private UserRol rol;
-
-    /**
-     * Los gets y sets necesarios para esta seccion de actualizacion de la informacion en la etapa de registro
-     * de un usuario
-     */
-
-    public String getEmail(){ return this.email; }
-    public void setEmail(String email){ this.email = email; }
-
-    public String getPassword(){ return this.password; }
-    public void setPassword(String password){ this.password = password; }
-
-    public UserRol getRol(){ return this.rol; }
-    public void setRol(UserRol rol){ this.rol = rol; }
+        @Schema(description = "Nuevo rol", example = "PROFESOR")
+        @NotNull(message = "El rol es obligatorio")
+        UserRol rol
+) {
 }

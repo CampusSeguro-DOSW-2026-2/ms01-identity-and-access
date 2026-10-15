@@ -2,31 +2,28 @@ package edu.eci.dosw.login.dto;
 
 import edu.eci.dosw.login.entity.UserEntity;
 import edu.eci.dosw.login.entity.UserRol;
+import io.swagger.v3.oas.annotations.media.Schema;
 
-public class RegisterResponse {
-    private Long id;
-    private String email;
-    private UserRol rol;
+/**
+ * Representacion publica de un usuario. Nunca expone el password.
+ */
+@Schema(description = "Informacion publica de un usuario")
+public record RegisterResponse(
 
-    /**
-     * 
-     * @param entity
-     * @return
-     */
-    public static RegisterResponse fromEntity(UserEntity entity){
-        RegisterResponse response = new RegisterResponse();
-        response.setId(entity.getId());
-        response.setEmail(entity.getEmail());
-        response.setRol(entity.getRol());
-        return response;
+        @Schema(description = "Identificador del usuario", example = "1")
+        Long id,
+
+        @Schema(description = "Correo electronico", example = "jdoe@mail.escuelaing.edu.co")
+        String email,
+
+        @Schema(description = "Rol del usuario", example = "ESTUDIANTE")
+        UserRol rol
+) {
+
+    public static RegisterResponse fromEntity(UserEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        return new RegisterResponse(entity.getId(), entity.getEmail(), entity.getRol());
     }
-
-    public Long getId(){ return this.id; }
-    public void setId(Long id){ this.id = id; }
-
-    public String getEmail(){ return this.email; }
-    public void setEmail(String email){ this.email = email; }
-
-    public UserRol getRol(){ return this.rol; }
-    public void setRol(UserRol rol){ this.rol = rol; }
 }
