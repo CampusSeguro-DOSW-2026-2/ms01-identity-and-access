@@ -7,18 +7,32 @@ import edu.eci.dosw.login.dto.LoginResponse;
 import edu.eci.dosw.login.dto.RegisterRequest;
 import edu.eci.dosw.login.dto.RegisterResponse;
 import edu.eci.dosw.login.dto.RegisterUpdateRequest;
+import edu.eci.dosw.login.dto.RoleResponse;
+import edu.eci.dosw.login.dto.UserPatchRequest;
+import edu.eci.dosw.login.entity.UserRol;
 
+/**
+ * Servicio del dominio de identidad y acceso (registro, login y gestion de usuarios).
+ */
 public interface AccessService {
-    
-    public List<RegisterResponse> findAll();
 
-    public RegisterResponse findById(Long id);
+    List<RegisterResponse> findAll();
 
-    public RegisterResponse register(RegisterRequest request);
+    RegisterResponse findById(Long id);
 
-    public RegisterResponse update(RegisterUpdateRequest request, Long id);
+    RegisterResponse findByEmail(String email);
 
-    public LoginResponse login(LoginRequest request);
+    RegisterResponse register(RegisterRequest request);
 
-    public void delete(Long id);
+    RegisterResponse update(RegisterUpdateRequest request, Long id);
+
+    RegisterResponse patch(UserPatchRequest request, Long id);
+
+    RegisterResponse assignRol(Long id, UserRol rol);
+
+    LoginResponse login(LoginRequest request);
+
+    void delete(Long id);
+
+    List<RoleResponse> findRoles();
 }
