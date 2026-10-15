@@ -1,9 +1,16 @@
 package edu.eci.dosw.login.exception;
 
-public class UserNotFoundException extends RuntimeException{
-    public static final String NOT_FOUND = "NO SE ENCONTRO EL RECURSO CON LA ID PROPUESTA ";
+/**
+ * Usuario inexistente. El mensaje es claro para el frontend y no expone
+ * informacion interna.
+ */
+public class UserNotFoundException extends RuntimeException {
 
-    public UserNotFoundException(Long id){
-        super(NOT_FOUND + id);
+    public UserNotFoundException(Long id) {
+        super("No se encontró un usuario con id " + id);
+    }
+
+    public UserNotFoundException(String email) {
+        super("No se encontró un usuario con el correo " + email);
     }
 }
