@@ -12,7 +12,6 @@
    - [F-07 · Búsqueda y filtros de usuarios](#f-07)
    - [F-08 · Cambio de estado de usuario](#f-08)
    - [F-09 · Asignación de roles](#f-09)
-   - [F-10 · Consulta de auditoría](#f-10)
 
 ---
 
@@ -22,9 +21,11 @@
 * **RG-01**: Todo texto se recorta (trim) de espacios al inicio y al final antes de validar. El correo se normaliza a minúsculas. La contraseña no se recorta ni se normaliza.
 * **RG-02**: Un campo obligatorio vacío o con solo espacios se considera faltante.
 * **RG-03**: Se rechazan entradas con etiquetas HTML o scripts (<, >) en campos de texto libre.
-* **RG-04**: Se ignoran o rechazan campos no definidos en el contrato (en especial roles, estado o id enviados por el usuario en registro y perfil).
+* **RG-04**: Se rechazan (HTTP 400) los campos no definidos en el contrato (en especial roles, estado o id enviados por el usuario en registro y perfil).
 * **RG-05**: Los mensajes de error indican el campo y la regla incumplida, salvo en login y recuperación (**RN-MS01-05**, **RN-MS01-20**).
 * **RG-06**: Los códigos de error de validación son HTTP 400. Un conflicto de unicidad es 409.
+* **RG-07**: La identidad del solicitante (id y roles) nunca viaja en el cuerpo: llega en las cabeceras X-User-Id y X-User-Role (**RN-MS01-23**).
+* **RG-08**: MS01 no tiene formularios de auditoría: su consulta pertenece a MS08 (**RNF-MS01-10**).
 
 ---
 
@@ -37,7 +38,10 @@ Referencia: **RF-MS01-01**
 
 | Campo | Tipo | Obligatorio | Longitud / formato | Reglas de validación | Mensaje de error | Ejemplo válido |
 |---|---|---|---|---|---|---|
-| Nombre Coompleto | Texto | Sí | 2 a 125 caracteres | Solo letras (con tildes y ñ), espacios, guion y apóstrofe. Sin números ni símbolos. | "Los nombres completos deben tener entre 2 y 125 letras." | María José |
+| Primer nombre | Texto | Sí | 2 a 30 caracteres | Solo letras (con tildes y ñ), espacios, guion y apóstrofe. Sin números ni símbolos. | "El primer nombre debe tener entre 2 y 30 letras." | María |
+| Segundo nombre | Texto | No | 2 a 30 caracteres | Opcional. Si se envía, misma regla que el primer nombre. | "El segundo nombre debe tener entre 2 y 30 letras." | José |
+| Primer apellido | Texto | Sí | 2 a 30 caracteres | Solo letras (con tildes y ñ), espacios, guion y apóstrofe. Sin números ni símbolos. | "El primer apellido debe tener entre 2 y 30 letras." | Pérez |
+| Segundo apellido | Texto | No | 2 a 30 caracteres | Opcional. Si se envía, misma regla que el primer apellido. | "El segundo apellido debe tener entre 2 y 30 letras." | Gómez |
 | Correo institucional | Correo | Sí | Máx. 100 caracteres | Formato de correo válido. Dominio igual al institucional configurado. Único en el sistema (sin distinguir mayúsculas). | Formato o dominio: "Correo no válido." Duplicado (409): "El correo ya está registrado." | maria.perez@escuelaing.edu.co |
 | Contraseña | Texto oculto | Sí | 8 a 64 caracteres | Al menos 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial. Sin espacios. | "La contraseña debe tener 8 a 64 caracteres, con mayúscula, minúscula, número y carácter especial." | Campus#2026 |
 | Confirmar contraseña | Texto oculto | Sí | Igual a Contraseña | Debe ser idéntica a Contraseña. | "Las contraseñas no coinciden." | Campus#2026 |
@@ -69,7 +73,10 @@ Referencia: **RF-MS01-06**
 
 | Campo | Tipo | Obligatorio | Editable | Longitud / formato | Reglas de validación | Mensaje de error |
 |---|---|---|---|---|---|---|
-| Nombre Completo | Texto | Sí | Sí | 2 a 125 caracteres | Misma regla que F-01. | "Los nombres deben tener entre 2 y 125 letras." |
+| Primer nombre | Texto | Sí | Sí | 2 a 30 caracteres | Misma regla que F-01. | "El primer nombre debe tener entre 2 y 30 letras." |
+| Segundo nombre | Texto | No | Sí | 2 a 30 caracteres | Misma regla que F-01. | "El segundo nombre debe tener entre 2 y 30 letras." |
+| Primer apellido | Texto | Sí | Sí | 2 a 30 caracteres | Misma regla que F-01. | "El primer apellido debe tener entre 2 y 30 letras." |
+| Segundo apellido | Texto | No | Sí | 2 a 30 caracteres | Misma regla que F-01. | "El segundo apellido debe tener entre 2 y 30 letras." |
 | Correo institucional | Correo | — | No (solo lectura) | — | Cualquier intento de cambio se rechaza (**RN-MS01-15**). | "El correo no se puede modificar." |
 | Roles | Lista | — | No (solo lectura) | — | Se modifican solo por el administrador ([F-09](#f-09)). | "Los roles no se pueden modificar desde el perfil." |
 | Estado | Etiqueta | — | No (solo lectura) | ACTIVO / INACTIVO | Se modifica solo por el administrador ([F-08](#f-08)). | "El estado no se puede modificar desde el perfil." |
@@ -157,24 +164,13 @@ Referencia: **RF-MS01-05**
 
 | Campo | Tipo | Obligatorio | Longitud / formato | Reglas de validación | Mensaje de error | Ejemplo válido |
 |---|---|---|---|---|---|---|
-| Usuario | Selección | Sí | Id existente | Debe existir. No puede ser el propio administrador. | Inexistente (404): "Usuario no encontrado." Propio (403): "No puede modificar sus propios roles." | USR-1034 |
-| Roles | Selección múltiple | Sí | 1 a 8 roles | Solo roles del catálogo, sin repetir. Debe quedar al menos un rol. | "Seleccione al menos un rol válido." | ESTUDIANTE, BRIGADISTA |
+| Usuario(s) | Selección de uno o más usuarios | Sí | Ids existentes | Deben existir. No puede incluir al propio administrador. | Inexistente (404): "Usuario no encontrado." Propio (403): "No puede modificar sus propios roles." | USR-1034 |
+| Roles a agregar | Selección múltiple | No | 0 a 8 roles | Solo roles del catálogo, sin repetir. | "Seleccione roles válidos." | BRIGADISTA |
+| Roles a retirar | Selección múltiple | No | 0 a 8 roles | Solo roles del catálogo, sin repetir. | "Seleccione roles válidos." | PROFESOR |
+
+**Mensajes globales de formulario:**
+* Ambas listas vacías: "Indique roles a agregar o retirar."
+* Un rol en ambas listas: "Un rol no puede agregarse y retirarse a la vez."
+* Algún usuario quedaría sin roles: "Cada usuario debe conservar al menos un rol."
 
 *Mockup F-09: (espacio reservado para insertar imagen de la edición de roles)*
-
----
-
-<a id="f-10"></a>
-### F-10 · Consulta de auditoría
-Referencia: **RF-MS01-09**
-
-| Campo | Tipo | Obligatorio | Longitud / formato | Reglas de validación | Mensaje de error | Ejemplo válido |
-|---|---|---|---|---|---|---|
-| Usuario | Texto | No | 1 a 100 caracteres | Correo o id de usuario. | "Usuario no válido." | maria.perez@escuelaing.edu.co |
-| Acción | Lista | No | Catálogo: REGISTRO, LOGIN, LOGOUT, CAMBIO_ROL, CAMBIO_ESTADO, CAMBIO_CONTRASENA, RECUPERACION | Solo valores del catálogo. | "Acción no válida." | LOGIN |
-| Resultado | Lista | No | EXITO / FALLO / Todos | Solo valores del catálogo. | "Resultado no válido." | FALLO |
-| Fecha desde | Fecha y hora | No | ISO 8601 | Formato válido. No futura. | "Fecha no válida." | 2026-10-01T00:00 |
-| Fecha hasta | Fecha y hora | No | ISO 8601 | Mayor o igual que Fecha desde. No futura. | "La fecha final debe ser posterior a la inicial." | 2026-10-17T23:59 |
-| Página y tamaño | Números enteros | No | Página ≥ 0, tamaño 1 a 100 | Igual que [F-07](#f-07). | "Paginación no válida." | 0 / 20 |
-
-*Mockup F-10: (espacio reservado para insertar imagen de la consulta de auditoría)*
