@@ -8,6 +8,5 @@ MS01 - Users, authentication, roles, permissions, and sessions service.
 | Edgar Daniel Ruiz Patiño        | `DaniRuiz11`                      |
 | Miguel Ángel Acero Laverde      | `Miguelim101`                     |
 | Thomas Sebastian García Gomez   | `thomassebastiangarciagomez-ctrl` |
-| Rodrigo Gualtero                | `Rodrigoreg92`                    |
 
 ---
