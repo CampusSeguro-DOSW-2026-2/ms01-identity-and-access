@@ -197,7 +197,7 @@ class AuthControllerLoginTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.codigo").value("CUENTA_INACTIVA"))
-                .andExpect(jsonPath("$.mensaje").value("Cuenta inactiva. Contacte al administrador."))
+                .andExpect(jsonPath("$.mensaje").value("Cuenta inactiva; contacte al administrador si desea reactivarla."))
                 .andExpect(jsonPath("$.errores").isEmpty())
                 .andExpect(jsonPath("$.correlation_id").value("corr-2"));
     }

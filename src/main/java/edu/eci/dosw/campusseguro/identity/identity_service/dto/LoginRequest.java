@@ -10,17 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de POST /api/v1/auth/login (formulario F-02, esquema LoginRequest del contrato).
- *
- * <ul>
- *   <li>RG-01: el correo se recorta y se pasa a minusculas; la contrasena NO se recorta ni se normaliza.</li>
- *   <li>RG-02: un campo obligatorio vacio o solo con espacios se considera faltante.</li>
- *   <li>RG-04: cualquier campo no definido en el contrato se rechaza (HTTP 400).</li>
- *   <li>En el login no se revalida la politica de contrasena (solo no vacia, maximo 64).</li>
- * </ul>
- *
- * Los nombres de las propiedades coinciden con los del JSON para que los errores de validacion
- * reporten el campo tal como lo conoce el cliente.
+ * Cuerpo de POST /api/v1/auth/login
  */
 public class LoginRequest {
 
@@ -44,7 +34,11 @@ public class LoginRequest {
     }
 
     public void setCorreo(String correo) {
-        this.correo = (correo == null) ? null : correo.trim().toLowerCase(Locale.ROOT);
+        if (correo == null) {
+            this.correo = null;
+        } else {
+            this.correo = correo.trim().toLowerCase(Locale.ROOT);
+        }
     }
 
     public String getContrasena() {
@@ -56,8 +50,8 @@ public class LoginRequest {
     }
 
     /**
-     * RG-04 / additionalProperties: false. Cualquier propiedad desconocida hace fallar la
-     * deserializacion, lo que el GlobalExceptionHandler traduce a HTTP 400.
+     * RG-04 / Se rechazan (HTTP 400) los campos no definidos en el contrato (en especial
+     * roles, estado o id enviados por el usuario en registro y perfil).
      */
     @JsonAnySetter
     void rejectUnknownProperty(String name, Object value) {

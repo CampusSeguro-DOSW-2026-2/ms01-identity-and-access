@@ -265,7 +265,7 @@ class AuthServiceTest {
         InactiveAccountException ex = assertThrows(InactiveAccountException.class,
                 () -> authService.login(request(EMAIL, PASSWORD), "corr-1"));
 
-        assertEquals("Cuenta inactiva. Contacte al administrador.", ex.getMessage());
+        assertEquals("Cuenta inactiva; contacte al administrador si desea reactivarla.", ex.getMessage());
         AuditEvent event = publishedEvent();
         assertEquals(AuditResult.FALLO, event.resultado());
         assertEquals(user.getId(), event.usuarioId());

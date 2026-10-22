@@ -36,21 +36,20 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
  * Flujo base: buscar por correo -> verificar contrasena contra el hash (BCrypt) -> verificar estado
  * ACTIVO -> emitir JWT -> auditar LOGIN/EXITO -> responder token, expiracion y datos basicos.
  *
- * El orden de las verificaciones es parte del contrato: el estado solo se evalua despues de que la
- * contrasena es correcta, de modo que un atacante no puede averiguar si una cuenta existe o esta
- * inactiva sin conocer su contrasena (RN-MS01-05). Todos los intentos, exitosos o no, se auditan.
+ * RN-MS01-05: Ante credenciales inválidas no se revela si falló el correo o la contraseña.
+ * RN-MS01-06: Una cuenta INACTIVA nunca inicia sesión, aunque las credenciales sean correctas.
+ * 
+ * RNF-MS01-10: Se audita logeo exitoso, credenciales invalidas, y cuenta inactiva.
  */
 @Service
 public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
-    /** Motivos de fallo que viajan a MS08. Son genericos: no distinguen correo inexistente de contrasena erronea. */
     static final String REASON_BAD_CREDENTIALS = "CREDENCIALES_INCORRECTAS";
     static final String REASON_INACTIVE = "CUENTA_INACTIVA";
     static final String REASON_INTERNAL = "ERROR_INTERNO";
 
-    /** Un Correlation ID legitimo es ASCII imprimible sin espacios; se descarta cualquier otra cosa. */
     private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("^[\\x21-\\x7E]{1,100}$");
 
     private final UserRepository userRepository;
@@ -60,8 +59,9 @@ public class AuthServiceImpl implements AuthService {
     private final Clock clock;
 
     /**
-     * Hash de relleno: cuando el correo no existe se compara igualmente contra el para que la
-     * respuesta tarde lo mismo que con un correo existente (evita revelar cuentas por tiempo).
+     * Por seguridad se usa un hash de relleno, contra el que se compara la contraseña ingresada
+     * cuando un correo no existe, esto simula el tiempo que tarda el servidor y backend en
+     * buscar un correo, evitando revelar por tiempo, si el correo ingresado si esta registrado o no.
      */
     private final String dummyHash;
 
@@ -75,6 +75,16 @@ public class AuthServiceImpl implements AuthService {
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
+    
+    /**
+     * Autentica con correo y contrasena (RF-MS01-02) y emite el JWT (RF-MS01-03)
+     *
+     * @param request contiene las credenciales; correo y contraseña
+     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoria
+     * @return LoginResponse que contiene token, tipo, expiracion y datos basicos del usuario
+     * @throws edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidCredentialsException
+     * @throws edu.eci.dosw.campusseguro.identity.identity_service.exception.InactiveAccountException
+     */
     @Override
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request, String correlationId) {
@@ -116,14 +126,29 @@ public class AuthServiceImpl implements AuthService {
                 new LoginResponse.UsuarioResumen(user.getId(), user.getEmail(), roles));
     }
 
-    /** Audita y registra el intento fallido; devuelve la excepcion para que el llamador la lance. */
+    /** Audita y registra el intento fallido; devuelve la excepcion para que el llamador la lance.
+     * 
+     * @param corr Es el correlationID
+     * @param userId Id del usuario
+     * @param emal Correo del usuario
+     * @param reason Razon de la excepcion / fallo
+     * @param exception Excepcion recibida 
+     * @return La excepcion recibida
+    */
     private <E extends RuntimeException> E rejected(String corr, UUID userId, String email, String reason, E exception) {
         publish(AuditResult.FALLO, userId, email, reason, corr);
         log.warn("[{}] Login rechazado. motivo={} usuario={}", corr, reason, userId);
         return exception;
     }
 
-    /** La auditoria nunca debe alterar la respuesta al cliente (RNF-MS01-10). */
+    /** La auditoria nunca debe alterar la respuesta al cliente (RNF-MS01-10).
+     * 
+     * @param result Indica si lo que se audita es una operacion exitosa o fallida
+     * @param userId Id del usuario
+     * @param email Correo del usuario
+     * @param detail Detalle a incluir en la auditoria
+     * @param corr CorrelationId
+    */
     private void publish(AuditResult result, UUID userId, String email, String detail, String corr) {
         try {
             auditPublisher.publish(new AuditEvent(AuditAction.LOGIN, result, userId, email, detail, corr, clock.instant()));
@@ -132,6 +157,13 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * Ordena la lista de roles en el orden del abecedario
+     * Si no existe la lista entonces retorna una vacia
+     * 
+     * @param roles Lista de roles del usuario
+     * @return La lista de roles del usuario ordenada
+     */
     private static List<UserRole> sortedRoles(List<UserRole> roles) {
         if (roles == null) {
             return List.of();
@@ -139,10 +171,30 @@ public class AuthServiceImpl implements AuthService {
         return roles.stream().sorted(Comparator.comparing(UserRole::name)).toList();
     }
 
+    /**
+     * Normaliza el correo de un usuario, eliminando espacios a los lados y pasandolo todo a minusculas
+     * 
+     * @param email correo del usuario
+     * @return Coreo del usuario normalizado segun lo especificado en requerimientos y formatos
+     */
     private static String normalizeEmail(String email) {
-        return (email == null) ? null : email.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail;
+        if (email == null) {
+            normalizedEmail = null;
+        } else {
+            normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        }
+        return normalizedEmail;
     }
 
+    /**
+     * Normaliza el correlationID, y verifica que cumpla con el patron establecido
+     * 
+     * Si no existe un correlationId entonces lo genera aleatoriamente
+     * 
+     * @param correlationId
+     * @return Un correlationId normalizado
+     */
     private static String resolveCorrelationId(String correlationId) {
         if (correlationId != null) {
             String trimmed = correlationId.trim();

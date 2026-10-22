@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Cuerpo de error normalizado (RNF-MS01-04), segun el esquema ErrorResponse del contrato OpenAPI.
- * Nunca incluye trazas internas.
+ * Cuerpo de error normalizado sin exponer trazas internas (RNF-MS01-04), segun el esquema
+ * ErrorResponse del contrato OpenAPI.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ErrorResponse(
@@ -17,7 +17,6 @@ public record ErrorResponse(
         List<ErrorDetail> errores,
         @JsonProperty("correlation_id") String correlationId) {
 
-    /** Detalle por campo (RG-05). */
     public record ErrorDetail(String campo, String mensaje) {
     }
 

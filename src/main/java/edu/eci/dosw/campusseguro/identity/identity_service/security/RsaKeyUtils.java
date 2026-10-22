@@ -10,8 +10,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 
 /**
- * Utilidades para la llave RSA de firma del JWT (JWT_PRIVATE_KEY, formato PEM PKCS#8 como lo genera
- * {@code openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048}).
+ * Utilidades para la llave RSA de firma del JWT (JWT_PRIVATE_KEY, formato PEM PKCS#8
  *
  * Los mensajes de error nunca incluyen material de la llave.
  */
@@ -26,9 +25,11 @@ public final class RsaKeyUtils {
 
     /**
      * Interpreta una llave privada RSA en PEM PKCS#8. Acepta saltos de linea reales o escritos como
-     * la secuencia literal {@code \n} (habitual al pasar el PEM por una variable de entorno), y
+     * la secuencia literal \n (habitual al pasar el PEM por una variable de entorno), y
      * tambien el cuerpo base64 sin las lineas BEGIN/END.
      *
+     * @param pem texto en formato PEM
+     * @return la PrivateKey usada por el modulo de login
      * @throws IllegalArgumentException si el valor esta vacio o no es una llave RSA PKCS#8 valida
      */
     public static PrivateKey parsePrivateKey(String pem) {
@@ -54,7 +55,11 @@ public final class RsaKeyUtils {
         }
     }
 
-    /** Genera un par RSA de 2048 bits (solo para desarrollo cuando no hay llave configurada). */
+    /**
+     * Genera un par RSA de 2048 bits usadas unicamente en desarrollo, no para la aplicacion final
+     * 
+     * @return un par de lalves criptograficas RSA
+     */
     public static KeyPair generateKeyPair() {
         try {
             KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");

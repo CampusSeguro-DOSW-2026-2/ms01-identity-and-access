@@ -20,10 +20,10 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
 
 /**
- * Emite JWT firmados con RS256 (RSASSA-PKCS1-v1_5 con SHA-256, RSA 2048) segun 4_jwt-spec.md.
+ * Emite JWT firmados con RS256 (RSASSA-PKCS1-v1_5 con SHA-256, RSA 2048)
  *
- * Serializacion JWS compacta (RFC 7515): {@code base64url(header).base64url(payload).base64url(firma)}.
- * La firma usa unicamente el proveedor estandar del JDK ({@code SHA256withRSA}).
+ * Serializacion JWS compacta (RFC 7515): Contiene header, payload y firma
+ * La firma usa unicamente el proveedor estandar del JDK
  *
  * Header:  {"alg":"RS256","typ":"JWT","kid":"..."}
  * Payload: iss, aud, sub, email, roles (ordenados alfabeticamente), iat, exp (= iat + vigencia), jti.
@@ -61,6 +61,14 @@ public class JwtServiceImpl implements JwtService {
         }
     }
 
+    /**
+     * Emite un JWT RS256 con los claims iss, aud, sub (userId), email, roles, iat, exp y jti.
+     * No incluye contrasenas, hashes, nombres, estado ni permisos (RN-MS01-08).
+     *
+     * @param userId id del usuario
+     * @param email  correo del usuario
+     * @param roles  roles del usuario
+     */
     @Override
     public IssuedToken issueToken(UUID userId, String email, List<UserRole> roles) {
         Objects.requireNonNull(userId, "userId");
@@ -92,6 +100,12 @@ public class JwtServiceImpl implements JwtService {
         return new IssuedToken(signingInput + "." + signature, expiresAt);
     }
 
+    /**
+     * Genera la firma digital del token
+     * 
+     * @param signingInput header y payload codificado en BASE64_URL
+     * @return la firma digital
+     */
     private byte[] sign(String signingInput) {
         try {
             Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
@@ -103,10 +117,24 @@ public class JwtServiceImpl implements JwtService {
         }
     }
 
+    /**
+     * Codifica en formato BASE64_URL el String recibido
+     * 
+     * @param json cadena recibida y que se debe de codificar
+     * @return devuelve la codificacion en BASE64
+     */
     private static String encode(String json) {
         return BASE64_URL.encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * Verifica que el valor de un campo sea valido (es requerido), revisando que no sea nulo ni este
+     * lleno de espacios
+     * 
+     * @param value valor de un campo
+     * @param name nombre del campo
+     * @return el valor recibido solo cuando se considera valido
+     */
     private static String requireText(String value, String name) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("El parámetro '" + name + "' no puede estar vacío.");

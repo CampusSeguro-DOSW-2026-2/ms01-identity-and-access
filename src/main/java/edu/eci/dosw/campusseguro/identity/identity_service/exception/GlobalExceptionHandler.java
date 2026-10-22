@@ -29,18 +29,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * RF-MS01-02 A1 / RN-MS01-05: correo inexistente y contrasena incorrecta producen exactamente
-     * esta misma respuesta (mismo codigo, mismo mensaje, mismo cuerpo).
+     * RF-MS01-02 A1: credenciales incorrectas o cuenta inexistente; el sistema responde 401 con un
+     * mensaje genérico (“credenciales incorrectas”) y emite a MS08 el evento de auditoría del
+     * intento fallido.
+     * 
+     * RN-MS01-05: Ante credenciales inválidas no se revela si falló el correo o la contraseña.
      */
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex,
-            HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(
                 HttpStatus.UNAUTHORIZED.value(), "CREDENCIALES_INCORRECTAS", ex.getMessage(),
                 correlationId(request)));
     }
 
-    /** RF-MS01-02 A2 / RN-MS01-06: cuenta INACTIVA. */
+    /**
+     * RF-MS01-02 A2: cuenta inactiva; el sistema responde 403, indica que debe contactar a un
+     * administrador y emite a MS08 el evento de auditoría.
+     * 
+     * RN-MS01-06: Una cuenta INACTIVA nunca inicia sesión, aunque las credenciales sean correctas.
+     * 
+    */
     @ExceptionHandler(InactiveAccountException.class)
     public ResponseEntity<ErrorResponse> handleInactiveAccount(InactiveAccountException ex,
             HttpServletRequest request) {
@@ -49,7 +57,10 @@ public class GlobalExceptionHandler {
                 correlationId(request)));
     }
 
-    /** Cuerpo ilegible o con campos no definidos en el contrato (RG-04): 400 normalizado. */
+    /**
+     * RG-04: Se rechazan (HTTP 400) los campos no definidos en el contrato (en especial roles,
+     * estado o id enviados por el usuario en registro y perfil).
+    */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex,
             HttpServletRequest request) {
@@ -57,11 +68,11 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(), "VALIDACION", "Datos inválidos.", correlationId(request)));
     }
 
+    /**
+     * Atrapa a la excepcion que corresponde al codigo 400 MethodArgumentNotValidException
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        // El login ya responde con el cuerpo de error normalizado del contrato (RNF-MS01-04, RG-05).
-        // El resto de endpoints conserva por ahora su formato original hasta que se unifique el
-        // manejo global de errores.
         if (ex.getBindingResult().getTarget() instanceof LoginRequest) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(normalizedValidationError(ex, request));
         }
@@ -71,6 +82,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 
+    /**
+     * Organiza los mensajes de la excepcion, deja un solo mensaje por campo, y devuelve el error en formato DTO
+     * @param ex la excepcion
+     * @param request el request que que se envia con el error
+     * @return el error en formato DTO (record en este caso)
+     */
     private ErrorResponse normalizedValidationError(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> messageByField = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors()
@@ -83,8 +100,19 @@ public class GlobalExceptionHandler {
                 correlationId(request));
     }
 
+    /**
+     * Verifica el estado del correlationId, si es invalido devuelve null, sino elimina espacios a los
+     * lados y lo devuelve
+     * @param request el request al que se le extrae el correlationId
+     * @return el correlactionId verificado, devuelve null si es invalido
+     */
     private static String correlationId(HttpServletRequest request) {
         String value = request.getHeader(CORRELATION_HEADER);
-        return (value == null || value.isBlank()) ? null : value.trim();
+
+        if (value == null || value.isBlank()) {
+            return null;
+        } else {
+            return value.trim();
+        }
     }
 }

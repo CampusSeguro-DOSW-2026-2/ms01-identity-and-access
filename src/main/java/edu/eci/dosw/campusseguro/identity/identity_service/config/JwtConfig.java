@@ -17,25 +17,42 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RsaKeyUtils;
 /**
  * Configuracion del emisor de JWT (RF-MS01-03, 4_jwt-spec.md). Los secretos llegan por variables de
  * entorno y nunca se guardan en el repositorio (RNF-MS01-06). No requiere cambios en application.yaml:
- * Spring resuelve {@code jwt.private-key} desde {@code JWT_PRIVATE_KEY}, {@code jwt.expiration-minutes}
- * desde {@code JWT_EXPIRATION_MINUTES}, y asi con el resto.
+ * Spring resuelve jwt.private-key desde JWT_PRIVATE_KEY, jwt.expiration-minutes
+ * desde JWT_EXPIRATION_MINUTES, etc...
  *
- * <pre>
- * JWT_PRIVATE_KEY         llave privada RSA en PEM PKCS#8
- * JWT_EXPIRATION_MINUTES  vigencia del token (60 por defecto)
+ * JWT_PRIVATE_KEY llave privada RSA en PEM PKCS#8
+ * JWT_EXPIRATION_MINUTES vigencia del token (60 por defecto)
  * JWT_ISSUER / JWT_AUDIENCE / JWT_KEY_ID
- * </pre>
  */
 @Configuration
 public class JwtConfig {
 
     private static final Logger log = LoggerFactory.getLogger(JwtConfig.class);
 
+    /**
+     * Provee un bean de tipo Clock configurado en tiempo universal coordinado (UTC) 
+     * para el manejo estandarizado de fechas y horas en la emisión y validación de tokens.
+     * 
+     * @return una instancia de Clock que usa el formato UTC
+     */
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }
 
+    /**
+     * Crea y registra un bean de tipo JwtService encargado de la generación y firma digital de los JWT,
+     * configurando la llave privada o generando un par RSA para desarrollo y los metadatos de emisión
+     * correspondientes.
+     * 
+     * @param privateKeyPem la cadena de texto con la llave privada en formato PEM PKCS#8
+     * @param expirationMinutes el tiempo de vigencia del token expresado en minutos (60 por defecto)
+     * @param issuer la entidad emisora del token (identificador del microservicio)
+     * @param audience el destinatario o audiencia prevista para el token
+     * @param keyId el identificador único de la llave criptográfica (Key ID)
+     * @param clock el reloj UTC inyectado para el control temporal de expiración
+     * @return una instancia configurada de JwtServiceImpl como un bean gestionado por Spring
+     */
     @Bean
     public JwtService jwtService(
             @Value("${jwt.private-key:}") String privateKeyPem,

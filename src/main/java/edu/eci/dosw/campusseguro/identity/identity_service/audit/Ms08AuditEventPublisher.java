@@ -16,14 +16,16 @@ import org.slf4j.LoggerFactory;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
 
 /**
- * Publica los eventos de auditoria en MS08 por HTTP, de forma asincrona (no bloquea la peticion).
+ * Publica los eventos de auditoria en MS08 por HTTP, de forma asincrona, por lo que no bloquea la peticion
  *
- * Envia {@code POST <base-url><events-path>} con el cuerpo JSON del evento y la cabecera
- * {@code X-Correlation-ID} (RNF-MS01-03). Si no hay base-url configurada (desarrollo local) el
- * evento solo se deja en el log. Cualquier fallo se registra y se descarta: nunca afecta al cliente.
+ * Envia POST <base-url><events-path> con el cuerpo JSON del evento y la cabecera X-Correlation-ID (RNF-MS01-03)
+ * 
+ * Si no hay base-url configurada el evento solo se deja en el log. Cualquier fallo se registra y se
+ * descarta: nunca afecta al cliente.
  *
  * Nota: el contrato HTTP de MS08 no esta en los requerimientos de MS01; la ruta es configurable
- * (audit.ms08.events-path) y el cuerpo usa los mismos nombres snake_case en espanol del resto de la API.
+ * (audit.ms08.events-path) y el cuerpo usa los mismos nombres snake_case en espanol del resto de la API
+ * 
  */
 public class Ms08AuditEventPublisher implements AuditEventPublisher {
 
@@ -70,6 +72,14 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
         }
     }
 
+    /**
+     * Registra en los logs el resultado de la petición asíncrona enviada a MS08, informando si
+     * ocurrió un error de conexión o si el servidor remoto rechazó el evento
+     * 
+     * @param event el evento de auditoría que se intentó reportar
+     * @param response la respuesta HTTP recibida por parte de MS08 (puede ser nula si hubo fallo de red)
+     * @param error la excepción o error generado durante el envío asíncrono (si lo hubo)
+     */
     private void reportOutcome(AuditEvent event, HttpResponse<Void> response, Throwable error) {
         if (error != null) {
             log.error("[{}] MS08 no recibió el evento de auditoría {}/{}: {}",
@@ -80,6 +90,13 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
         }
     }
 
+    /**
+     * Convierte un evento de auditoría en una cadena con formato JSON, estructurando los campos
+     * obligatorios y opcionales bajo el estándar snake_case en español requerido.
+     * 
+     * @param event el objeto de evento de auditoría a serializar
+     * @return una cadena de texto en formato JSON que representa el evento
+     */
     static String toJson(AuditEvent event) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("origen", SOURCE);
@@ -101,6 +118,14 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
         return MiniJson.write(body);
     }
 
+    /**
+     * Construye y normaliza la URI final del endpoint combinando la URL base y la ruta de eventos, asegurando
+     * que no existan barras duplicadas y manejando casos en los que la URL no esté configurada
+     * 
+     * @param baseUrl la URL base del microservicio MS08
+     * @param eventsPath la ruta relativa del recurso de eventos de auditoría
+     * @return un objeto URI completamente formado, o null si la URL base está vacía o es nula
+     */
     private static URI buildEndpoint(String baseUrl, String eventsPath) {
         if (baseUrl == null || baseUrl.isBlank()) {
             return null;
@@ -109,7 +134,12 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
         while (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }
-        String path = (eventsPath == null) ? "" : eventsPath.trim();
+        String path;
+        if (eventsPath == null) {
+            path = "";
+        } else {
+            path = eventsPath.trim();
+        }
         if (!path.isEmpty() && !path.startsWith("/")) {
             path = "/" + path;
         }
