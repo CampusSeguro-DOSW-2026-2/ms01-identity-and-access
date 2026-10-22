@@ -7,7 +7,7 @@ Base de datos PostgreSQL propia de MS01 ([RNF-MS01-01](1_requirements.md)). Ning
 2. [Convenciones](#convenciones)
 3. [Tablas](#tablas)
     - [usuarios](#usuarios)
-    - [usuario_rol](#usuario_rol)
+    - [roles](#roles)
     - [codigos_recuperacion](#codigos_recuperacion)
 4. [Relaciones](#relaciones)
 5. [Correspondencia API ↔ columnas](#correspondencia-api)
@@ -20,11 +20,10 @@ Base de datos PostgreSQL propia de MS01 ([RNF-MS01-01](1_requirements.md)). Ning
 <a id="alcance"></a>
 ## Alcance
 
-**Se almacena:** usuarios, la asignación usuario–rol y los códigos de recuperación de contraseña.
+**Se almacena:** usuarios, los roles y los códigos de recuperación de contraseña.
 
 **No se almacena, y por qué:**
 * **Auditoría:** la delega MS08 ([RNF-MS01-10](1_requirements.md)).
-* **Catálogo de roles:** es el enum `Rol` del código, fuente única junto con sus permisos; no existe tabla de roles ([RN-MS01-14](1_requirements.md#rn-ms01-14)).
 * **Permisos:** la matriz rol–permiso está versionada en el código ([RN-MS01-14](1_requirements.md#rn-ms01-14), [`3_matriz-roles-permisos.md`](3_matriz-roles-permisos.md)).
 * **Sesiones y tokens:** el JWT es stateless y no se persiste ([RN-MS01-07](1_requirements.md#rn-ms01-07), [RN-MS01-10](1_requirements.md#rn-ms01-10), [`4_jwt-spec.md`](4_jwt-spec.md)).
 * **Datos de otros dominios** (alertas, check-ins, etc.): pertenecen a sus propios microservicios.
@@ -36,7 +35,7 @@ Base de datos PostgreSQL propia de MS01 ([RNF-MS01-01](1_requirements.md)). Ning
 
 * Nombres de tablas y columnas en `snake_case` y en español, alineados con el contrato OpenAPI.
 * Fechas y horas en `TIMESTAMPTZ`, guardadas en UTC.
-* Identificador de usuario: texto `USR-` + número secuencial (desde 1000), generado por el servicio (ejemplo `USR-1034`).
+* Identificador de usuario: Con la libreria UI
 * El correo se guarda en minúsculas y sin espacios en los extremos ([RG-01](2_forms-inputs.md#reglas-generales-de-entrada)).
 * Los roles se guardan como texto con `@Enumerated(EnumType.STRING)` (nunca `ORDINAL`) y la base de datos los valida con un `CHECK`. Cambiar el catálogo exige actualizar el enum y el `CHECK` en la misma migración y Pull Request.
 * No hay borrado físico de usuarios: se inactivan ([RN-MS01-17](1_requirements.md#rn-ms01-17)).
@@ -53,26 +52,26 @@ Una fila por persona registrada.
 
 | Columna | Tipo | Nulo | Por defecto | Restricciones | Descripción |
 |---|---|---|---|---|---|
-| `id` | VARCHAR(20) | No | — | PK | Identificador `USR-<n>`. |
+| `id` | UUID | No | — | PK | Identificador `USR-<n>`. |
 | `primer_nombre` | VARCHAR(30) | No | — | 2 a 30 caracteres | [F-01](2_forms-inputs.md#f-01). |
 | `segundo_nombre` | VARCHAR(30) | Sí | NULL | Si existe, 2 a 30 | Opcional. |
 | `primer_apellido` | VARCHAR(30) | No | — | 2 a 30 caracteres | |
 | `segundo_apellido` | VARCHAR(30) | Sí | NULL | Si existe, 2 a 30 | Opcional. |
 | `correo` | VARCHAR(100) | No | — | UNIQUE; `correo = lower(correo)` | Correo institucional. Inmutable tras el registro ([RN-MS01-15](1_requirements.md#rn-ms01-15)). |
-| `contrasena_hash` | VARCHAR(100) | No | — | — | Hash BCrypt ([RN-MS01-04](1_requirements.md#rn-ms01-04)). Nunca se devuelve por la API. |
+| `password_hash` | VARCHAR(100) | No | — | — | Hash BCrypt ([RN-MS01-04](1_requirements.md#rn-ms01-04)). Nunca se devuelve por la API. |
 | `estado` | VARCHAR(10) | No | `'ACTIVO'` | CHECK IN (`ACTIVO`, `INACTIVO`) | [RN-MS01-17](1_requirements.md#rn-ms01-17). |
 | `creado_en` | TIMESTAMPTZ | No | `now()` | — | Fecha de registro. |
 | `actualizado_en` | TIMESTAMPTZ | No | `now()` | — | Se actualiza en cada modificación (perfil, estado, contraseña). |
 
 **Índices:** PK `id`; único `correo`; `idx_usuarios_estado (estado)`.
 
-<a id="usuario_rol"></a>
-### usuario_rol
+<a id="roles"></a>
+### Roles
 Asignación de roles del enum `Rol`. Un usuario puede tener varios ([RN-MS01-13](1_requirements.md#rn-ms01-13)).
 
 | Columna | Tipo | Nulo | Por defecto | Restricciones | Descripción |
 |---|---|---|---|---|---|
-| `usuario_id` | VARCHAR(20) | No | — | PK (con `rol`); FK → `usuarios.id` | |
+| `usuario_id` | UUID | No | — | PK (con `rol`); FK → `usuarios.id` | |
 | `rol` | VARCHAR(20) | No | — | PK (con `usuario_id`); CHECK IN (`ESTUDIANTE`, `PROFESOR`, `ADMINISTRATIVO`, `BRIGADISTA`, `COORDINADOR`, `ORGANIZADOR`, `ADMIN`, `AUDITOR`) | Código del rol. |
 | `asignado_en` | TIMESTAMPTZ | No | `now()` | — | Fecha de asignación. |
 
@@ -84,8 +83,8 @@ Códigos de un solo uso para restablecer la contraseña ([RF-MS01-08](1_requirem
 
 | Columna | Tipo | Nulo | Por defecto | Restricciones | Descripción |
 |---|---|---|---|---|---|
-| `id` | BIGINT | No | autogenerado | PK | |
-| `usuario_id` | VARCHAR(20) | No | — | FK → `usuarios.id` | Dueño del código. |
+| `id` | UUID | No | autogenerado | PK | |
+| `usuario_id` | UUID | No | — | FK → `usuarios.id` | Dueño del código. |
 | `codigo_hash` | VARCHAR(100) | No | — | — | Hash del código de 6 dígitos; el código en claro nunca se guarda. |
 | `expira_en` | TIMESTAMPTZ | No | — | — | Creación + vigencia (15 min, configurable; [RN-MS01-21](1_requirements.md#rn-ms01-21)). |
 | `usado_en` | TIMESTAMPTZ | Sí | NULL | — | NULL = no usado. Con valor = consumido o invalidado. |
@@ -107,6 +106,12 @@ Códigos de un solo uso para restablecer la contraseña ([RF-MS01-08](1_requirem
 `usuario_rol` es la única tabla de roles: relaciona a cada usuario con valores del enum `Rol`.
 
 ---
+## Modelo Logico
+Link al Lucichart: https://lucid.app/lucidchart/4ab63e29-7f75-4662-9036-1ef44a18c296/edit?viewport_loc=-126%2C-974%2C2246%2C1089%2C0_0&invitationId=inv_8679d7ee-e1f8-4eb8-96f7-9b27687edce0
+
+![Imagen Del Modelo Logico De La Base De Datos Para MS01](../images/CS_MS01_Modelo%20Logico.png)
+
+---
 
 <a id="correspondencia-api"></a>
 ## Correspondencia API ↔ columnas
@@ -116,7 +121,7 @@ Códigos de un solo uso para restablecer la contraseña ([RF-MS01-08](1_requirem
 | `id` | `usuarios.id` | |
 | `primer_nombre`, `segundo_nombre`, `primer_apellido`, `segundo_apellido` | columnas homónimas de `usuarios` | No se guarda un nombre completo. |
 | `correo` | `usuarios.correo` | |
-| `contrasena`, `nueva_contrasena` | `usuarios.contrasena_hash` | Solo entra; se guarda como hash y no se devuelve. |
+| `contrasena`, `nueva_contrasena` | `usuarios.password_hash` | Solo entra; se guarda como hash y no se devuelve. |
 | `estado` | `usuarios.estado` | |
 | `roles` | `usuario_rol.rol` (filas del usuario) | Arreglo ordenado alfabéticamente. |
 | `codigo` | `codigos_recuperacion.codigo_hash` | Se compara contra el hash; no se devuelve. |
