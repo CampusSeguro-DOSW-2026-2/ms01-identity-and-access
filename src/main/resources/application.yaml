@@ -13,7 +13,16 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+
+  mail:
+    host: localhost
+    port: 1025
+
+campusseguro:
+  recuperacion:
+    vigencia-minutos: 15
+    max-intentos: 5
+    remitente: no-reply@campusseguro.local
  
 server:
   port: 8080
- 

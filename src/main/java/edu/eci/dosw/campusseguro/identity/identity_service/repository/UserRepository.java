@@ -1,5 +1,6 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,5 +12,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 public interface UserRepository extends JpaRepository<UserEntity, UUID>{
     
     boolean existsByEmail(String email);
+
+    Optional<UserEntity> findByEmail(String email);
     
 }

@@ -27,4 +27,14 @@ public class GlobalExceptionHandler {
                 .forEach(e -> errors.putIfAbsent(e.getField(), e.getDefaultMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
+
+        @ExceptionHandler(InvalidResetCodeException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidResetCode(InvalidResetCodeException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PasswordMismatchException.class)
+    public ResponseEntity<Map<String, String>> handlePasswordMismatch(PasswordMismatchException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("confirmar_contrasena", ex.getMessage()));
+    }
 }
