@@ -95,7 +95,7 @@ public class UserServiceImpl implements UserService{
         entity.setSecondName(blankToNull(request.getSecondName()));
         entity.setFirstLastName(request.getFirstLastName());
         entity.setSecondLastName(blankToNull(request.getSecondLastName()));
-        entity.setEmail(request.getEmail());
+        entity.setEmail(email);
         entity.setPassword(passwordEncoder.encode(request.getPassword()));
         entity.setRoles(new ArrayList<>(List.of(UserRole.ESTUDIANTE)));
         entity.setState(UserState.ACTIVO);
