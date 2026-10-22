@@ -39,7 +39,7 @@ public class UserEntity {
     @Column(name = "correo", nullable = false, length = 100)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 30)
+    @Column(name = "password_hash", nullable = false, length = 100)
     private String password;
 
     @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
