@@ -48,8 +48,6 @@ class UserControllerTest {
     private UserResponse buildResponse(UUID id, String email) {
         UserResponse response = new UserResponse();
         response.setId(id);
-        response.setFirstName("Carlos");
-        response.setFirstLastName("Gomez");
         response.setEmail(email);
         response.setRoles(List.of(UserRole.ESTUDIANTE));
         response.setState(UserState.ACTIVO);

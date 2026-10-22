@@ -65,8 +65,6 @@ public class AuthControllerTest {
     private UserResponse buildResponse() {
         UserResponse response = new UserResponse();
         response.setId(UUID.randomUUID());
-        response.setFirstName("Carlos");
-        response.setFirstLastName("Gomez");
         response.setEmail("carlos.gomez@mail.escuelaing.edu.co");
         response.setRoles(List.of(UserRole.ESTUDIANTE));
         response.setState(UserState.ACTIVO);
@@ -83,7 +81,6 @@ public class AuthControllerTest {
                 .content(body("Carlos", "carlos.gomez@mail.escuelaing.edu.co", "MiPasswordSeguro123")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.primer_nombre").value("Carlos"))
                 .andExpect(jsonPath("$.correo").value("carlos.gomez@mail.escuelaing.edu.co"))
                 .andExpect(jsonPath("$.roles[0]").value("ESTUDIANTE"))
                 .andExpect(jsonPath("$.estado").value("ACTIVO"))

@@ -93,7 +93,6 @@ public class UserServiceTest {
         assertEquals(UserState.ACTIVO, saved.getState());
  
         assertEquals(id, response.getId());
-        assertEquals("Carlos", response.getFirstName());
         assertEquals("carlos.gomez@mail.escuelaing.edu.co", response.getEmail());
         assertEquals(List.of(UserRole.ESTUDIANTE), response.getRoles());
         assertEquals(UserState.ACTIVO, response.getState());
