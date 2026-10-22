@@ -24,33 +24,33 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(nullable = false, length = 30)
-    private String primer_nombre;
+    @Column(name = "primer_nombre", nullable = false, length = 30)
+    private String firstName;
 
-    @Column(length = 30)
-    private String segundo_nombre;
+    @Column(name = "segundo_nombre", length = 30)
+    private String secondName;
 
-    @Column(nullable = false, length = 30)
-    private String primer_apellido;
+    @Column(name = "primer_apellido", nullable = false, length = 30)
+    private String firstLastName;
 
-    @Column(length = 30)
-    private String segundo_apellido;
+    @Column(name = "segundo_apellido", length = 30)
+    private String secondLastName;
 
-    @Column(nullable = false, length = 100)
-    private String correo;
+    @Column(name = "correo", nullable = false, length = 100)
+    private String email;
 
-    @Column(nullable = false, length = 30)
-    private String password_hash;
+    @Column(name = "password_hash", nullable = false, length = 30)
+    private String password;
 
     @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
     @CollectionTable(name = "usuario_rol", joinColumns = @JoinColumn(name = "usuario_id"))
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private List<UserRole> rol;
+    @Column(name = "rol", nullable = false, length = 20)
+    private List<UserRole> roles;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    private UserState estado;
+    @Column(name = "estado", nullable = false, length = 10)
+    private UserState state;
 
     /**
      * Seccion de gets y sets dentro de la entidad para acceder a su informacion.
@@ -59,28 +59,28 @@ public class UserEntity {
     public UUID getId(){ return this.id; }
     public void setId(UUID id){ this.id = id; }
 
-    public String getFirstName(){ return this.primer_nombre; }
-    public void setFirstName(String name){ this.primer_nombre = name; }
+    public String getFirstName(){ return this.firstName; }
+    public void setFirstName(String name){ this.firstName = name; }
 
-    public String getSecondName(){ return this.segundo_nombre; }
-    public void setSecondtName(String name){ this.segundo_nombre = name; }
+    public String getSecondName(){ return this.secondName; }
+    public void setSecondName(String name){ this.secondName = name; }
 
-    public String getFirstLastName(){ return this.primer_apellido; }
-    public void setFirstLastName(String lastName){ this.primer_apellido = lastName; }
+    public String getFirstLastName(){ return this.firstLastName; }
+    public void setFirstLastName(String lastName){ this.firstLastName = lastName; }
 
-    public String getSecondLastName(){ return this.segundo_apellido; }
-    public void setSecondLastName(String lastName){ this.segundo_apellido = lastName; }
+    public String getSecondLastName(){ return this.secondLastName; }
+    public void setSecondLastName(String lastName){ this.secondLastName = lastName; }
 
-    public String getEmail(){ return this.correo; }
-    public void setEmail(String email){ this.correo = email; }
+    public String getEmail(){ return this.email; }
+    public void setEmail(String email){ this.email = email; }
 
-    public String getPassword(){ return this.password_hash; }
-    public void setPassword(String password){ this.password_hash = password; }
+    public String getPassword(){ return this.password; }
+    public void setPassword(String password){ this.password = password; }
 
-    public List<UserRole> getRole(){ return this.rol; }
-    public void setRole(List<UserRole> role){ this.rol = role; }
+    public List<UserRole> getRoles(){ return this.roles; }
+    public void setRoles(List<UserRole> role){ this.roles = role; }
 
-    public UserState getState(){ return this.estado; }
-    public void setState(UserState state){ this.estado = state; }
+    public UserState getState(){ return this.state; }
+    public void setState(UserState state){ this.state = state; }
 
 }

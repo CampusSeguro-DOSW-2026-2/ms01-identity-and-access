@@ -10,4 +10,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, UUID>{
     
+    boolean existsByEmail(String email);
+    
 }

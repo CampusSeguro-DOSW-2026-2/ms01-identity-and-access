@@ -1,8 +1,10 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
@@ -10,16 +12,19 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoundException;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
+import jakarta.transaction.Transactional;
 
 @Service
 public class UserServiceImpl implements UserService{
-    
     private UserRepository userRepository;
+    private PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository){
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder){
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
     
     /**
@@ -76,18 +81,30 @@ public class UserServiceImpl implements UserService{
      * 
      */
     @Override
+    @Transactional 
     public UserResponse create(UserCreateRequest request){
+
+        String email = request.getEmail().trim().toLowerCase();
+ 
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyExistsException(email);
+        }
+
         UserEntity entity = new UserEntity();
         entity.setFirstName(request.getFirstName());
-        entity.setSecondtName(request.getSecondName());
+        entity.setSecondName(blankToNull(request.getSecondName()));
         entity.setFirstLastName(request.getFirstLastName());
-        entity.setSecondLastName(request.getSecondLastName());
+        entity.setSecondLastName(blankToNull(request.getSecondLastName()));
         entity.setEmail(request.getEmail());
-        entity.setPassword(request.getPassword());
-        entity.setRole(request.getRole());
-        entity.setState(request.getState());
+        entity.setPassword(passwordEncoder.encode(request.getPassword()));
+        entity.setRoles(new ArrayList<>(List.of(UserRole.ESTUDIANTE)));
+        entity.setState(UserState.ACTIVO);
 
         UserEntity saved = userRepository.save(entity);
         return UserResponse.fromEntity(saved);
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
     }
 }
