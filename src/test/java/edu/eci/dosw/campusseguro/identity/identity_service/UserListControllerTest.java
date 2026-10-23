@@ -32,9 +32,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class UserListControllerTest {
 
-    private static final String URL = "/api/v1/users/search";
-    private static final String HEADER = "X-User-Id";
-    private static final UUID ADMIN = UUID.randomUUID();
+    private static final String URL = "/api/v1/users";
+    private static final String ID_HEADER = "X-User-Id";
+    private static final String ROLE_HEADER = "X-User-Role";
+    private static final UUID ADMIN_ID = UUID.randomUUID();
+    private static final String ADMIN_ROLE = "ADMIN";
 
     @Mock private UserService userService;
     @InjectMocks private UserController userController;
@@ -56,17 +58,14 @@ class UserListControllerTest {
         return r;
     }
 
-    /**
-     * 
-     * @throws Exception
-     */
     @Test
     void list_asAdmin_returns200WithPageAndFilters() throws Exception {
-        // Actualizado el tamaño a 10 para que coincida con el valor por defecto de Spring
-        when(userService.search(eq(ADMIN), eq("ana"), eq("ACTIVO"), eq("ESTUDIANTE"), eq(0), eq(10)))
-                .thenReturn(new PageResponse<>(List.of(response("ana@mail.escuelaing.edu.co")), 0, 10, 1, 1));
+        when(userService.search(eq(ADMIN_ID), eq(ADMIN_ROLE), eq("ana"), eq("ACTIVO"), eq("ESTUDIANTE"), eq(0), eq(20)))
+                .thenReturn(new PageResponse<>(List.of(response("ana@mail.escuelaing.edu.co")), 0, 20, 1, 1));
 
-        mockMvc.perform(get(URL).header(HEADER, ADMIN.toString())
+        mockMvc.perform(get(URL)
+                        .header(ID_HEADER, ADMIN_ID.toString())
+                        .header(ROLE_HEADER, ADMIN_ROLE)
                         .param("correo", "ana").param("estado", "ACTIVO").param("rol", "ESTUDIANTE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido.length()").value(1))
@@ -77,55 +76,53 @@ class UserListControllerTest {
                 .andExpect(jsonPath("$.pagina").value(0));
     }
 
-    /**
-     * 
-     * @throws Exception
-     */
     @Test
-    void list_withoutParams_usesDefaultsPage0Size20() throws Exception {
-        // Actualizado el tamaño a 10 en el when y en el verify
-        when(userService.search(eq(ADMIN), isNull(), isNull(), isNull(), eq(0), eq(10)))
-                .thenReturn(new PageResponse<>(List.of(), 0, 10, 0, 0));
+    void list_withoutParams_usesDefaultsPage0Size10() throws Exception {
+        when(userService.search(eq(ADMIN_ID), eq(ADMIN_ROLE), isNull(), isNull(), isNull(), eq(0), eq(20)))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
 
-        mockMvc.perform(get(URL).header(HEADER, ADMIN.toString())).andExpect(status().isOk());
-        verify(userService).search(eq(ADMIN), isNull(), isNull(), isNull(), eq(0), eq(10));
+        mockMvc.perform(get(URL)
+                        .header(ID_HEADER, ADMIN_ID.toString())
+                        .header(ROLE_HEADER, ADMIN_ROLE))
+                .andExpect(status().isOk());
+        
+        verify(userService).search(eq(ADMIN_ID), eq(ADMIN_ROLE), isNull(), isNull(), isNull(), eq(0), eq(20));
     }
 
-    /**
-     * 
-     * @throws Exception
-     */
     @Test
     void list_notAdmin_returns403() throws Exception {
-        when(userService.search(any(), any(), any(), any(), anyInt(), anyInt()))
+        when(userService.search(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenThrow(new AdminOrAuditorRequiredException());
 
-        mockMvc.perform(get(URL).header(HEADER, UUID.randomUUID().toString()))
+        mockMvc.perform(get(URL)
+                        .header(ID_HEADER, UUID.randomUUID().toString())
+                        .header(ROLE_HEADER, "ESTUDIANTE"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.codigo").value("ACCESO_DENEGADO"));
     }
 
-    /**
-     * 
-     * @throws Exception
-     */
     @Test
     void list_invalidParam_returns400() throws Exception {
-        when(userService.search(any(), any(), any(), any(), anyInt(), anyInt()))
+        when(userService.search(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenThrow(new InvalidSearchParamException("size debe estar entre 1 y 100"));
 
-        mockMvc.perform(get(URL).header(HEADER, ADMIN.toString()).param("size", "101"))
+        mockMvc.perform(get(URL)
+                        .header(ID_HEADER, ADMIN_ID.toString())
+                        .header(ROLE_HEADER, ADMIN_ROLE)
+                        .param("size", "101"))
                 .andExpect(status().isBadRequest());
     }
 
-    /**
-     * 
-     * @throws Exception
-     */
     @Test
     void list_pageNotNumeric_returns400_andWithoutHeaderReturns400() throws Exception {
-        mockMvc.perform(get(URL).header(HEADER, ADMIN.toString()).param("page", "abc"))
+        // Falla por formato de página no numérico
+        mockMvc.perform(get(URL)
+                        .header(ID_HEADER, ADMIN_ID.toString())
+                        .header(ROLE_HEADER, ADMIN_ROLE)
+                        .param("page", "abc"))
                 .andExpect(status().isBadRequest());
+        
+        // Falla por faltar cabeceras obligatorias (X-User-Id o X-User-Role)
         mockMvc.perform(get(URL)).andExpect(status().isBadRequest());
         verifyNoInteractions(userService);
     }

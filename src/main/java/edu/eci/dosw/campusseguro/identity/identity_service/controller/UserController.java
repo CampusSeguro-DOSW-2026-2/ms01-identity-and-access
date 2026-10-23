@@ -1,6 +1,5 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -32,25 +31,6 @@ public class UserController {
 
     /**
      * 
-     * @return
-     */
-    @GetMapping
-    public ResponseEntity<List<UserResponse>> findAll(){
-        return ResponseEntity.ok(userService.findAll());
-    }
-
-    /**
-     * 
-     * @param id
-     * @return
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> findById(@PathVariable UUID id){
-        return ResponseEntity.ok(userService.findById(id));
-    }
-
-    /**
-     * 
      * @param requesterId
      * @param correo
      * @param estado
@@ -59,10 +39,21 @@ public class UserController {
      * @param size
      * @return
      */
-    @GetMapping("/search")
-    public ResponseEntity<PageResponse<UserResponse>> searchUsers(@RequestHeader("X-User-Id") UUID requesterId, @RequestParam(required = false) String correo, @RequestParam(required = false) String estado, @RequestParam(required = false) String rol, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size){
-        PageResponse<UserResponse> response = userService.search(requesterId, correo, estado, rol, page, size);
+    @GetMapping
+    public ResponseEntity<PageResponse<UserResponse>> searchUsers(@RequestHeader("X-User-Id") UUID requesterId, @RequestHeader("X-User-Role") String userRole, @RequestParam(required = false) String correo, @RequestParam(required = false) String estado, @RequestParam(required = false) String rol, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size){
+        PageResponse<UserResponse> response = userService.search(requesterId, userRole, correo, estado, rol, page, size);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 
+     * @param requesterId
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> getUserById(@RequestHeader("X-User-Id") UUID requesterId, @RequestHeader("X-User-Role") String userRole, @PathVariable UUID id){
+        return ResponseEntity.ok(userService.getUserById(requesterId, userRole, id));
     }
 
     /**

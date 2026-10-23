@@ -62,13 +62,26 @@ public class UserServiceImpl implements UserService{
     }
 
     /**
+     * 
+    */
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(UUID requesterId, String userRole, UUID id){
+        requireAdminOrAuditor(userRole);
+        
+        UserEntity entity = userRepository.findById(id)
+                    .orElseThrow(() -> new UserNotFoundException(id));
+        return UserResponse.fromEntity(entity);
+    }
+
+    /**
      * Este metodo es el encargado de realizar la busqueda de usuarios, esta busqueda solo la puede hacer el administrador
      * y puede tener 3 posibles filtros, buscar por correo, estado o rol
      */
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<UserResponse> search(UUID requesterId, String correo, String estado, String rol, int page, int size){
-        requireAdminOrAuditor(requesterId);
+    public PageResponse<UserResponse> search(UUID requesterId, String userRole, String correo, String estado, String rol, int page, int size){
+        requireAdminOrAuditor(userRole);
 
         if (page < 0) throw new InvalidSearchParamException("page debe ser mayor o igual a 0");
         if (size < 1 || size > 100) throw new InvalidSearchParamException("size debe estar entre 1 y 100");
@@ -151,13 +164,12 @@ public class UserServiceImpl implements UserService{
 
     /**
      * 
-     * @param id
+     * @param userRole
      */
-    private void requireAdminOrAuditor(UUID id){
-        boolean isAdmin = userRepository.findById(id)
-                .map(entity -> entity.getState() == UserState.ACTIVO && entity.getRoles() != null && entity.getRoles().contains(UserRole.ADMIN) || entity.getRoles().contains(UserRole.AUDITOR))
-                .orElse(false);
-        if(!isAdmin) throw new AdminOrAuditorRequiredException();
+    private void requireAdminOrAuditor(String userRole){
+        if(userRole == null || (!userRole.contains("ADMIN") && !userRole.contains("AUDITOR"))){
+            throw new AdminOrAuditorRequiredException();
+        }
     }
 
     /**

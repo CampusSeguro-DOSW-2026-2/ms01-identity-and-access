@@ -15,7 +15,9 @@ public interface UserService {
 
     UserResponse findById(UUID id);
 
-    PageResponse<UserResponse> search(UUID requesterId, String correo, String estado, String rol, int page, int size);
+    UserResponse getUserById(UUID requesterId, String userRole, UUID id);
+
+    PageResponse<UserResponse> search(UUID requesterId, String userRole, String correo, String estado, String rol, int page, int size);
 
     UserResponse create(UserCreateRequest request);
 
