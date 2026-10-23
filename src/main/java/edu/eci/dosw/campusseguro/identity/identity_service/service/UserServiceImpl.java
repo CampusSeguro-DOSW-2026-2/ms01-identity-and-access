@@ -66,12 +66,12 @@ public class UserServiceImpl implements UserService{
     */
     @Override
     @Transactional(readOnly = true)
-    public UserResponse getUserById(UUID requesterId, String userRole, UUID id){
+    public UserProfileResponse getUserById(UUID requesterId, String userRole, UUID id){
         requireAdminOrAuditor(userRole);
         
         UserEntity entity = userRepository.findById(id)
                     .orElseThrow(() -> new UserNotFoundException(id));
-        return UserResponse.fromEntity(entity);
+        return UserProfileResponse.fromEntity(entity);
     }
 
     /**

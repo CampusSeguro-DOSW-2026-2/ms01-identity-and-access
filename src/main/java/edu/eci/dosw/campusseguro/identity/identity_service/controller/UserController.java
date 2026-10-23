@@ -52,7 +52,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserById(@RequestHeader("X-User-Id") UUID requesterId, @RequestHeader("X-User-Role") String userRole, @PathVariable UUID id){
+    public ResponseEntity<UserProfileResponse> getUserById(@RequestHeader("X-User-Id") UUID requesterId, @RequestHeader("X-User-Role") String userRole, @PathVariable UUID id){
         return ResponseEntity.ok(userService.getUserById(requesterId, userRole, id));
     }
 
