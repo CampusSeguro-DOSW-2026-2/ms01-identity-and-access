@@ -20,7 +20,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExcep
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.exception.AdminRequiredException;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.AdminOrAuditorRequiredException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidSearchParamException;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -98,7 +98,7 @@ class UserListControllerTest {
     @Test
     void list_notAdmin_returns403() throws Exception {
         when(userService.search(any(), any(), any(), any(), anyInt(), anyInt()))
-                .thenThrow(new AdminRequiredException());
+                .thenThrow(new AdminOrAuditorRequiredException());
 
         mockMvc.perform(get(URL).header(HEADER, UUID.randomUUID().toString()))
                 .andExpect(status().isForbidden())

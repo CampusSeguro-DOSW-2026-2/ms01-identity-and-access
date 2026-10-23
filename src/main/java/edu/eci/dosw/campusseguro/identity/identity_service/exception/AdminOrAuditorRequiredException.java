@@ -1,7 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
-public class AdminRequiredException extends RuntimeException {
-    public AdminRequiredException() {
+public class AdminOrAuditorRequiredException extends RuntimeException {
+    public AdminOrAuditorRequiredException() {
         super("Se requiere rol ADMIN"); 
     }
 }

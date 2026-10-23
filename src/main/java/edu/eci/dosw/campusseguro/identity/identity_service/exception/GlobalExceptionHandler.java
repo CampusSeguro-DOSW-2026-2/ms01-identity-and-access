@@ -143,11 +143,11 @@ public class GlobalExceptionHandler {
      * @param ex
      * @return
      */
-    @ExceptionHandler(AdminRequiredException.class)
-    public ResponseEntity<Map<String, Object>> handleAdminRequired(AdminRequiredException ex) {
+    @ExceptionHandler(AdminOrAuditorRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleAdminOrAuditorRequired(AdminOrAuditorRequiredException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "status", 403, "codigo", "ACCESO_DENEGADO",
-                "mensaje", "Solo un administrador puede realizar esta operación.", "errores", List.of()));
+                "mensaje", "Solo un administrador o un auditor puede realizar esta operación.", "errores", List.of()));
     }
 
     /**

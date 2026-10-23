@@ -29,7 +29,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
-import edu.eci.dosw.campusseguro.identity.identity_service.exception.AdminRequiredException;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.AdminOrAuditorRequiredException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidSearchParamException;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserServiceImpl;
@@ -110,7 +110,7 @@ public class UserSearchServiceTest {
         when(userRepository.findById(id)).thenReturn(Optional.of(
                 user(id, "est@mail.escuelaing.edu.co", UserState.ACTIVO, UserRole.ESTUDIANTE)));
 
-        assertThrows(AdminRequiredException.class, () -> userService.search(id, null, null, null, 0, 20));
+        assertThrows(AdminOrAuditorRequiredException.class, () -> userService.search(id, null, null, null, 0, 20));
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
     }
 
@@ -124,7 +124,7 @@ public class UserSearchServiceTest {
         when(userRepository.findById(id)).thenReturn(Optional.of(
                 user(id, "adm@mail.escuelaing.edu.co", UserState.INACTIVO, UserRole.ADMIN)));
 
-        assertThrows(AdminRequiredException.class, () -> userService.search(id, null, null, null, 0, 20));
+        assertThrows(AdminOrAuditorRequiredException.class, () -> userService.search(id, null, null, null, 0, 20));
     }
 
     /**
@@ -136,7 +136,7 @@ public class UserSearchServiceTest {
         UUID id = UUID.randomUUID();
         when(userRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(AdminRequiredException.class, () -> userService.search(id, null, null, null, 0, 20));
+        assertThrows(AdminOrAuditorRequiredException.class, () -> userService.search(id, null, null, null, 0, 20));
     }
 
     /**
