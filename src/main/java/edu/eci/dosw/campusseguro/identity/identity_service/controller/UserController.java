@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -64,7 +64,7 @@ public class UserController {
      * @return
      */
     @PutMapping("/me")
-    public ResponseEntity<UserProfileResponse> updateMyProfile(@RequestHeader("X-User-Id") UUID id, @Valid @RequestBody UserUpdateRequest request){
+    public ResponseEntity<UserProfileResponse> updateMyProfile(@RequestHeader("X-User-Id") UUID id, @Valid @RequestBody UserUpdateProfileRequest request){
         return ResponseEntity.ok(userService.updateProfile(id, request));
     }
 }

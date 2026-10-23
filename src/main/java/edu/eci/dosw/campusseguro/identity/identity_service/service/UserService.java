@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
@@ -16,16 +16,16 @@ public interface UserService {
 
     UserResponse findById(UUID id);
 
-    UserResponse findByEmail(String email);
+    List<UserResponse> findByEmail(String email);
 
-    UserResponse findByState(UserState state);
+    List<UserResponse> findByState(UserState state);
 
-    UserResponse findByRole(UserRole rol);
+    List<UserResponse> findByRole(UserRole role);
 
     UserResponse create(UserCreateRequest request);
 
     UserProfileResponse getMyProfile(UUID id);
 
-    UserProfileResponse updateProfile(UUID id, UserUpdateRequest request);
+    UserProfileResponse updateProfile(UUID id, UserUpdateProfileRequest request);
 
 }

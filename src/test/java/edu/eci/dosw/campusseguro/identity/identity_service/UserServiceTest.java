@@ -25,7 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
@@ -196,7 +196,7 @@ public class UserServiceTest {
     void updateProfile_validRequest_updatesAndReturnsProfile() {
         UUID id = UUID.randomUUID();
         UserEntity entity = buildEntity(id, "carlos.gomez@mail.escuelaing.edu.co");
-        UserUpdateRequest request = new UserUpdateRequest();
+        UserUpdateProfileRequest request = new UserUpdateProfileRequest();
         request.setFirstName("Sebastian");
         request.setFirstLastName("Gomez");
 

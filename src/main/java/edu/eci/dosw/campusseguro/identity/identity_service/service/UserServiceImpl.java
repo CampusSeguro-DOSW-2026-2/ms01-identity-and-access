@@ -3,13 +3,14 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
@@ -58,8 +59,11 @@ public class UserServiceImpl implements UserService{
      * 
      */
     @Override
-    public UserResponse findByEmail(String email){
-        return null;
+    @Transactional
+    public List<UserResponse> findByEmail(String email){
+        return userRepository.findByEmailContainingIgnoreCase(email).stream()
+                .map(entity -> UserResponse.fromEntity(entity))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -67,16 +71,21 @@ public class UserServiceImpl implements UserService{
      * 
      */
     @Override
-    public UserResponse findByState(UserState state){
-        return null;
+    @Transactional
+    public List<UserResponse> findByState(UserState state){
+        return userRepository.findByState(state).stream()
+                .map(entity -> UserResponse.fromEntity(entity))
+                .collect(Collectors.toList());
     }
 
     /**
      * 
      */
     @Override
-    public UserResponse findByRole(UserRole rol){
-        return null;
+    public List<UserResponse> findByRole(UserRole role){
+        return userRepository.findByRoles(role).stream()
+                .map(entity -> UserResponse.fromEntity(entity))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -121,7 +130,7 @@ public class UserServiceImpl implements UserService{
      */
     @Override 
     @Transactional 
-    public UserProfileResponse updateProfile(UUID id, UserUpdateRequest request){
+    public UserProfileResponse updateProfile(UUID id, UserUpdateProfileRequest request){
         UserEntity entity = userRepository.findById(id)
                     .orElseThrow(() -> new UserNotFoundException(id));
         entity.setFirstName(request.getFirstName());
