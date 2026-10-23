@@ -3,6 +3,8 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 import java.util.List;
 import java.util.UUID;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
@@ -18,6 +20,8 @@ public interface UserService {
     UserProfileResponse getUserById(UUID requesterId, String userRole, UUID id);
 
     PageResponse<UserResponse> search(UUID requesterId, String userRole, String correo, String estado, String rol, int page, int size);
+
+    ChangeStatusResponse changeUserStatus(UUID requesterId, String userRole, ChangeStatusRequest request);
 
     UserResponse create(UserCreateRequest request);
 

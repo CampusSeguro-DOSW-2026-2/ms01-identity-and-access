@@ -147,7 +147,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleAdminOrAuditorRequired(AdminOrAuditorRequiredException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "status", 403, "codigo", "ACCESO_DENEGADO",
-                "mensaje", "Solo un administrador o un auditor puede realizar esta operación.", "errores", List.of()));
+                "mensaje", "No cuenta con los permisos suficientes para realizar esta operación.", "errores", List.of()));
+    }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(SelfStatusChangeForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleSelfStatusChangeForbidden(SelfStatusChangeForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "status", 403, "codigo", "ACCESO_DENEGADO",
+                "mensaje", "Solo otro administrador diferente de usted puede realizar esa accion.", "errores", List.of()));
     }
 
     /**

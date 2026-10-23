@@ -12,6 +12,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.IndividualChangeStateResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
@@ -23,6 +26,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.AdminOrAuditorRequiredException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidSearchParamException;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.SelfStatusChangeForbiddenException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoundException;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,8 +66,9 @@ public class UserServiceImpl implements UserService{
     }
 
     /**
-     * 
-    */
+     * Este metodo se encarga de realizar la consulta de los perfiles de los usuarios al momento de estar registrados en
+     * la app web.
+     */
     @Override
     @Transactional(readOnly = true)
     public UserProfileResponse getUserById(UUID requesterId, String userRole, UUID id){
@@ -94,6 +99,37 @@ public class UserServiceImpl implements UserService{
         Page<UserEntity> pageResult = userRepository.searchUsers(textCorreo, stateEnum, roleEnum, pageable);
 
         return PageResponse.from(pageResult.map(entity -> UserResponse.fromEntity(entity)));
+    }
+
+    /**
+     * Este metodo se encarga de realizar los cambios masivos, esta funcion solamente puede ser usada por el administrador
+     * y puede realizar un cambio en varios usuarios al mismo tiempo
+     */
+    @Override
+    @Transactional 
+    public ChangeStatusResponse changeUserStatus(UUID requesterId, String userRole, ChangeStatusRequest request){
+        if(userRole == null || (!userRole.contains("ADMIN"))){ throw new AdminOrAuditorRequiredException(); }
+        if(request.getListIds().contains(requesterId)){ throw new SelfStatusChangeForbiddenException(); }
+
+        List<UserEntity> usersToUpdate = new ArrayList<>();
+        for (UUID id : request.getListIds()){
+            UserEntity user = userRepository.findById(id)
+                            .orElseThrow(() -> new UserNotFoundException(id));
+            usersToUpdate.add(user);
+        }
+
+        List<IndividualChangeStateResponse> resultados = new ArrayList<>();
+        UserState nuevoEstado = request.getState();
+
+        for (UserEntity user : usersToUpdate) {
+            UserState estadoAnterior = user.getState();
+            user.setState(nuevoEstado);
+            userRepository.save(user);
+
+            resultados.add(IndividualChangeStateResponse.fromEntity(user, estadoAnterior));
+        }
+
+        return ChangeStatusResponse.fromEntity(resultados);
     }
 
     /**
