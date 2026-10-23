@@ -121,7 +121,7 @@ public class UserServiceImpl implements UserService{
      */
     @Override 
     @Transactional 
-    public UserResponse updateProfile(UUID id, UserUpdateRequest request){
+    public UserProfileResponse updateProfile(UUID id, UserUpdateRequest request){
         UserEntity entity = userRepository.findById(id)
                     .orElseThrow(() -> new UserNotFoundException(id));
         entity.setFirstName(request.getFirstName());
@@ -130,7 +130,7 @@ public class UserServiceImpl implements UserService{
         entity.setSecondLastName(blankToNull(request.getSecondLastName()));
 
         UserEntity updated = userRepository.save(entity);
-        return UserResponse.fromEntity(updated);
+        return UserProfileResponse.fromEntity(updated);
     }
 
     /**

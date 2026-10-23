@@ -26,6 +26,6 @@ public interface UserService {
 
     UserProfileResponse getMyProfile(UUID id);
 
-    UserResponse updateProfile(UUID id, UserUpdateRequest request);
+    UserProfileResponse updateProfile(UUID id, UserUpdateRequest request);
 
 }

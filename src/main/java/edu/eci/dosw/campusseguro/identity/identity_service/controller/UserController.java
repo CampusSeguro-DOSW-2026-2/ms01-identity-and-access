@@ -64,7 +64,7 @@ public class UserController {
      * @return
      */
     @PutMapping("/me")
-    public ResponseEntity<UserResponse> updateMyProfile(@RequestHeader("X-User-Id") UUID id, @Valid @RequestBody UserUpdateRequest request){
+    public ResponseEntity<UserProfileResponse> updateMyProfile(@RequestHeader("X-User-Id") UUID id, @Valid @RequestBody UserUpdateRequest request){
         return ResponseEntity.ok(userService.updateProfile(id, request));
     }
 }

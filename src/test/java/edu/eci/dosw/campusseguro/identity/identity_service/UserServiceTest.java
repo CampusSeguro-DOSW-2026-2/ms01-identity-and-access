@@ -23,7 +23,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
@@ -168,5 +170,42 @@ public class UserServiceTest {
         when(userRepository.findById(id)).thenReturn(Optional.empty());
  
         assertThrows(UserNotFoundException.class, () -> userService.findById(id));
+    }
+
+    @Test
+    void getMyProfile_existingUser_returnsProfile() {
+        UUID id = UUID.randomUUID();
+        UserEntity entity = buildEntity(id, "carlos.gomez@mail.escuelaing.edu.co");
+        when(userRepository.findById(id)).thenReturn(Optional.of(entity));
+
+        UserProfileResponse result = userService.getMyProfile(id);
+
+        assertEquals("carlos.gomez@mail.escuelaing.edu.co", result.getEmail());
+        assertEquals("Carlos", result.getFirstName());
+    }
+
+    @Test
+    void getMyProfile_unknownUser_throwsUserNotFoundException() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> userService.getMyProfile(id));
+    }
+
+    @Test
+    void updateProfile_validRequest_updatesAndReturnsProfile() {
+        UUID id = UUID.randomUUID();
+        UserEntity entity = buildEntity(id, "carlos.gomez@mail.escuelaing.edu.co");
+        UserUpdateRequest request = new UserUpdateRequest();
+        request.setFirstName("Sebastian");
+        request.setFirstLastName("Gomez");
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(entity));
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UserProfileResponse result = userService.updateProfile(id, request);
+
+        assertEquals("Sebastian", result.getFirstName());
+        verify(userRepository).save(any(UserEntity.class));
     }
 }
