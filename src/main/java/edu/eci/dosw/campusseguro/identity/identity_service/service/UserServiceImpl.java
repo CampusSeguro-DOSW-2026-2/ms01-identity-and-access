@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
@@ -104,6 +106,38 @@ public class UserServiceImpl implements UserService{
         return UserResponse.fromEntity(saved);
     }
 
+    /**
+     * 
+     */
+    @Override
+    public UserProfileResponse getMyProfile(UUID id){
+        UserEntity entity = userRepository.findById(id)
+                    .orElseThrow(() -> new UserNotFoundException(id));
+        return UserProfileResponse.fromEntity(entity);
+    }
+
+    /**
+     * 
+     */
+    @Override 
+    @Transactional 
+    public UserProfileResponse updateProfile(UUID id, UserUpdateRequest request){
+        UserEntity entity = userRepository.findById(id)
+                    .orElseThrow(() -> new UserNotFoundException(id));
+        entity.setFirstName(request.getFirstName());
+        entity.setSecondName(blankToNull(request.getSecondName()));
+        entity.setFirstLastName(request.getFirstLastName());
+        entity.setSecondLastName(blankToNull(request.getSecondLastName()));
+
+        UserEntity updated = userRepository.save(entity);
+        return UserProfileResponse.fromEntity(updated);
+    }
+
+    /**
+     * 
+     * @param value
+     * @return
+     */
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
     }

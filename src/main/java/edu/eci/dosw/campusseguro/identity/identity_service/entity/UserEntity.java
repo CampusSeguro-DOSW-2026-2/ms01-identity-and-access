@@ -1,7 +1,10 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
+import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -51,6 +54,10 @@ public class UserEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 10)
     private UserState state;
+
+    @UpdateTimestamp
+    @Column(name = "actualizado_en", nullable = false)
+    private Instant updatedAt;
 
     /**
      * Seccion de gets y sets dentro de la entidad para acceder a su informacion.

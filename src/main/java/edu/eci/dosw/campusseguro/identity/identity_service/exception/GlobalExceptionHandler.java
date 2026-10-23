@@ -6,8 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
@@ -114,5 +116,25 @@ public class GlobalExceptionHandler {
         } else {
             return value.trim();
         }
+    }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<Map<String, String>> handleMissingHeader(MissingRequestHeaderException ex) {
+        return ResponseEntity.badRequest().body(Map.of("error", "Falta el header " + ex.getHeaderName()));
+    }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, String>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(Map.of("error", "Valor inválido para " + ex.getName()));
     }
 }
