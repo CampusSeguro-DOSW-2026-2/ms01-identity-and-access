@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,6 +47,22 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> findById(@PathVariable UUID id){
         return ResponseEntity.ok(userService.findById(id));
+    }
+
+    /**
+     * 
+     * @param requesterId
+     * @param correo
+     * @param estado
+     * @param rol
+     * @param page
+     * @param size
+     * @return
+     */
+    @GetMapping("/search")
+    public ResponseEntity<PageResponse<UserResponse>> searchUsers(@RequestHeader("X-User-Id") UUID requesterId, @RequestParam(required = false) String correo, @RequestParam(required = false) String estado, @RequestParam(required = false) String rol, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size){
+        PageResponse<UserResponse> response = userService.search(requesterId, correo, estado, rol, page, size);
+        return ResponseEntity.ok(response);
     }
 
     /**

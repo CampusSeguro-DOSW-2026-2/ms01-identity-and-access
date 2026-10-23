@@ -2,12 +2,17 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
@@ -15,10 +20,12 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileRespon
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.AdminRequiredException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidSearchParamException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoundException;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserServiceImpl implements UserService{
@@ -55,41 +62,30 @@ public class UserServiceImpl implements UserService{
     }
 
     /**
-     * 
-     * 
+     * Este metodo es el encargado de realizar la busqueda de usuarios, esta busqueda solo la puede hacer el administrador
+     * y puede tener 3 posibles filtros, buscar por correo, estado o rol
      */
     @Override
-    @Transactional
-    public List<UserResponse> findByEmail(String email){
-        return userRepository.findByEmailContainingIgnoreCase(email).stream()
-                .map(entity -> UserResponse.fromEntity(entity))
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponse> search(UUID requesterId, String correo, String estado, String rol, int page, int size){
+        requireAdmin(requesterId);
+
+        if (page < 0) throw new InvalidSearchParamException("page debe ser mayor o igual a 0");
+        if (size < 1 || size > 100) throw new InvalidSearchParamException("size debe estar entre 1 y 100");
+
+        String textCorreo = (correo == null || correo.isBlank()) ? null : correo.trim().toLowerCase();
+        UserState stateEnum = parseFilter(estado, UserState.class, "estado");
+        UserRole roleEnum = parseFilter(rol, UserRole.class, "rol");
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("email").ascending());
+        Page<UserEntity> pageResult = userRepository.searchUsers(textCorreo, stateEnum, roleEnum, pageable);
+
+        return PageResponse.from(pageResult.map(entity -> UserResponse.fromEntity(entity)));
     }
 
     /**
-     * 
-     * 
-     */
-    @Override
-    @Transactional
-    public List<UserResponse> findByState(UserState state){
-        return userRepository.findByState(state).stream()
-                .map(entity -> UserResponse.fromEntity(entity))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 
-     */
-    @Override
-    public List<UserResponse> findByRole(UserRole role){
-        return userRepository.findByRoles(role).stream()
-                .map(entity -> UserResponse.fromEntity(entity))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 
+     * Metodo que se encarga de crear un nuevo usuario en la base de datos, es la base para el registro de nuevos usuarios
+     * en la aplicacion web.
      */
     @Override
     @Transactional 
@@ -116,6 +112,8 @@ public class UserServiceImpl implements UserService{
     }
 
     /**
+     * Este metodo se encarga de obtener toda la informacion del usuario en el apartado de perfil. Solamente su 
+     * informacion.
      * 
      */
     @Override
@@ -149,5 +147,33 @@ public class UserServiceImpl implements UserService{
      */
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    /**
+     * 
+     * @param id
+     */
+    private void requireAdmin(UUID id){
+        boolean isAdmin = userRepository.findById(id)
+                .map(entity -> entity.getState() == UserState.ACTIVO && entity.getRoles() != null && entity.getRoles().contains(UserRole.ADMIN))
+                .orElse(false);
+        if(!isAdmin) throw new AdminRequiredException();
+    }
+
+    /**
+     * 
+     * @param <E>
+     * @param value
+     * @param type
+     * @param name
+     * @return
+     */
+    private static <E extends Enum<E>> E parseFilter(String value, Class<E> type, String name) {
+        if (value == null || value.isBlank() || value.trim().equalsIgnoreCase("TODOS")) return null;
+        try {
+            return Enum.valueOf(type, value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new InvalidSearchParamException("Valor inválido para el filtro " + name);
+        }
     }
 }

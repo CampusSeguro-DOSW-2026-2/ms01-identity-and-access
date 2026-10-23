@@ -3,12 +3,11 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 import java.util.List;
 import java.util.UUID;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
 public interface UserService {
     
@@ -16,11 +15,7 @@ public interface UserService {
 
     UserResponse findById(UUID id);
 
-    List<UserResponse> findByEmail(String email);
-
-    List<UserResponse> findByState(UserState state);
-
-    List<UserResponse> findByRole(UserRole role);
+    PageResponse<UserResponse> search(UUID requesterId, String correo, String estado, String rol, int page, int size);
 
     UserResponse create(UserCreateRequest request);
 

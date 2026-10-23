@@ -137,4 +137,27 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.badRequest().body(Map.of("error", "Valor inválido para " + ex.getName()));
     }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(AdminRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleAdminRequired(AdminRequiredException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "status", 403, "codigo", "ACCESO_DENEGADO",
+                "mensaje", "Solo un administrador puede realizar esta operación.", "errores", List.of()));
+    }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(InvalidSearchParamException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidSearch(InvalidSearchParamException ex) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "status", 400, "codigo", "VALIDACION", "mensaje", ex.getMessage(), "errores", List.of()));
+    }
 }
