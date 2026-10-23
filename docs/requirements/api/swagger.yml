@@ -258,7 +258,7 @@ paths:
     get:
       tags:
         - Administración de usuarios
-      summary: Listar y buscar usuarios (RF-MS01-07, F-07) - ADMIN
+      summary: Listar y buscar usuarios (RF-MS01-07, F-07) - ADMIN, AUDITOR
       parameters:
         - $ref: '#/components/parameters/XUserId'
         - $ref: '#/components/parameters/XUserRole'
@@ -311,7 +311,7 @@ paths:
     get:
       tags:
         - Administración de usuarios
-      summary: Consultar usuario por id (RF-MS01-05, RF-MS01-07) - ADMIN
+      summary: Consultar usuario por id (RF-MS01-05, RF-MS01-07) - ADMIN, AUDITOR
       parameters:
         - $ref: '#/components/parameters/XUserId'
         - $ref: '#/components/parameters/XUserRole'
