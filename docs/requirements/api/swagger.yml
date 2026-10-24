@@ -108,6 +108,8 @@ paths:
       tags:
         - Autenticación y sesión
       summary: Cerrar sesión (RF-MS01-04)
+      x-permiso: ms01:session:write
+      x-roles: [ESTUDIANTE, PROFESOR, ADMINISTRATIVO, BRIGADISTA, COORDINADOR, ORGANIZADOR, ADMIN, AUDITOR]
       description: Registra el logout (evento a MS08). El cliente descarta el token.
       responses:
         '200':
@@ -184,6 +186,8 @@ paths:
       tags:
         - Recuperación y cambio de clave
       summary: Cambiar contraseña autenticado (RF-MS01-08, F-06)
+      x-permiso: ms01:password:write
+      x-roles: [ ESTUDIANTE, PROFESOR, ADMINISTRATIVO, BRIGADISTA, COORDINADOR, ORGANIZADOR, ADMIN, AUDITOR ]
       requestBody:
         required: true
         content:
@@ -214,6 +218,8 @@ paths:
       tags:
         - Perfil propio
       summary: Consultar usuario autenticado (RF-MS01-03, RF-MS01-06)
+      x-permiso: ms01:profile:read
+      x-roles: [ ESTUDIANTE, PROFESOR, ADMINISTRATIVO, BRIGADISTA, COORDINADOR, ORGANIZADOR, ADMIN, AUDITOR ]
       description: Identifica al usuario por `X-User-Id`.
       responses:
         '200':
@@ -232,6 +238,8 @@ paths:
       tags:
         - Perfil propio
       summary: Actualizar perfil propio (RF-MS01-06, F-03)
+      x-permiso: ms01:profile:write
+      x-roles: [ ESTUDIANTE, PROFESOR, ADMINISTRATIVO, BRIGADISTA, COORDINADOR, ORGANIZADOR, ADMIN, AUDITOR ]
       description: Solo nombres y apellidos. Enviar correo, roles, estado o id se rechaza con 400 (RN-MS01-15).
       requestBody:
         required: true
@@ -258,7 +266,9 @@ paths:
     get:
       tags:
         - Administración de usuarios
-      summary: Listar y buscar usuarios (RF-MS01-07, F-07) - ADMIN, AUDITOR
+      summary: Listar y buscar usuarios (RF-MS01-07, F-07)
+      x-permiso: ms01:user:read
+      x-roles: [ADMIN, AUDITOR]
       parameters:
         - $ref: '#/components/parameters/XUserId'
         - $ref: '#/components/parameters/XUserRole'
@@ -311,7 +321,9 @@ paths:
     get:
       tags:
         - Administración de usuarios
-      summary: Consultar usuario por id (RF-MS01-05, RF-MS01-07) - ADMIN, AUDITOR
+      summary: Consultar usuario por id (RF-MS01-05, RF-MS01-07)
+      x-permiso: ms01:user:read
+      x-roles: [ADMIN, AUDITOR]
       parameters:
         - $ref: '#/components/parameters/XUserId'
         - $ref: '#/components/parameters/XUserRole'
@@ -334,7 +346,9 @@ paths:
     patch:
       tags:
         - Administración de usuarios
-      summary: Activar/inactivar uno o varios usuarios (RF-MS01-07, F-08) - ADMIN
+      summary: Activar/inactivar uno o varios usuarios (RF-MS01-07, F-08)
+      x-permiso: ms01:user_status:write
+      x-roles: [ADMIN]
       description: Operación atómica. Si incluye al propio administrador responde 403; si algún id no existe, 404. En ambos casos no se aplica ningún cambio.
       requestBody:
         required: true
@@ -376,6 +390,8 @@ paths:
       tags:
         - Roles y permisos
       summary: Consultar roles y permisos (RF-MS01-05)
+      x-permiso: ms01:role:read
+      x-roles: [ESTUDIANTE, PROFESOR, ADMINISTRATIVO, BRIGADISTA, COORDINADOR, ORGANIZADOR, ADMIN, AUDITOR]
       description: ADMIN recibe el catálogo completo; los demás usuarios solo sus propios roles (según `X-User-Role`).
       responses:
         '200':
@@ -396,7 +412,9 @@ paths:
     patch:
       tags:
         - Roles y permisos
-      summary: Agregar/retirar roles a uno o varios usuarios (RF-MS01-05, F-09) - ADMIN
+      summary: Agregar/retirar roles a uno o varios usuarios (RF-MS01-05, F-09)
+      x-permiso: ms01:user_roles:write
+      x-roles: [ADMIN]
       description: Operación atómica. Si incluye al propio administrador responde 403; si algún id no existe, 404; si algún usuario quedaría sin roles, listas vacías o un rol en ambas listas, 400. En todos
         los casos de error no se aplica ningún cambio.
       parameters:
