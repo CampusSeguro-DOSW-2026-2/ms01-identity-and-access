@@ -35,7 +35,7 @@ public class UserCreateRequest {
 
     @JsonProperty("password")
     @NotBlank(message = "Tiene que indicar la contraseña")
-    @Size(min = 8, max = 100, message = "El tamaño de la contraseña tiene que ser entre 8 a 100 caracteres")
+    @Size(min = 8, max = 72, message = "El tamaño de la contraseña tiene que ser entre 8 a 100 caracteres")
     private String password_hash;
 
 

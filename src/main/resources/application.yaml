@@ -27,6 +27,10 @@ campusseguro:
     max-intentos: 5
     espera-segundos: 60
     remitente: no-reply@campusseguro.local
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
  
 server:
   port: 8080
