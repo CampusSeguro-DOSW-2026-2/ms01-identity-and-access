@@ -84,6 +84,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 
+    @ExceptionHandler(InvalidResetCodeException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidResetCode(InvalidResetCodeException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PasswordMismatchException.class)
+    public ResponseEntity<Map<String, String>> handlePasswordMismatch(PasswordMismatchException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("confirmar_contrasena", ex.getMessage()));
+    }
+
+    @ExceptionHandler(WrongCurrentPasswordException.class)
+    public ResponseEntity<Map<String, String>> handleWrongCurrentPassword(WrongCurrentPasswordException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("contrasena_actual", ex.getMessage()));
+    }
+
+    @ExceptionHandler(SameAsCurrentPasswordException.class)
+    public ResponseEntity<Map<String, String>> handleSameAsCurrentPassword(SameAsCurrentPasswordException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("nueva_contrasena", ex.getMessage()));
+    }
+
     /**
      * Organiza los mensajes de la excepcion, deja un solo mensaje por campo, y devuelve el error en formato DTO
      * @param ex la excepcion
