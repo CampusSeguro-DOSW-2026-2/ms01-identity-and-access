@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 
-        @ExceptionHandler(InvalidResetCodeException.class)
+    @ExceptionHandler(InvalidResetCodeException.class)
     public ResponseEntity<Map<String, String>> handleInvalidResetCode(InvalidResetCodeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
     }
