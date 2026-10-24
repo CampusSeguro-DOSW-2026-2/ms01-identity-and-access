@@ -19,6 +19,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEvent;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.MessageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequest;
@@ -27,12 +28,15 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidResetCodeException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.PasswordMismatchException;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.SameAsCurrentPasswordException;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoundException;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.WrongCurrentPasswordException;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.PasswordResetCodeRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import jakarta.transaction.Transactional;
 
 /**
- * RF-MS01-08 Recuperar contrasena (flujo A).
+ * RF-MS01-08 Recuperar contrasena (flujo A) y cambiarla estando autenticado (flujo B).
  *
  * RN-MS01-20: la solicitud de codigo no revela si el correo existe.
  * RN-MS01-21: el codigo es de un solo uso y de vigencia corta y configurable.
@@ -48,11 +52,14 @@ public class PasswordServiceImpl implements PasswordService {
 
     static final String REASON_INVALID_CODE = "CODIGO_INVALIDO";
     static final String REASON_MISMATCH = "CONFIRMACION_DISTINTA";
+    static final String REASON_WRONG_CURRENT = "CONTRASENA_ACTUAL_INCORRECTA";
+    static final String REASON_SAME_AS_CURRENT = "NUEVA_IGUAL_A_ACTUAL";
 
     private static final String GENERIC_MESSAGE =
             "Si el correo está registrado, enviamos un código de recuperación.";
     private static final String SUCCESS_MESSAGE =
             "Contraseña actualizada correctamente. Inicia sesión de nuevo.";
+    private static final String CHANGE_SUCCESS_MESSAGE = "Contraseña actualizada correctamente.";
 
     private final UserRepository userRepository;
     private final PasswordResetCodeRepository codeRepository;
@@ -146,6 +153,48 @@ public class PasswordServiceImpl implements PasswordService {
         return new MessageResponse(SUCCESS_MESSAGE);
     }
 
+    /**
+     * Flujo B (F-06): cambia la contrasena del usuario autenticado. Valida la confirmacion, la
+     * contrasena actual y que la nueva sea distinta de la actual. Todo intento se audita como
+     * CAMBIO_CONTRASENA (EXITO o FALLO).
+     *
+     * @param userId        id del usuario, tomado de la cabecera X-User-Id
+     * @param request       contrasena actual, nueva y confirmacion
+     * @param correlationId valor de X-Correlation-ID; si falta o es invalido se genera uno
+     */
+    @Override
+    @Transactional
+    public MessageResponse changePassword(UUID userId, ChangePasswordRequest request, String correlationId) {
+        String corr = resolveCorrelationId(correlationId);
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        String email = user.getEmail();
+
+        if (!request.nueva_contrasena().equals(request.confirmar_contrasena())) {
+            publishChange(AuditResult.FALLO, userId, email, REASON_MISMATCH, corr);
+            throw new PasswordMismatchException();
+        }
+
+        if (!passwordEncoder.matches(request.contrasena_actual(), user.getPassword())) {
+            publishChange(AuditResult.FALLO, userId, email, REASON_WRONG_CURRENT, corr);
+            log.warn("[{}] Cambio de contrasena rechazado. motivo={} usuario={}", corr, REASON_WRONG_CURRENT, userId);
+            throw new WrongCurrentPasswordException();
+        }
+
+        if (passwordEncoder.matches(request.nueva_contrasena(), user.getPassword())) {
+            publishChange(AuditResult.FALLO, userId, email, REASON_SAME_AS_CURRENT, corr);
+            throw new SameAsCurrentPasswordException();
+        }
+
+        user.setPassword(passwordEncoder.encode(request.nueva_contrasena()));
+        userRepository.save(user);
+
+        publishChange(AuditResult.EXITO, userId, email, null, corr);
+        log.info("[{}] Cambio de contrasena exitoso. usuario={}", corr, userId);
+        return new MessageResponse(CHANGE_SUCCESS_MESSAGE);
+    }
+
     private void issueCode(UserEntity user, String corr) {
         Instant now = clock.instant();
 
@@ -188,6 +237,16 @@ public class PasswordServiceImpl implements PasswordService {
                     AuditAction.RECUPERACION, result, userId, email, detail, corr, clock.instant()));
         } catch (RuntimeException e) {
             log.error("[{}] Falló la emisión del evento de auditoría RECUPERACION/{}: {}", corr, result, e.toString());
+        }
+    }
+
+    /** Igual que publish, pero para la accion CAMBIO_CONTRASENA (flujo B). */
+    private void publishChange(AuditResult result, UUID userId, String email, String detail, String corr) {
+        try {
+            auditPublisher.publish(new AuditEvent(
+                    AuditAction.CAMBIO_CONTRASENA, result, userId, email, detail, corr, clock.instant()));
+        } catch (RuntimeException e) {
+            log.error("[{}] Falló la emisión del evento de auditoría CAMBIO_CONTRASENA/{}: {}", corr, result, e.toString());
         }
     }
 
