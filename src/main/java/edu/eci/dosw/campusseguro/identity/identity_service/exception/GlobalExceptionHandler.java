@@ -137,4 +137,39 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.badRequest().body(Map.of("error", "Valor inválido para " + ex.getName()));
     }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(AdminOrAuditorRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleAdminOrAuditorRequired(AdminOrAuditorRequiredException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "status", 403, "codigo", "ACCESO_DENEGADO",
+                "mensaje", "No cuenta con los permisos suficientes para realizar esta operación.", "errores", List.of()));
+    }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(SelfStatusChangeForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleSelfStatusChangeForbidden(SelfStatusChangeForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "status", 403, "codigo", "ACCESO_DENEGADO",
+                "mensaje", "Solo otro administrador diferente de usted puede realizar esa accion.", "errores", List.of()));
+    }
+
+    /**
+     * 
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler(InvalidSearchParamException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidSearch(InvalidSearchParamException ex) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "status", 400, "codigo", "VALIDACION", "mensaje", ex.getMessage(), "errores", List.of()));
+    }
 }

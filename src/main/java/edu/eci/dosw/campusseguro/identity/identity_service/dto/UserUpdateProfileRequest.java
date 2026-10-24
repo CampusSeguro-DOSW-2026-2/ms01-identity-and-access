@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Null;
 import jakarta.validation.constraints.Size;
 
-public class UserUpdateRequest {
+public class UserUpdateProfileRequest {
     
     @JsonProperty("primer_nombre")
     @NotBlank(message = "Tiene que indicar su primer nombre")
