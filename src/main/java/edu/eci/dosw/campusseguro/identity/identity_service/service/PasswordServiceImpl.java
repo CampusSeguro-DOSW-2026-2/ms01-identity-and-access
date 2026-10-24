@@ -41,19 +41,22 @@ public class PasswordServiceImpl implements PasswordService {
     private final EmailService emailService;
     private final int validMinutes;
     private final int maxAttempts;
+    private final int cooldownSeconds;
 
     public PasswordServiceImpl(UserRepository userRepository,
             PasswordResetCodeRepository codeRepository,
             PasswordEncoder passwordEncoder,
             EmailService emailService,
             @Value("${campusseguro.recuperacion.vigencia-minutos}") int validMinutes,
-            @Value("${campusseguro.recuperacion.max-intentos}") int maxAttempts) {
+            @Value("${campusseguro.recuperacion.max-intentos}") int maxAttempts, 
+            @Value("${campusseguro.recuperacion.espera-segundos}") int cooldownSeconds){
         this.userRepository = userRepository;
         this.codeRepository = codeRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.validMinutes = validMinutes;
         this.maxAttempts = maxAttempts;
+        this.cooldownSeconds = cooldownSeconds;
     }
 
     @Override
@@ -63,6 +66,7 @@ public class PasswordServiceImpl implements PasswordService {
 
         userRepository.findByEmail(email)
                 .filter(user -> user.getState() == UserState.ACTIVO)
+                .filter(this::cooldownElapsed)
                 .ifPresent(this::issueCode);
 
         return new MessageResponse(GENERIC_MESSAGE);
@@ -127,4 +131,9 @@ public class PasswordServiceImpl implements PasswordService {
             log.error("No se pudo enviar el código de recuperación al usuario {}", user.getId(), ex);
         }
     }
+    private boolean cooldownElapsed(UserEntity user) {
+    return codeRepository.findFirstByUserOrderByCreatedAtDesc(user)
+            .map(last -> Instant.now().isAfter(last.getCreatedAt().plusSeconds(cooldownSeconds)))
+            .orElse(true);
+}
 }

@@ -14,6 +14,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 public interface PasswordResetCodeRepository extends JpaRepository<PasswordResetCodeEntity, UUID> {
 
     Optional<PasswordResetCodeEntity> findFirstByUserAndUsedAtIsNullOrderByCreatedAtDesc(UserEntity user);
+    Optional<PasswordResetCodeEntity> findFirstByUserOrderByCreatedAtDesc(UserEntity user);
 
     List<PasswordResetCodeEntity> findByUserAndUsedAtIsNull(UserEntity user);
 }

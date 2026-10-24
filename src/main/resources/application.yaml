@@ -22,6 +22,7 @@ campusseguro:
   recuperacion:
     vigencia-minutos: 15
     max-intentos: 5
+    espera-segundos: 60
     remitente: no-reply@campusseguro.local
  
 server:
