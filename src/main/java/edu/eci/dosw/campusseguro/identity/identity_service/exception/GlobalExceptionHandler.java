@@ -60,6 +60,70 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * RN-MS01-23: no se pudo establecer la identidad de quien llama (faltan las cabeceras X-User-Id /
+     * X-User-Role o su valor no es valido); el sistema responde 401 con codigo NO_AUTENTICADO.
+     *
+     * @param ex excepcion con el motivo
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 401 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(UnauthenticatedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthenticated(UnauthenticatedException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(
+                HttpStatus.UNAUTHORIZED.value(), "NO_AUTENTICADO", ex.getMessage(),
+                correlationId(request)));
+    }
+
+    /**
+     * RF-MS01-05 A1 y A2: el solicitante no es administrador o intenta modificar sus propios roles; el
+     * sistema responde 403 con codigo PROHIBIDO.
+     *
+     * @param ex excepcion con el motivo
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 403 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<ErrorResponse> handleForbiddenOperation(ForbiddenOperationException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
+                HttpStatus.FORBIDDEN.value(), "PROHIBIDO", ex.getMessage(),
+                correlationId(request)));
+    }
+
+    /**
+     * RG-06 y F-09: datos invalidos o regla de validacion incumplida (por ejemplo, un usuario que
+     * quedaria sin roles); el sistema responde 400 con codigo VALIDACION y el detalle por campo.
+     *
+     * @param ex excepcion con el mensaje y los errores por campo
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRequest(InvalidRequestException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(), "VALIDACION", ex.getMessage(), ex.getErrors(),
+                correlationId(request)));
+    }
+
+    /**
+     * RF-MS01-05 A3: algun usuario de la peticion no existe; el sistema responde 404 con codigo
+     * NO_ENCONTRADO y no aplica ningun cambio.
+     *
+     * @param ex excepcion con el mensaje y los ids que no existen
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 404 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(UsersNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUsersNotFound(UsersNotFoundException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
+                HttpStatus.NOT_FOUND.value(), "NO_ENCONTRADO", ex.getMessage(),
+                correlationId(request)));
+    }
+
+    /**
      * RG-04: Se rechazan (HTTP 400) los campos no definidos en el contrato (en especial roles,
      * estado o id enviados por el usuario en registro y perfil).
     */

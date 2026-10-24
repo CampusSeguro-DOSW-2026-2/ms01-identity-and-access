@@ -92,7 +92,7 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
 
     /**
      * Convierte un evento de auditoría en una cadena con formato JSON, estructurando los campos
-     * obligatorios y opcionales bajo el estándar snake_case en español requerido.
+     * obligatorios y opcionales bajo el estándar snake_case
      * 
      * @param event el objeto de evento de auditoría a serializar
      * @return una cadena de texto en formato JSON que representa el evento
@@ -110,6 +110,9 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
         }
         if (event.detalle() != null) {
             body.put("detalle", event.detalle());
+        }
+        if (event.recursoAfectado() != null) {
+            body.put("recurso_afectado", event.recursoAfectado());
         }
         if (event.correlationId() != null) {
             body.put("correlation_id", event.correlationId());
