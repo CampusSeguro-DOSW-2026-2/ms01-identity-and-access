@@ -6,8 +6,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequ
 
 public interface PasswordService {
 
-    MessageResponse requestResetCode(ForgotPasswordRequest request);
+    MessageResponse requestResetCode(ForgotPasswordRequest request, String correlationId);
 
-    MessageResponse resetPassword(ResetPasswordRequest request);
+    MessageResponse resetPassword(ResetPasswordRequest request, String correlationId);
 
 }

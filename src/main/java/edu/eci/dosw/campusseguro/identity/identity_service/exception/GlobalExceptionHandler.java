@@ -92,6 +92,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PasswordMismatchException.class)
     public ResponseEntity<Map<String, String>> handlePasswordMismatch(PasswordMismatchException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("confirmar_contrasena", ex.getMessage()));
+    }
+
     /**
      * Organiza los mensajes de la excepcion, deja un solo mensaje por campo, y devuelve el error en formato DTO
      * @param ex la excepcion
