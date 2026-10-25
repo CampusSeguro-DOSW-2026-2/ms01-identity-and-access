@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,7 +100,7 @@ class BootstrapAdminInitializerTest {
         assertTrue(created);
         UserEntity admin = savedAdmin();
         assertEquals(NORMALIZED_EMAIL, admin.getEmail());
-        assertEquals(List.of(UserRole.ADMIN), admin.getRoles());
+        assertEquals(Set.of(UserRole.ADMIN), admin.getRoles());
         assertEquals(UserState.ACTIVO, admin.getState());
         assertEquals(HASH, admin.getPassword());
         assertNotEquals(PASSWORD, admin.getPassword());

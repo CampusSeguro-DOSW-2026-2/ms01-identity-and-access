@@ -1,7 +1,6 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.config;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.EnumSet;
 import java.util.Locale;
 
 import org.slf4j.Logger;
@@ -105,9 +104,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
         admin.setFirstLastName(valueOrDefault(lastName, DEFAULT_LAST_NAME));
         admin.setEmail(normalizedEmail);
         admin.setPassword(passwordEncoder.encode(password));
-        List<UserRole> roles = new ArrayList<>();
-        roles.add(UserRole.ADMIN);
-        admin.setRoles(roles);
+        admin.setRoles(EnumSet.of(UserRole.ADMIN));
         admin.setState(UserState.ACTIVO);
 
         userRepository.save(admin);

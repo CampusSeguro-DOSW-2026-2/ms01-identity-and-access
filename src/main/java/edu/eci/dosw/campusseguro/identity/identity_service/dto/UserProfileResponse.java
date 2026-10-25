@@ -43,7 +43,7 @@ public class UserProfileResponse {
         response.setFirstLastName(entity.getFirstLastName());
         response.setSecondLastName(entity.getSecondLastName());
         response.setEmail(entity.getEmail());
-        response.setRoles(entity.getRoles());
+        response.setRoles(UserRole.sortedByName(entity.getRoles()));
         response.setState(entity.getState());
         return response;
     }

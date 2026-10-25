@@ -32,11 +32,11 @@ class AuditEventJsonTest {
         AuditEvent event = new AuditEvent(AuditAction.CAMBIO_ROL, AuditResult.EXITO, ADMIN_ID, null,
                 "rol_anterior=ESTUDIANTE;rol_nuevo=ESTUDIANTE,PROFESOR", "corr-1", NOW, "users/" + TARGET_ID);
 
-        assertEquals("{\"origen\":\"ms01-identity-and-access\",\"accion\":\"CAMBIO_ROL\",\"resultado\":\"EXITO\","
+        assertEquals("{\"modulo\":\"ms01-identity-and-access\",\"accion\":\"CAMBIO_ROL\",\"resultado\":\"EXITO\","
                 + "\"usuario_id\":\"" + ADMIN_ID + "\","
                 + "\"detalle\":\"rol_anterior=ESTUDIANTE;rol_nuevo=ESTUDIANTE,PROFESOR\","
                 + "\"recurso_afectado\":\"users/" + TARGET_ID + "\","
-                + "\"correlation_id\":\"corr-1\",\"fecha\":\"2026-10-23T15:00:00Z\"}",
+                + "\"correlation_id\":\"corr-1\",\"fecha_hora\":\"2026-10-23T15:00:00Z\"}",
                 Ms08AuditEventPublisher.toJson(event));
     }
 
@@ -52,9 +52,9 @@ class AuditEventJsonTest {
         String json = Ms08AuditEventPublisher.toJson(event);
 
         assertFalse(json.contains("recurso_afectado"));
-        assertEquals("{\"origen\":\"ms01-identity-and-access\",\"accion\":\"LOGIN\",\"resultado\":\"EXITO\","
+        assertEquals("{\"modulo\":\"ms01-identity-and-access\",\"accion\":\"LOGIN\",\"resultado\":\"EXITO\","
                 + "\"usuario_id\":\"" + ADMIN_ID + "\",\"correo\":\"ana@escuelaing.edu.co\","
-                + "\"correlation_id\":\"corr-2\",\"fecha\":\"2026-10-23T15:00:00Z\"}", json);
+                + "\"correlation_id\":\"corr-2\",\"fecha_hora\":\"2026-10-23T15:00:00Z\"}", json);
     }
 
     /**

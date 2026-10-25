@@ -30,7 +30,7 @@ public class UserResponse {
         UserResponse response = new UserResponse();
         response.setId(entity.getId());
         response.setEmail(entity.getEmail());
-        response.setRoles(entity.getRoles());
+        response.setRoles(UserRole.sortedByName(entity.getRoles()));
         response.setState(entity.getState());
         return response;
     }

@@ -20,7 +20,9 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -108,7 +110,7 @@ class RoleServiceTest {
         UserEntity entity = new UserEntity();
         entity.setId(id);
         entity.setEmail(id + "@mail.escuelaing.edu.co");
-        entity.setRoles(new ArrayList<>(List.of(roles)));
+        entity.setRoles(new HashSet<>(List.of(roles)));
         return entity;
     }
 
@@ -222,7 +224,7 @@ class RoleServiceTest {
         assertEquals(1, response.resultados().size());
         assertEquals(USER_A.toString(), response.resultados().get(0).id());
         assertEquals(List.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), response.resultados().get(0).roles());
-        assertEquals(List.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), target.getRoles());
+        assertEquals(Set.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), target.getRoles());
         verify(userRepository).saveAllAndFlush(List.of(target));
 
         AuditEvent event = publishedEvents(1).get(0);
@@ -248,7 +250,7 @@ class RoleServiceTest {
                 request(List.of(USER_A.toString()), null, List.of("PROFESOR")), CORRELATION_ID);
 
         assertEquals(List.of(UserRole.ESTUDIANTE), response.resultados().get(0).roles());
-        assertEquals(List.of(UserRole.ESTUDIANTE), target.getRoles());
+        assertEquals(Set.of(UserRole.ESTUDIANTE), target.getRoles());
         assertEquals("rol_anterior=ESTUDIANTE,PROFESOR;rol_nuevo=ESTUDIANTE", publishedEvents(1).get(0).detalle());
     }
 
@@ -358,12 +360,11 @@ class RoleServiceTest {
     }
 
     /**
-     * Un usuario sin lista de roles (null) se trata como un usuario sin roles actuales.
+     * Un usuario sin ningun rol se trata como un usuario sin roles actuales
      */
     @Test
-    void changeRoles_userWithNullRoles_isTreatedAsEmpty() {
+    void changeRoles_userWithoutRoles_isTreatedAsEmpty() {
         UserEntity target = user(USER_A);
-        target.setRoles(null);
         when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
 
         ChangeRolesResponse response = roleService.changeRoles(admin(),
@@ -485,7 +486,7 @@ class RoleServiceTest {
 
         assertEquals("Usuario no encontrado.", error.getMessage());
         assertEquals(List.of(USER_B), error.getMissingIds());
-        assertEquals(List.of(UserRole.ESTUDIANTE), existing.getRoles());
+        assertEquals(Set.of(UserRole.ESTUDIANTE), existing.getRoles());
         verify(userRepository, never()).saveAllAndFlush(any());
 
         AuditEvent event = publishedEvents(1).get(0);
@@ -510,7 +511,7 @@ class RoleServiceTest {
                         request(List.of(USER_A.toString()), null, List.of("ESTUDIANTE")), CORRELATION_ID));
 
         assertEquals("Cada usuario debe conservar al menos un rol.", error.getMessage());
-        assertEquals(List.of(UserRole.ESTUDIANTE), target.getRoles());
+        assertEquals(Set.of(UserRole.ESTUDIANTE), target.getRoles());
         verify(userRepository, never()).saveAllAndFlush(any());
 
         AuditEvent event = publishedEvents(1).get(0);
@@ -532,8 +533,8 @@ class RoleServiceTest {
                 request(List.of(USER_A.toString(), USER_B.toString()), null, List.of("ESTUDIANTE")),
                 CORRELATION_ID));
 
-        assertEquals(List.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), safe.getRoles());
-        assertEquals(List.of(UserRole.ESTUDIANTE), risky.getRoles());
+        assertEquals(Set.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), safe.getRoles());
+        assertEquals(Set.of(UserRole.ESTUDIANTE), risky.getRoles());
         verify(userRepository, never()).saveAllAndFlush(any());
         assertEquals("users/" + USER_B, publishedEvents(1).get(0).recursoAfectado());
     }

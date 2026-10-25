@@ -3,6 +3,7 @@ package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -149,5 +150,21 @@ public enum UserRole {
             union.addAll(role.getPermissions());
         }
         return union;
+    }
+
+    /**
+     * Ordena alfabeticamente por nombre un grupo de roles, los roles de un usuario se guardan en un
+     * conjunto sin orden y las respuestas los entregan ordenados (5_modelo_datos)
+     *
+     * @param roles roles a ordenar, null equivale a ninguno
+     * @return lista de solo lectura con los roles ordenados por nombre
+     */
+    public static List<UserRole> sortedByName(Collection<UserRole> roles) {
+        if (roles == null) {
+            return List.of();
+        }
+        return roles.stream()
+                .sorted(Comparator.comparing(UserRole::name))
+                .toList();
     }
 }

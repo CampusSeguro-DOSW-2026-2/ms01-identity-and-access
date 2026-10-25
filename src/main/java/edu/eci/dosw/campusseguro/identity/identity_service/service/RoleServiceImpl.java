@@ -3,7 +3,6 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -11,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +31,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequ
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFoundException;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
  * RF-MS01-05 Gestion de roles y permisos.
@@ -57,8 +56,6 @@ public class RoleServiceImpl implements RoleService {
     static final String REASON_WITHOUT_ROLES = "USUARIO_SIN_ROLES";
 
     static final String RESOURCE_PREFIX = "users/";
-
-    private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("^[\\x21-\\x7E]{1,100}$");
 
     private final UserRepository userRepository;
     private final AuditEventPublisher auditPublisher;
@@ -112,7 +109,7 @@ public class RoleServiceImpl implements RoleService {
     @Transactional
     public ChangeRolesResponse changeRoles(RequesterIdentity requester, ChangeRolesRequest request,
             String correlationId) {
-        String corr = resolveCorrelationId(correlationId);
+        String corr = CorrelationIds.resolve(correlationId);
 
         if (!requester.hasPermission(Permission.MS01_USER_ROLES)) {
             publishFailure(requester.userId(), null, REASON_NOT_ALLOWED, corr);
@@ -145,7 +142,7 @@ public class RoleServiceImpl implements RoleService {
         for (UUID id : command.userIds()) {
             RoleChange change = changes.get(id);
             publishSuccess(requester.userId(), change, corr);
-            results.add(new ChangeRolesResponse.UserRoles(id.toString(), sorted(change.after())));
+            results.add(new ChangeRolesResponse.UserRoles(id.toString(), UserRole.sortedByName(change.after())));
         }
         log.info("[{}] Roles actualizados por el administrador {}: {} usuario(s) procesado(s), {} modificado(s).",
                 corr, requester.userId(), results.size(), modified.size());
@@ -154,7 +151,7 @@ public class RoleServiceImpl implements RoleService {
 
     /**
      * Comprueba que todos los ids pedidos correspondan a un usuario existente, si falta alguno,
-     * audita un FALLO por cada id inexistente y lanza 404 sin haber cambiado nada.
+     * audita un FALLO por cada id inexistente y lanza 404 sin haber cambiado nada
      *
      * @param requester identidad de quien solicita
      * @param command peticion validada con los ids pedidos
@@ -247,7 +244,7 @@ public class RoleServiceImpl implements RoleService {
         List<UserEntity> modified = new ArrayList<>();
         for (RoleChange change : changes.values()) {
             if (!change.before().equals(change.after())) {
-                change.user().setRoles(new ArrayList<>(sorted(change.after())));
+                change.user().setRoles(change.after());
                 modified.add(change.user());
             }
         }
@@ -302,18 +299,6 @@ public class RoleServiceImpl implements RoleService {
     }
 
     /**
-     * Ordena alfabeticamente un conjunto de roles
-     *
-     * @param roles conjunto de roles
-     * @return lista con los roles ordenados por nombre
-     */
-    private static List<UserRole> sorted(Set<UserRole> roles) {
-        return roles.stream()
-                .sorted(Comparator.comparing(UserRole::name))
-                .toList();
-    }
-
-    /**
      * Une los nombres de un conjunto de roles en un texto separado por comas, en orden alfabetico
      *
      * @param roles conjunto de roles
@@ -321,27 +306,10 @@ public class RoleServiceImpl implements RoleService {
      */
     private static String join(Set<UserRole> roles) {
         List<String> names = new ArrayList<>();
-        for (UserRole role : sorted(roles)) {
+        for (UserRole role : UserRole.sortedByName(roles)) {
             names.add(role.name());
         }
         return String.join(",", names);
-    }
-
-    /**
-     * Normaliza el X-Correlation-ID recibido, si es un valor imprimible de hasta 100 caracteres lo usa
-     * recortado, si falta o no es valido genera uno aleatorio
-     *
-     * @param correlationId correlationId
-     * @return el correlationId limpio o uno nuevo
-     */
-    private static String resolveCorrelationId(String correlationId) {
-        if (correlationId != null) {
-            String trimmed = correlationId.trim();
-            if (SAFE_CORRELATION_ID.matcher(trimmed).matches()) {
-                return trimmed;
-            }
-        }
-        return UUID.randomUUID().toString();
     }
 
     /**

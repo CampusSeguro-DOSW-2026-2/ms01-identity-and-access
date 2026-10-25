@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -88,7 +87,7 @@ class RoleChangeNextLoginTest {
         user.setEmail(EMAIL);
         user.setPassword(STORED_HASH);
         user.setState(UserState.ACTIVO);
-        user.setRoles(new ArrayList<>(List.of(UserRole.ESTUDIANTE)));
+        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
         when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(user));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);

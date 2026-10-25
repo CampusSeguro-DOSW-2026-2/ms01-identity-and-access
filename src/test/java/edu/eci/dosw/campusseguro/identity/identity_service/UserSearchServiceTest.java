@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -50,7 +51,7 @@ public class UserSearchServiceTest {
         u.setFirstLastName("Gomez");
         u.setEmail(email);
         u.setPassword("$2a$10$hash");
-        u.setRoles(List.of(roles));
+        u.setRoles(new HashSet<>(List.of(roles)));
         u.setState(state);
         return u;
     }

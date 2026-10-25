@@ -21,11 +21,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
  * Envia POST <base-url><events-path> con el cuerpo JSON del evento y la cabecera X-Correlation-ID (RNF-MS01-03)
  * 
  * Si no hay base-url configurada el evento solo se deja en el log. Cualquier fallo se registra y se
- * descarta: nunca afecta al cliente.
+ * descarta: nunca afecta al cliente
  *
- * Nota: el contrato HTTP de MS08 no esta en los requerimientos de MS01; la ruta es configurable
- * (audit.ms08.events-path) y el cuerpo usa los mismos nombres snake_case en espanol del resto de la API
- * 
+ * Nota: Configurar y poner la URL final del modulo MS08 cuando este listo
  */
 public class Ms08AuditEventPublisher implements AuditEventPublisher {
 
@@ -99,7 +97,7 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
      */
     static String toJson(AuditEvent event) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("origen", SOURCE);
+        body.put("modulo", SOURCE);
         body.put("accion", event.accion().name());
         body.put("resultado", event.resultado().name());
         if (event.usuarioId() != null) {
@@ -117,7 +115,7 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
         if (event.correlationId() != null) {
             body.put("correlation_id", event.correlationId());
         }
-        body.put("fecha", DateTimeFormatter.ISO_INSTANT.format(event.fecha()));
+        body.put("fecha_hora", DateTimeFormatter.ISO_INSTANT.format(event.fecha()));
         return MiniJson.write(body);
     }
 

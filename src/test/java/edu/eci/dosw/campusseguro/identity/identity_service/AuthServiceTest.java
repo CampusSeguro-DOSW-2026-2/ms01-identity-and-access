@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -99,7 +100,7 @@ class AuthServiceTest {
         entity.setFirstLastName("Perez");
         entity.setEmail(EMAIL);
         entity.setPassword(STORED_HASH);
-        entity.setRoles(List.of(roles));
+        entity.setRoles(new HashSet<>(List.of(roles)));
         entity.setState(state);
         return entity;
     }

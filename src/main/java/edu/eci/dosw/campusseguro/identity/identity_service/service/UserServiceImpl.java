@@ -1,6 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -153,7 +154,7 @@ public class UserServiceImpl implements UserService{
         entity.setSecondLastName(blankToNull(request.getSecondLastName()));
         entity.setEmail(email);
         entity.setPassword(passwordEncoder.encode(request.getPassword()));
-        entity.setRoles(new ArrayList<>(List.of(UserRole.ESTUDIANTE)));
+        entity.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
         entity.setState(UserState.ACTIVO);
 
         UserEntity saved = userRepository.save(entity);
