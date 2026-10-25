@@ -16,15 +16,19 @@ MS01 - Users, authentication, roles, permissions, and sessions service.
 
 Microservicio encargado de la autenticación, autorización, gestión de usuarios, roles, permisos y sesiones para la plataforma CampusSeguro.
 
-## 📚 Documentación
+## Documentación
 
-* [Especificación de Requerimientos y Flujos de Negocio](./docs/requirements/1_requirements.md)
-* [Diccionario de Datos y Formularios](./docs/requirements/2_forms-inputs.md)
-* [Contratos API (Swagger/OpenAPI)](./docs/api/swagger.yml)
-* [Decisiones de Arquitectura (ADRs)](./docs/architecture/)
+La documentación de MS01 está centralizada en el repositorio [documentation](https://github.com/CampusSeguro-DOSW-2026-2/documentation/tree/main/ms01-identity-and-access):
 
-## 🛠 Stack Tecnológico
-* Java 17+ / Spring Boot 3+
-* Spring Security / JWT
-* PostgreSQL
-* Maven
+* [Requerimientos y tabla de endpoints](https://github.com/CampusSeguro-DOSW-2026-2/documentation/blob/main/ms01-identity-and-access/1_requirements.md)
+* [Formularios y validaciones](https://github.com/CampusSeguro-DOSW-2026-2/documentation/blob/main/ms01-identity-and-access/2_forms-inputs.md)
+* [Especificación del JWT](https://github.com/CampusSeguro-DOSW-2026-2/documentation/blob/main/ms01-identity-and-access/3_jwt-spec.md)
+* [Modelo de datos](https://github.com/CampusSeguro-DOSW-2026-2/documentation/blob/main/ms01-identity-and-access/4_modelo-datos.md)
+* [Contrato OpenAPI](https://github.com/CampusSeguro-DOSW-2026-2/documentation/blob/main/ms01-identity-and-access/api/swagger.yml)
+* Reglas transversales: [Estándares de Integración](https://github.com/CampusSeguro-DOSW-2026-2/documentation/wiki/Est%C3%A1ndares-de-Integraci%C3%B3n-y-Contratos-Transversales) · [Matriz Rol‐Permiso](https://github.com/CampusSeguro-DOSW-2026-2/documentation/wiki/Matriz-Rol%E2%80%90Permiso)
+
+## Stack Tecnológico
+* Java 21 / Spring Boot 4
+* Spring Security · Spring Data JPA
+* JWT RS256 (emisión; la validación la hace el API Gateway)
+* PostgreSQL · Maven · Docker
