@@ -1,7 +1,8 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.hibernate.annotations.UpdateTimestamp;
@@ -49,7 +50,7 @@ public class UserEntity {
     @CollectionTable(name = "usuario_rol", joinColumns = @JoinColumn(name = "usuario_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "rol", nullable = false, length = 20)
-    private List<UserRole> roles;
+    private Set<UserRole> roles = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 10)
@@ -84,8 +85,36 @@ public class UserEntity {
     public String getPassword(){ return this.password; }
     public void setPassword(String password){ this.password = password; }
 
-    public List<UserRole> getRoles(){ return this.roles; }
-    public void setRoles(List<UserRole> role){ this.roles = role; }
+    /**
+     * Devuelve los roles del usuario, nunca es null y no tiene un orden definido, para entregarlos
+     * ordenados se usa UserRole.sortedByName
+     *
+     * @return conjunto de roles del usuario
+     */
+    public Set<UserRole> getRoles() {
+        return this.roles;
+    }
+
+    /**
+     * Deja al usuario con los roles recibidos sincronizando la coleccion en sitio, asi Hibernate solo
+     * inserta en usuario_rol los roles nuevos y borra los retirados, sin tocar los que se conservan ni su
+     * fecha de asignacion (5_modelo_datos, cambio de roles en lote). Asignar una coleccion nueva a un
+     * usuario ya cargado haria que borre e inserte de nuevo todas sus filas
+     *
+     * @param roles roles finales del usuario, null equivale a ninguno
+     */
+    public void setRoles(Set<UserRole> roles) {
+        if (roles == null) {
+            this.roles.clear();
+            return;
+        }
+        if (roles == this.roles) {
+            return;
+        }
+        Set<UserRole> finalRoles = new HashSet<>(roles);
+        this.roles.retainAll(finalRoles);
+        this.roles.addAll(finalRoles);
+    }
 
     public UserState getState(){ return this.state; }
     public void setState(UserState state){ this.state = state; }

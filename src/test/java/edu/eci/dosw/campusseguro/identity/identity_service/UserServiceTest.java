@@ -10,8 +10,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -64,7 +66,7 @@ public class UserServiceTest {
         entity.setFirstLastName("Gomez");
         entity.setEmail(email);
         entity.setPassword("$2a$10$hash");
-        entity.setRoles(List.of(UserRole.ESTUDIANTE));
+        entity.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
         entity.setState(UserState.ACTIVO);
         return entity;
     }
@@ -91,7 +93,7 @@ public class UserServiceTest {
         assertEquals("carlos.gomez@mail.escuelaing.edu.co", saved.getEmail());
         assertEquals("$2a$10$hash", saved.getPassword());
         assertNotEquals("MiPasswordSeguro123", saved.getPassword());
-        assertEquals(List.of(UserRole.ESTUDIANTE), saved.getRoles());
+        assertEquals(Set.of(UserRole.ESTUDIANTE), saved.getRoles());
         assertEquals(UserState.ACTIVO, saved.getState());
  
         assertEquals(id, response.getId());

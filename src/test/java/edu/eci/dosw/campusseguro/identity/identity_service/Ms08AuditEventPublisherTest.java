@@ -127,9 +127,9 @@ class Ms08AuditEventPublisherTest {
         assertEquals(PATH, request.path());
         assertEquals("application/json", request.contentType());
         assertEquals("corr-1", request.correlationId());
-        assertEquals("{\"origen\":\"ms01-identity-and-access\",\"accion\":\"LOGIN\",\"resultado\":\"EXITO\","
+        assertEquals("{\"modulo\":\"ms01-identity-and-access\",\"accion\":\"LOGIN\",\"resultado\":\"EXITO\","
                 + "\"usuario_id\":\"" + USER_ID + "\",\"correo\":\"maria.perez@escuelaing.edu.co\","
-                + "\"correlation_id\":\"corr-1\",\"fecha\":\"2026-10-22T05:00:00Z\"}", request.body());
+                + "\"correlation_id\":\"corr-1\",\"fecha_hora\":\"2026-10-22T05:00:00Z\"}", request.body());
     }
 
     @Test

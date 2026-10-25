@@ -2,7 +2,6 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.time.Clock;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -106,7 +105,7 @@ public class AuthServiceImpl implements AuthService {
             throw rejected(corr, user.getId(), email, REASON_INACTIVE, new InactiveAccountException());
         }
 
-        List<UserRole> roles = sortedRoles(user.getRoles());
+        List<UserRole> roles = UserRole.sortedByName(user.getRoles());
         IssuedToken token;
         try {
             token = jwtService.issueToken(user.getId(), user.getEmail(), roles);
@@ -155,20 +154,6 @@ public class AuthServiceImpl implements AuthService {
         } catch (RuntimeException e) {
             log.error("[{}] Falló la emisión del evento de auditoría LOGIN/{}: {}", corr, result, e.toString());
         }
-    }
-
-    /**
-     * Ordena la lista de roles en el orden del abecedario
-     * Si no existe la lista entonces retorna una vacia
-     * 
-     * @param roles Lista de roles del usuario
-     * @return La lista de roles del usuario ordenada
-     */
-    private static List<UserRole> sortedRoles(List<UserRole> roles) {
-        if (roles == null) {
-            return List.of();
-        }
-        return roles.stream().sorted(Comparator.comparing(UserRole::name)).toList();
     }
 
     /**

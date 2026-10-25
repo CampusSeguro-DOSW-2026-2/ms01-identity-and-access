@@ -2,14 +2,20 @@ package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
@@ -17,6 +23,8 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private static final String CORRELATION_HEADER = "X-Correlation-ID";
 
@@ -57,6 +65,137 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(), "CUENTA_INACTIVA", ex.getMessage(),
                 correlationId(request)));
+    }
+
+    /**
+     * RN-MS01-23: no se pudo establecer la identidad de quien llama (faltan las cabeceras X-User-Id /
+     * X-User-Role o su valor no es valido); el sistema responde 401 con codigo NO_AUTENTICADO
+     *
+     * @param ex excepcion con el motivo
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 401 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(UnauthenticatedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthenticated(UnauthenticatedException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(
+                HttpStatus.UNAUTHORIZED.value(), "NO_AUTENTICADO", ex.getMessage(),
+                correlationId(request)));
+    }
+
+    /**
+     * RF-MS01-05 A1 y A2: el solicitante no es administrador o intenta modificar sus propios roles; el
+     * sistema responde 403 con codigo PROHIBIDO
+     *
+     * @param ex excepcion con el motivo
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 403 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<ErrorResponse> handleForbiddenOperation(ForbiddenOperationException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
+                HttpStatus.FORBIDDEN.value(), "PROHIBIDO", ex.getMessage(),
+                correlationId(request)));
+    }
+
+    /**
+     * RG-06 y F-09: datos invalidos o regla de validacion incumplida (por ejemplo, un usuario que
+     * quedaria sin roles); el sistema responde 400 con codigo VALIDACION y el detalle por campo
+     *
+     * @param ex excepcion con el mensaje y los errores por campo
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRequest(InvalidRequestException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(), "VALIDACION", ex.getMessage(), ex.getErrors(),
+                correlationId(request)));
+    }
+
+    /**
+     * RF-MS01-05 A3: algun usuario de la peticion no existe; el sistema responde 404 con codigo
+     * NO_ENCONTRADO y no aplica ningun cambio
+     *
+     * @param ex excepcion con el mensaje y los ids que no existen
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 404 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(UsersNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUsersNotFound(UsersNotFoundException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
+                HttpStatus.NOT_FOUND.value(), "NO_ENCONTRADO", ex.getMessage(),
+                correlationId(request)));
+    }
+
+    /**
+     * RNF-MS01-04: la ruta existe pero no admite el metodo HTTP usado, el sistema responde 405 con
+     * codigo METODO_NO_PERMITIDO
+     *
+     * @param ex excepcion con los metodos que si admite la ruta
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 405 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(
+                ErrorResponse.of(HttpStatus.METHOD_NOT_ALLOWED.value(), "METODO_NO_PERMITIDO",
+                        "Método HTTP no permitido.", correlationId(request)));
+    }
+
+    /**
+     * RNF-MS01-04: el cuerpo llega con un tipo de contenido que la ruta no admite, el sistema responde
+     * 415 con codigo MEDIO_NO_SOPORTADO
+     *
+     * @param ex excepcion con los tipos de contenido que si admite la ruta
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 415 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).headers(ex.getHeaders()).body(
+                ErrorResponse.of(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), "MEDIO_NO_SOPORTADO",
+                        "Tipo de contenido no soportado.", correlationId(request)));
+    }
+
+    /**
+     * RNF-MS01-04: la ruta pedida no existe, el sistema responde 404 con codigo NO_ENCONTRADO
+     *
+     * @param ex excepcion de ruta inexistente
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 404 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler({ NoResourceFoundException.class, NoHandlerFoundException.class })
+    public ResponseEntity<ErrorResponse> handleRouteNotFound(Exception ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
+                HttpStatus.NOT_FOUND.value(), "NO_ENCONTRADO", "Recurso no encontrado.",
+                correlationId(request)));
+    }
+
+    /**
+     * RNF-MS01-04: falla tecnica no controlada, el sistema responde 500 con codigo ERROR_INTERNO sin
+     * exponer trazas internas, el detalle queda solo en los logs con el correlation id, las excepciones
+     * propias de Spring MVC que ya traen su estado se dejan a su tratamiento normal
+     *
+     * @param ex excepcion no controlada
+     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @return 500 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleUnexpected(RuntimeException ex, HttpServletRequest request) {
+        if (ex instanceof org.springframework.web.ErrorResponse) {
+            throw ex;
+        }
+        String correlationId = correlationId(request);
+        log.error("[{}] Error no controlado", correlationId, ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.of(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(), "ERROR_INTERNO", "Error interno del servidor.",
+                correlationId));
     }
 
     /**
