@@ -127,9 +127,10 @@ class Ms08AuditEventPublisherTest {
         assertEquals(PATH, request.path());
         assertEquals("application/json", request.contentType());
         assertEquals("corr-1", request.correlationId());
-        assertEquals("{\"origen\":\"ms01-identity-and-access\",\"accion\":\"LOGIN\",\"resultado\":\"EXITO\","
-                + "\"usuario_id\":\"" + USER_ID + "\",\"correo\":\"maria.perez@escuelaing.edu.co\","
-                + "\"correlation_id\":\"corr-1\",\"fecha\":\"2026-10-22T05:00:00Z\"}", request.body());
+        assertEquals("{\"modulo\":\"MS01\",\"accion\":\"LOGIN\",\"resultado\":\"EXITO\","
+                + "\"usuario_id\":\"" + USER_ID + "\",\"recurso_afectado\":\"usuario:" + USER_ID + "\","
+                + "\"fecha_hora\":\"2026-10-22T05:00:00Z\",\"correlation_id\":\"corr-1\",\"detalle\":null}",
+                request.body());
     }
 
     @Test
@@ -142,7 +143,28 @@ class Ms08AuditEventPublisherTest {
         String body = awaitRequest().body();
         assertTrue(body.contains("\"resultado\":\"FALLO\""), body);
         assertTrue(body.contains("\"detalle\":\"CREDENCIALES_INCORRECTAS\""), body);
-        assertTrue(!body.contains("usuario_id"), body);
+        assertTrue(body.contains("\"usuario_id\":null"), body);
+        assertTrue(body.contains("\"recurso_afectado\":null"), body);
+    }
+
+    @Test
+    void publish_neverSendsThePersonalEmail() throws Exception {
+        publisher(baseUrl(), PATH).publish(success());
+
+        String body = awaitRequest().body();
+        assertTrue(!body.contains("maria.perez"), body);
+        assertTrue(!body.contains("correo"), body);
+    }
+
+    @Test
+    void publish_usesTheExplicitResourceWhenGiven() throws Exception {
+        UUID target = UUID.fromString("3f6c2a9e-8b1d-4c7a-9e2f-1a5b7c9d0e42");
+        AuditEvent event = new AuditEvent(AuditAction.CAMBIO_ESTADO, AuditResult.EXITO, USER_ID, null, null,
+                "corr-3", NOW, "usuario:" + target);
+
+        publisher(baseUrl(), PATH).publish(event);
+
+        assertTrue(awaitRequest().body().contains("\"recurso_afectado\":\"usuario:" + target + "\""));
     }
 
     @Test

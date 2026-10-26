@@ -23,13 +23,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
  * Si no hay base-url configurada el evento solo se deja en el log. Cualquier fallo se registra y se
  * descarta: nunca afecta al cliente.
  *
- * Nota: el contrato HTTP de MS08 no esta en los requerimientos de MS01; la ruta es configurable
- * (audit.ms08.events-path) y el cuerpo usa los mismos nombres snake_case en espanol del resto de la API
+ * El cuerpo sigue el contrato de los Estandares (seccion 12): modulo, accion, resultado, usuario_id,
+ * recurso_afectado, fecha_hora, correlation_id y detalle. No se envian datos personales distintos de
+ * los ids (por eso el correo no viaja). La ruta es configurable (audit.ms08.events-path).
  * 
  */
 public class Ms08AuditEventPublisher implements AuditEventPublisher {
 
-    static final String SOURCE = "ms01-identity-and-access";
+    static final String MODULE = "MS01";
 
     private static final Logger log = LoggerFactory.getLogger(Ms08AuditEventPublisher.class);
 
@@ -99,22 +100,14 @@ public class Ms08AuditEventPublisher implements AuditEventPublisher {
      */
     static String toJson(AuditEvent event) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("origen", SOURCE);
+        body.put("modulo", MODULE);
         body.put("accion", event.accion().name());
         body.put("resultado", event.resultado().name());
-        if (event.usuarioId() != null) {
-            body.put("usuario_id", event.usuarioId().toString());
-        }
-        if (event.correo() != null) {
-            body.put("correo", event.correo());
-        }
-        if (event.detalle() != null) {
-            body.put("detalle", event.detalle());
-        }
-        if (event.correlationId() != null) {
-            body.put("correlation_id", event.correlationId());
-        }
-        body.put("fecha", DateTimeFormatter.ISO_INSTANT.format(event.fecha()));
+        body.put("usuario_id", event.usuarioId() == null ? null : event.usuarioId().toString());
+        body.put("recurso_afectado", event.recursoAfectado());
+        body.put("fecha_hora", DateTimeFormatter.ISO_INSTANT.format(event.fecha()));
+        body.put("correlation_id", event.correlationId());
+        body.put("detalle", event.detalle());
         return MiniJson.write(body);
     }
 

@@ -2,7 +2,10 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -17,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,6 +28,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEvent;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
 import edu.eci.dosw.campusseguro.identity.identity_service.controller.PasswordController;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
@@ -52,6 +60,9 @@ class PasswordControllerTest {
     @Mock
     private PasswordService passwordService;
 
+    @Mock
+    private AuditEventPublisher auditPublisher;
+
     @InjectMocks
     private PasswordController passwordController;
 
@@ -59,8 +70,10 @@ class PasswordControllerTest {
 
     @BeforeEach
     void setUp() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        handler.setAuditPublisher(auditPublisher);
         mockMvc = MockMvcBuilders.standaloneSetup(passwordController)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(handler)
                 .build();
     }
 
@@ -357,5 +370,98 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.errores[0].campo").value("confirmar_nueva_contrasena"))
                 .andExpect(jsonPath("$.errores[0].mensaje").value("Las contraseñas no coinciden."))
                 .andExpect(jsonPath("$.correlation_id").exists());
+    }
+
+    // --------------------------------------------- auditoria de entradas invalidas
+
+    private AuditEvent publishedAuditEvent() {
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditPublisher).publish(captor.capture());
+        return captor.getValue();
+    }
+
+    @Test
+    void reset_weakPassword_isAuditedAsRecoveryFailure() throws Exception {
+        mockMvc.perform(post(RESET_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Correlation-ID", "corr-7")
+                .content(resetBody("123456", "debil", "debil")))
+                .andExpect(status().isBadRequest());
+
+        AuditEvent event = publishedAuditEvent();
+        assertEquals(AuditAction.RECUPERACION, event.accion());
+        assertEquals(AuditResult.FALLO, event.resultado());
+        assertEquals("CONTRASENA_DEBIL", event.detalle());
+        assertEquals("corr-7", event.correlationId());
+        assertNull(event.usuarioId());
+        assertNull(event.recursoAfectado());
+    }
+
+    @Test
+    void reset_invalidCodeFormat_isAuditedAsInvalidFormat() throws Exception {
+        mockMvc.perform(post(RESET_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(resetBody("12ab", NEW_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isBadRequest());
+
+        AuditEvent event = publishedAuditEvent();
+        assertEquals(AuditAction.RECUPERACION, event.accion());
+        assertEquals("FORMATO_INVALIDO", event.detalle());
+    }
+
+    @Test
+    void forgot_invalidEmail_isAuditedAsInvalidFormat() throws Exception {
+        mockMvc.perform(post(FORGOT_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(forgotBody("no-es-un-correo")))
+                .andExpect(status().isBadRequest());
+
+        AuditEvent event = publishedAuditEvent();
+        assertEquals(AuditAction.RECUPERACION, event.accion());
+        assertEquals(AuditResult.FALLO, event.resultado());
+        assertEquals("FORMATO_INVALIDO", event.detalle());
+    }
+
+    @Test
+    void change_weakNewPassword_isAuditedWithTheUserAsAffectedResource() throws Exception {
+        UUID userId = UUID.randomUUID();
+
+        mockMvc.perform(put(CHANGE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Id", userId.toString())
+                .header("X-User-Role", "ESTUDIANTE")
+                .content(changeBody("Actual#2026", "debil", "debil")))
+                .andExpect(status().isBadRequest());
+
+        AuditEvent event = publishedAuditEvent();
+        assertEquals(AuditAction.CAMBIO_CONTRASENA, event.accion());
+        assertEquals(AuditResult.FALLO, event.resultado());
+        assertEquals("CONTRASENA_DEBIL", event.detalle());
+        assertEquals(userId, event.usuarioId());
+        assertEquals("usuario:" + userId, event.recursoAfectado());
+    }
+
+    @Test
+    void reset_malformedBody_isAuditedAsInvalidFormat() throws Exception {
+        mockMvc.perform(post(RESET_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ esto no es json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACION"));
+
+        assertEquals("FORMATO_INVALIDO", publishedAuditEvent().detalle());
+    }
+
+    @Test
+    void validRequest_isNotAuditedByTheValidationHandler() throws Exception {
+        when(passwordService.requestResetCode(any(ForgotPasswordRequest.class), anyString()))
+                .thenReturn(new MessageResponse("ok"));
+
+        mockMvc.perform(post(FORGOT_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(forgotBody(EMAIL)))
+                .andExpect(status().isOk());
+
+        verify(auditPublisher, never()).publish(any(AuditEvent.class));
     }
 }

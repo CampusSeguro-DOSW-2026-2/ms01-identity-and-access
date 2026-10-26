@@ -1,6 +1,11 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
+import java.time.Instant;
 import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +16,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEvent;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
@@ -22,7 +31,18 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final String CORRELATION_HEADER = "X-Correlation-ID";
+    static final String REASON_WEAK_PASSWORD = "CONTRASENA_DEBIL";
+    static final String REASON_INVALID_FORMAT = "FORMATO_INVALIDO";
+
+    /** Opcional: sin publicador (p. ej. en pruebas con un manejador creado a mano) no se audita. */
+    private AuditEventPublisher auditPublisher;
+
+    @Autowired(required = false)
+    public void setAuditPublisher(AuditEventPublisher auditPublisher) {
+        this.auditPublisher = auditPublisher;
+    }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>> handleEmailExists(EmailAlreadyExistsException ex) {
@@ -71,6 +91,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex,
             HttpServletRequest request) {
         if (isPasswordEndpoint(request)) {
+            auditPasswordValidationFailure(request, REASON_INVALID_FORMAT);
             return passwordError(HttpStatus.BAD_REQUEST, "VALIDACION", "Datos inválidos.", List.of(), request);
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(
@@ -88,6 +109,9 @@ public class GlobalExceptionHandler {
         Object target = ex.getBindingResult().getTarget();
         if (target instanceof ForgotPasswordRequest || target instanceof ResetPasswordRequest
                 || target instanceof ChangePasswordRequest) {
+            boolean weakPassword = ex.getBindingResult().getFieldErrors().stream()
+                    .anyMatch(e -> "nueva_contrasena".equals(e.getField()));
+            auditPasswordValidationFailure(request, weakPassword ? REASON_WEAK_PASSWORD : REASON_INVALID_FORMAT);
             ErrorResponse body = normalizedValidationError(ex, request, CorrelationId.from(request));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .header(CorrelationId.HEADER, body.correlationId()).body(body);
@@ -149,6 +173,40 @@ public class GlobalExceptionHandler {
         String corr = CorrelationId.from(request);
         return ResponseEntity.status(status).header(CorrelationId.HEADER, corr)
                 .body(new ErrorResponse(status.value(), codigo, mensaje, errores, corr));
+    }
+
+    /**
+     * RF-MS01-08 A2 y RNF-MS01-10: una entrada invalida (contrasena que incumple la politica, formato o
+     * campos mal formados) tambien se audita como FALLO. Nunca altera la respuesta (si MS08 falla, solo log).
+     */
+    private void auditPasswordValidationFailure(HttpServletRequest request, String detail) {
+        if (auditPublisher == null) {
+            return;
+        }
+        String path = request.getRequestURI();
+        boolean authenticatedChange = "/api/v1/users/me/password".equals(path);
+        AuditAction action = authenticatedChange ? AuditAction.CAMBIO_CONTRASENA : AuditAction.RECUPERACION;
+        String corr = CorrelationId.from(request);
+        try {
+            UUID userId = null;
+            if (authenticatedChange) {
+                userId = parseUserId(request.getHeader("X-User-Id"));
+            }
+            auditPublisher.publish(new AuditEvent(action, AuditResult.FALLO, userId, null, detail, corr, Instant.now()));
+        } catch (RuntimeException e) {
+            log.error("[{}] Falló la emisión del evento de auditoría {}/FALLO: {}", corr, action, e.toString());
+        }
+    }
+
+    private static UUID parseUserId(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static boolean isPasswordEndpoint(HttpServletRequest request) {
