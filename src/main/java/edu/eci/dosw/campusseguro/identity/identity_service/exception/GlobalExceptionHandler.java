@@ -11,8 +11,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationId;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
@@ -66,6 +70,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex,
             HttpServletRequest request) {
+        if (isPasswordEndpoint(request)) {
+            return passwordError(HttpStatus.BAD_REQUEST, "VALIDACION", "Datos inválidos.", List.of(), request);
+        }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(), "VALIDACION", "Datos inválidos.", correlationId(request)));
     }
@@ -78,30 +85,63 @@ public class GlobalExceptionHandler {
         if (ex.getBindingResult().getTarget() instanceof LoginRequest) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(normalizedValidationError(ex, request));
         }
+        Object target = ex.getBindingResult().getTarget();
+        if (target instanceof ForgotPasswordRequest || target instanceof ResetPasswordRequest
+                || target instanceof ChangePasswordRequest) {
+            ErrorResponse body = normalizedValidationError(ex, request, CorrelationId.from(request));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .header(CorrelationId.HEADER, body.correlationId()).body(body);
+        }
         Map<String, String> errors = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(e -> errors.putIfAbsent(e.getField(), e.getDefaultMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 
+    /** RF-MS01-08 A1: codigo incorrecto, vencido o usado; mensaje generico (RN-MS01-20). */
     @ExceptionHandler(InvalidResetCodeException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidResetCode(InvalidResetCodeException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handleInvalidResetCode(InvalidResetCodeException ex,
+            HttpServletRequest request) {
+        return passwordError(HttpStatus.BAD_REQUEST, "CODIGO_INVALIDO", ex.getMessage(), List.of(), request);
     }
 
     @ExceptionHandler(PasswordMismatchException.class)
-    public ResponseEntity<Map<String, String>> handlePasswordMismatch(PasswordMismatchException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("confirmar_nueva_contrasena", ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handlePasswordMismatch(PasswordMismatchException ex,
+            HttpServletRequest request) {
+        return passwordFieldError("confirmar_nueva_contrasena", ex.getMessage(), request);
     }
 
     @ExceptionHandler(WrongCurrentPasswordException.class)
-    public ResponseEntity<Map<String, String>> handleWrongCurrentPassword(WrongCurrentPasswordException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("contrasena_actual", ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handleWrongCurrentPassword(WrongCurrentPasswordException ex,
+            HttpServletRequest request) {
+        return passwordFieldError("contrasena_actual", ex.getMessage(), request);
     }
 
     @ExceptionHandler(SameAsCurrentPasswordException.class)
-    public ResponseEntity<Map<String, String>> handleSameAsCurrentPassword(SameAsCurrentPasswordException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("nueva_contrasena", ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handleSameAsCurrentPassword(SameAsCurrentPasswordException ex,
+            HttpServletRequest request) {
+        return passwordFieldError("nueva_contrasena", ex.getMessage(), request);
+    }
+
+    private ResponseEntity<ErrorResponse> passwordFieldError(String field, String message,
+            HttpServletRequest request) {
+        return passwordError(HttpStatus.BAD_REQUEST, "VALIDACION", "Datos inválidos.",
+                List.of(new ErrorResponse.ErrorDetail(field, message)), request);
+    }
+
+    /** ErrorResponse con los cinco campos del contrato y X-Correlation-ID tambien en la cabecera. */
+    private ResponseEntity<ErrorResponse> passwordError(HttpStatus status, String codigo, String mensaje,
+            List<ErrorResponse.ErrorDetail> errores, HttpServletRequest request) {
+        String corr = CorrelationId.from(request);
+        return ResponseEntity.status(status).header(CorrelationId.HEADER, corr)
+                .body(new ErrorResponse(status.value(), codigo, mensaje, errores, corr));
+    }
+
+    private static boolean isPasswordEndpoint(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path != null && (path.equals("/api/v1/auth/password/forgot")
+                || path.equals("/api/v1/auth/password/reset")
+                || path.equals("/api/v1/users/me/password"));
     }
 
     /**
@@ -111,6 +151,11 @@ public class GlobalExceptionHandler {
      * @return el error en formato DTO (record en este caso)
      */
     private ErrorResponse normalizedValidationError(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        return normalizedValidationError(ex, request, correlationId(request));
+    }
+
+    private ErrorResponse normalizedValidationError(MethodArgumentNotValidException ex, HttpServletRequest request,
+            String correlationId) {
         Map<String, String> messageByField = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(e -> messageByField.putIfAbsent(e.getField(), e.getDefaultMessage()));
@@ -119,7 +164,7 @@ public class GlobalExceptionHandler {
                 .sorted(Comparator.comparing(ErrorResponse.ErrorDetail::campo))
                 .toList();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "VALIDACION", "Datos inválidos.", details,
-                correlationId(request));
+                correlationId);
     }
 
     /**

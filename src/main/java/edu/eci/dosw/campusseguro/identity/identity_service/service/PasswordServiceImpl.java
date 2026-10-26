@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +32,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoun
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.WrongCurrentPasswordException;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.PasswordResetCodeRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationId;
 import jakarta.transaction.Transactional;
 
 /**
@@ -48,7 +48,6 @@ public class PasswordServiceImpl implements PasswordService {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordServiceImpl.class);
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("^[\\x21-\\x7E]{1,100}$");
 
     static final String REASON_INVALID_CODE = "CODIGO_INVALIDO";
     static final String REASON_MISMATCH = "CONFIRMACION_DISTINTA";
@@ -251,12 +250,6 @@ public class PasswordServiceImpl implements PasswordService {
     }
 
     private static String resolveCorrelationId(String correlationId) {
-        if (correlationId != null) {
-            String trimmed = correlationId.trim();
-            if (SAFE_CORRELATION_ID.matcher(trimmed).matches()) {
-                return trimmed;
-            }
-        }
-        return UUID.randomUUID().toString();
+        return CorrelationId.resolve(correlationId);
     }
 }
