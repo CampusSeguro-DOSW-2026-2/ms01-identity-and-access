@@ -209,6 +209,7 @@ class PasswordControllerTest {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", userId.toString())
+                .header("X-User-Role", "ESTUDIANTE")
                 .header("X-Correlation-ID", "corr-3")
                 .content(changeBody("Actual#2026", NEW_PASSWORD, NEW_PASSWORD)))
                 .andExpect(status().isOk())
@@ -219,13 +220,74 @@ class PasswordControllerTest {
     }
 
     @Test
-    void change_missingUserIdHeader_returns400AndDoesNotCallService() throws Exception {
+    void change_missingUserIdHeader_returns401NoAutenticado() throws Exception {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Role", "ESTUDIANTE")
                 .content(changeBody("Actual#2026", NEW_PASSWORD, NEW_PASSWORD)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().exists("X-Correlation-ID"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"))
+                .andExpect(jsonPath("$.errores").isEmpty())
+                .andExpect(jsonPath("$.correlation_id").exists());
 
         verifyNoInteractions(passwordService);
+    }
+
+    @Test
+    void change_userIdWithoutUuidFormat_returns401NoAutenticado() throws Exception {
+        mockMvc.perform(put(CHANGE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Id", "no-es-uuid")
+                .header("X-User-Role", "ESTUDIANTE")
+                .content(changeBody("Actual#2026", NEW_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"));
+
+        verifyNoInteractions(passwordService);
+    }
+
+    @Test
+    void change_missingRoleHeader_returns401NoAutenticado() throws Exception {
+        mockMvc.perform(put(CHANGE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Id", UUID.randomUUID().toString())
+                .content(changeBody("Actual#2026", NEW_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"));
+
+        verifyNoInteractions(passwordService);
+    }
+
+    @Test
+    void change_roleOutsideTheCatalog_returns403Prohibido() throws Exception {
+        mockMvc.perform(put(CHANGE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Id", UUID.randomUUID().toString())
+                .header("X-User-Role", "SUPERUSUARIO")
+                .content(changeBody("Actual#2026", NEW_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isForbidden())
+                .andExpect(header().exists("X-Correlation-ID"))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.codigo").value("PROHIBIDO"))
+                .andExpect(jsonPath("$.errores").isEmpty());
+
+        verifyNoInteractions(passwordService);
+    }
+
+    @Test
+    void change_severalRoles_isAccepted() throws Exception {
+        UUID userId = UUID.randomUUID();
+        when(passwordService.changePassword(eq(userId), any(ChangePasswordRequest.class), anyString()))
+                .thenReturn(new MessageResponse("Contraseña actualizada correctamente."));
+
+        mockMvc.perform(put(CHANGE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Id", userId.toString())
+                .header("X-User-Role", "BRIGADISTA,ESTUDIANTE")
+                .content(changeBody("Actual#2026", NEW_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -233,6 +295,7 @@ class PasswordControllerTest {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", UUID.randomUUID().toString())
+                .header("X-User-Role", "ESTUDIANTE")
                 .content(changeBody("Actual#2026", "debil", "debil")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"))
@@ -252,6 +315,7 @@ class PasswordControllerTest {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", userId.toString())
+                .header("X-User-Role", "ESTUDIANTE")
                 .content(changeBody("Incorrecta#1", NEW_PASSWORD, NEW_PASSWORD)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"))
@@ -268,6 +332,7 @@ class PasswordControllerTest {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", userId.toString())
+                .header("X-User-Role", "ESTUDIANTE")
                 .content(changeBody(NEW_PASSWORD, NEW_PASSWORD, NEW_PASSWORD)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"))
@@ -285,6 +350,7 @@ class PasswordControllerTest {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", userId.toString())
+                .header("X-User-Role", "ESTUDIANTE")
                 .content(changeBody("Actual#2026", NEW_PASSWORD, "Otra#2026xx")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"))

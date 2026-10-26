@@ -123,6 +123,20 @@ public class GlobalExceptionHandler {
         return passwordFieldError("nueva_contrasena", ex.getMessage(), request);
     }
 
+    /** RN-MS01-23: faltan las cabeceras de identidad. */
+    @ExceptionHandler(NotAuthenticatedException.class)
+    public ResponseEntity<ErrorResponse> handleNotAuthenticated(NotAuthenticatedException ex,
+            HttpServletRequest request) {
+        return passwordError(HttpStatus.UNAUTHORIZED, "NO_AUTENTICADO", ex.getMessage(), List.of(), request);
+    }
+
+    /** El rol de X-User-Role no tiene el permiso de la operacion. */
+    @ExceptionHandler(PermissionDeniedException.class)
+    public ResponseEntity<ErrorResponse> handlePermissionDenied(PermissionDeniedException ex,
+            HttpServletRequest request) {
+        return passwordError(HttpStatus.FORBIDDEN, "PROHIBIDO", ex.getMessage(), List.of(), request);
+    }
+
     private ResponseEntity<ErrorResponse> passwordFieldError(String field, String message,
             HttpServletRequest request) {
         return passwordError(HttpStatus.BAD_REQUEST, "VALIDACION", "Datos inválidos.",
