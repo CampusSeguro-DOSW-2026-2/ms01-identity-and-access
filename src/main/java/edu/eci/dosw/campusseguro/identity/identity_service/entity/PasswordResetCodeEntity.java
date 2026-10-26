@@ -14,7 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "codigo_restablecer_contrasena")
+@Table(name = "codigos_recuperacion")
 public class PasswordResetCodeEntity {
 
     @Id
@@ -28,7 +28,7 @@ public class PasswordResetCodeEntity {
     @Column(name = "codigo_hash", nullable = false, length = 100)
     private String codeHash;
 
-    @Column(name = "vence_en", nullable = false)
+    @Column(name = "expira_en", nullable = false)
     private Instant expiresAt;
 
     @Column(name = "usado_en")

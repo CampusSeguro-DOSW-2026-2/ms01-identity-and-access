@@ -71,13 +71,13 @@ class PasswordControllerTest {
 
     private String resetBody(String codigo, String nueva, String confirmar) {
         return """
-                {"correo": "%s", "codigo": "%s", "nueva_contrasena": "%s", "confirmar_contrasena": "%s"}
+                {"correo": "%s", "codigo": "%s", "nueva_contrasena": "%s", "confirmar_nueva_contrasena": "%s"}
                 """.formatted(EMAIL, codigo, nueva, confirmar);
     }
 
     private String changeBody(String actual, String nueva, String confirmar) {
         return """
-                {"contrasena_actual": "%s", "nueva_contrasena": "%s", "confirmar_contrasena": "%s"}
+                {"contrasena_actual": "%s", "nueva_contrasena": "%s", "confirmar_nueva_contrasena": "%s"}
                 """.formatted(actual, nueva, confirmar);
     }
 
@@ -176,7 +176,7 @@ class PasswordControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(resetBody("123456", NEW_PASSWORD, "Otra#2026xx")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.confirmar_contrasena").value("Las contraseñas no coinciden."));
+                .andExpect(jsonPath("$.confirmar_nueva_contrasena").value("Las contraseñas no coinciden."));
     }
 
     // ------------------------------------------------------------- change
@@ -261,6 +261,6 @@ class PasswordControllerTest {
                 .header("X-User-Id", userId.toString())
                 .content(changeBody("Actual#2026", NEW_PASSWORD, "Otra#2026xx")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.confirmar_contrasena").value("Las contraseñas no coinciden."));
+                .andExpect(jsonPath("$.confirmar_nueva_contrasena").value("Las contraseñas no coinciden."));
     }
 }

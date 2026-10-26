@@ -119,7 +119,7 @@ public class PasswordServiceImpl implements PasswordService {
         String corr = resolveCorrelationId(correlationId);
         String email = request.correo().trim().toLowerCase();
 
-        if (!request.nueva_contrasena().equals(request.confirmar_contrasena())) {
+        if (!request.nueva_contrasena().equals(request.confirmar_nueva_contrasena())) {
             publish(AuditResult.FALLO, null, email, REASON_MISMATCH, corr);
             throw new PasswordMismatchException();
         }
@@ -171,7 +171,7 @@ public class PasswordServiceImpl implements PasswordService {
                 .orElseThrow(() -> new UserNotFoundException(userId));
         String email = user.getEmail();
 
-        if (!request.nueva_contrasena().equals(request.confirmar_contrasena())) {
+        if (!request.nueva_contrasena().equals(request.confirmar_nueva_contrasena())) {
             publishChange(AuditResult.FALLO, userId, email, REASON_MISMATCH, corr);
             throw new PasswordMismatchException();
         }

@@ -91,7 +91,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PasswordMismatchException.class)
     public ResponseEntity<Map<String, String>> handlePasswordMismatch(PasswordMismatchException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("confirmar_contrasena", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("confirmar_nueva_contrasena", ex.getMessage()));
     }
 
     @ExceptionHandler(WrongCurrentPasswordException.class)

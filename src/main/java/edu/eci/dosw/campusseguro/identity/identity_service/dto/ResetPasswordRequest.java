@@ -24,6 +24,6 @@ public record ResetPasswordRequest(
     String nueva_contrasena,
 
     @NotBlank(message = "Las contraseñas no coinciden.")
-    String confirmar_contrasena
+    String confirmar_nueva_contrasena
 
 ) {}
