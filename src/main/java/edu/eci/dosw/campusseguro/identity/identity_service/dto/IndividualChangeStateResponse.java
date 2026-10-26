@@ -7,36 +7,26 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
-public class IndividualChangeStateResponse {
-    @JsonProperty("id")
-    private UUID id;
-
-    @JsonProperty("estado_anterior")
-    private UserState estadoAnterior;
-
-    @JsonProperty("estado_nuevo")
-    private UserState estadoNuevo;
+/**
+ * Resultado del cambio de estado de un usuario (elemento de resultados de ChangeStatusResponse)
+ *
+ * @param id id del usuario
+ * @param estadoAnterior estado que tenía antes del cambio
+ * @param estadoNuevo estado que tiene después del cambio
+ */
+public record IndividualChangeStateResponse(
+        UUID id,
+        @JsonProperty("estado_anterior") UserState estadoAnterior,
+        @JsonProperty("estado_nuevo") UserState estadoNuevo) {
 
     /**
-     * 
-     * @param entity
-     * @param estadoPrevio
-     * @return
+     * Construye el resultado de un usuario
+     *
+     * @param entity usuario con el estado ya cambiado
+     * @param estadoPrevio estado que tenía antes del cambio
+     * @return el resultado con el estado anterior y el nuevo
      */
     public static IndividualChangeStateResponse fromEntity(UserEntity entity, UserState estadoPrevio) {
-        IndividualChangeStateResponse dto = new IndividualChangeStateResponse();
-        dto.setId(entity.getId());
-        dto.setEstadoAnterior(estadoPrevio);
-        dto.setEstadoNuevo(entity.getState());
-        return dto;
+        return new IndividualChangeStateResponse(entity.getId(), estadoPrevio, entity.getState());
     }
-
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
-    public UserState getEstadoAnterior() { return estadoAnterior; }
-    public void setEstadoAnterior(UserState estadoAnterior) { this.estadoAnterior = estadoAnterior; }
-
-    public UserState getEstadoNuevo() { return estadoNuevo; }
-    public void setEstadoNuevo(UserState estadoNuevo) { this.estadoNuevo = estadoNuevo; }
 }

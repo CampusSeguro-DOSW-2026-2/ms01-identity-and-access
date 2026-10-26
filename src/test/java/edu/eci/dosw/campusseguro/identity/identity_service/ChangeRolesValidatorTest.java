@@ -20,7 +20,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.ChangeRolesVa
 
 /**
  * Validaciones del formulario F-09 (PATCH /users/roles): ids, roles del catalogo, listas no vacias a la
- * vez y ningun rol en ambas listas. Todas responden 400 con el mensaje exacto del formulario.
+ * vez y ningun rol en ambas listas. Todas responden 400 con el mensaje exacto del formulario
  */
 class ChangeRolesValidatorTest {
 
@@ -28,7 +28,7 @@ class ChangeRolesValidatorTest {
     private static final String ID_TWO = "7c2e1d3f-9e5b-4d2c-8b88-4a3f7e2b1c0d";
 
     /**
-     * Crea una peticion con los valores indicados.
+     * Crea una peticion con los valores indicados
      *
      * @param ids identificadores de usuario; puede ser null
      * @param add roles a agregar; puede ser null
@@ -44,7 +44,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Valida una peticion que debe fallar y devuelve la excepcion.
+     * Valida una peticion que debe fallar y devuelve la excepcion
      *
      * @param request peticion invalida
      * @return la excepcion InvalidRequestException lanzada
@@ -54,7 +54,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Una peticion correcta se convierte en un comando con tipos fuertes.
+     * Una peticion correcta se convierte en un comando con tipos fuertes
      */
     @Test
     void validate_validRequest_returnsTheCommand() {
@@ -68,7 +68,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Solo agregar (retirar ausente) es valido.
+     * Solo agregar (retirar ausente) es valido
      */
     @Test
     void validate_onlyAdd_isValid() {
@@ -80,7 +80,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Solo retirar (agregar ausente) es valido.
+     * Solo retirar (agregar ausente) es valido
      */
     @Test
     void validate_onlyRemove_isValid() {
@@ -93,7 +93,7 @@ class ChangeRolesValidatorTest {
 
     /**
      * RG-01: los espacios alrededor de ids y roles se recortan antes de validar, y un id en mayusculas
-     * se acepta.
+     * se acepta
      */
     @Test
     void validate_trimsIdsAndRoles() {
@@ -105,7 +105,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un id repetido se procesa una sola vez, en el orden en que apareció por primera vez.
+     * Un id repetido se procesa una sola vez, en el orden en que apareció por primera vez
      */
     @Test
     void validate_repeatedUserId_isProcessedOnce() {
@@ -117,7 +117,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Sin ids: "Seleccione al menos un usuario." en el campo ids.
+     * Sin ids: "Seleccione al menos un usuario." en el campo ids
      */
     @Test
     void validate_missingIds_returnsFieldError() {
@@ -131,7 +131,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Una lista de ids vacia cuenta como sin usuarios.
+     * Una lista de ids vacia cuenta como sin usuarios
      */
     @Test
     void validate_emptyIds_returnsFieldError() {
@@ -142,7 +142,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un id que no es un UUID se rechaza en el campo ids.
+     * Un id que no es un UUID se rechaza en el campo ids
      */
     @Test
     void validate_idWithoutUuidFormat_returnsFieldError() {
@@ -153,7 +153,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un id nulo dentro de la lista se rechaza en el campo ids.
+     * Un id nulo dentro de la lista se rechaza en el campo ids
      */
     @Test
     void validate_nullIdInsideTheList_returnsFieldError() {
@@ -166,7 +166,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un rol fuera del catalogo: "Seleccione roles válidos." en el campo agregar.
+     * Un rol fuera del catalogo: "Seleccione roles válidos." en el campo agregar
      */
     @Test
     void validate_unknownRoleToAdd_returnsFieldError() {
@@ -178,7 +178,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un rol fuera del catalogo: "Seleccione roles válidos." en el campo retirar.
+     * Un rol fuera del catalogo: "Seleccione roles válidos." en el campo retirar
      */
     @Test
     void validate_unknownRoleToRemove_returnsFieldError() {
@@ -189,7 +189,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un rol repetido dentro de la misma lista tambien es un rol no valido (uniqueItems).
+     * Un rol repetido dentro de la misma lista tambien es un rol no valido (uniqueItems)
      */
     @Test
     void validate_repeatedRoleInTheSameList_returnsFieldError() {
@@ -201,7 +201,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Se reportan juntos los errores de varios campos.
+     * Se reportan juntos los errores de varios campos
      */
     @Test
     void validate_severalInvalidFields_reportsAllOfThem() {
@@ -211,11 +211,11 @@ class ChangeRolesValidatorTest {
         for (ErrorResponse.ErrorDetail detail : error.getErrors()) {
             fields.add(detail.campo());
         }
-        assertEquals(List.of("ids", "agregar", "retirar"), fields);
+        assertEquals(List.of("agregar", "ids", "retirar"), fields);
     }
 
     /**
-     * Ambas listas ausentes: "Indique roles a agregar o retirar.".
+     * Ambas listas ausentes: "Indique roles a agregar o retirar."
      */
     @Test
     void validate_bothListsMissing_returnsTheMessage() {
@@ -226,7 +226,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Ambas listas vacias: "Indique roles a agregar o retirar.".
+     * Ambas listas vacias: "Indique roles a agregar o retirar."
      */
     @Test
     void validate_bothListsEmpty_returnsTheMessage() {
@@ -236,7 +236,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un rol en ambas listas: "Un rol no puede agregarse y retirarse a la vez.".
+     * Un rol en ambas listas: "Un rol no puede agregarse y retirarse a la vez."
      */
     @Test
     void validate_sameRoleInBothLists_returnsTheMessage() {
@@ -248,7 +248,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Los errores de formato tienen prioridad sobre las reglas que cruzan las dos listas.
+     * Los errores de formato tienen prioridad sobre las reglas que cruzan las dos listas
      */
     @Test
     void validate_fieldErrorsTakePriorityOverCrossListRules() {
@@ -259,7 +259,7 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Los ocho roles del catalogo se pueden agregar en una sola peticion (maximo de la lista).
+     * Los ocho roles del catalogo se pueden agregar en una sola peticion (maximo de la lista)
      */
     @Test
     void validate_allEightRoles_areAccepted() {
@@ -271,5 +271,39 @@ class ChangeRolesValidatorTest {
         ChangeRolesCommand command = ChangeRolesValidator.validate(request(List.of(ID_ONE), everyRole, null));
 
         assertEquals(EnumSet.allOf(UserRole.class), command.rolesToAdd());
+    }
+
+    /**
+     * Un campo que no está en el contrato se rechaza con un error por ese campo (RG-04)
+     */
+    @Test
+    void validate_unknownFieldInTheBody_isRejectedPerField() {
+        ChangeRolesRequest request = request(List.of(ID_ONE), List.of("PROFESOR"), null);
+        request.registerUnknownField("solicitante", ID_TWO);
+
+        InvalidRequestException error = invalid(request);
+
+        assertEquals(1, error.getErrors().size());
+        assertEquals("solicitante", error.getErrors().get(0).campo());
+        assertEquals("El campo no está permitido.", error.getErrors().get(0).mensaje());
+    }
+
+    /**
+     * Los campos desconocidos se informan junto con los demás errores del formulario
+     */
+    @Test
+    void validate_unknownFieldAndInvalidFields_reportsAllOfThem() {
+        ChangeRolesRequest request = request(List.of(), List.of("X"), null);
+        request.registerUnknownField("rol", "ADMIN");
+
+        InvalidRequestException error = invalid(request);
+
+        List<String> fields = new ArrayList<>();
+        for (ErrorResponse.ErrorDetail detail : error.getErrors()) {
+            fields.add(detail.campo());
+        }
+        assertTrue(fields.contains("rol"));
+        assertTrue(fields.contains("ids"));
+        assertTrue(fields.contains("agregar"));
     }
 }

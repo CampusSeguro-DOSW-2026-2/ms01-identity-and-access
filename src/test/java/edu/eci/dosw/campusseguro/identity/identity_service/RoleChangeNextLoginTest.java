@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
@@ -34,12 +35,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.IssuedToken;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.AuthServiceImpl;
+import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestValidator;
+import jakarta.validation.Validation;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleServiceImpl;
 
 /**
  * RF-MS01-05 postcondicion / RN-MS01-09 / MR-06: los nuevos roles se reflejan en el siguiente token. Se
  * cambian los roles de un usuario con RoleServiceImpl y luego se hace login con AuthServiceImpl sobre el
- * mismo usuario: el JWT se emite con los roles nuevos.
+ * mismo usuario: el JWT se emite con los roles nuevos
  */
 @ExtendWith(MockitoExtension.class)
 class RoleChangeNextLoginTest {
@@ -47,7 +50,7 @@ class RoleChangeNextLoginTest {
     private static final Instant NOW = Instant.parse("2026-10-23T15:00:00Z");
     private static final UUID ADMIN_ID = UUID.fromString("a0000000-0000-4000-8000-000000000001");
     private static final UUID USER_ID = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
-    private static final String EMAIL = "maria.perez@mail.escuelaing.edu.co";
+    private static final String EMAIL = "maria.perez@escuelaing.edu.co";
     private static final String PASSWORD = "Campus#2026";
     private static final String STORED_HASH = "$2a$10$stored.hash.value";
 
@@ -67,18 +70,20 @@ class RoleChangeNextLoginTest {
     private AuthServiceImpl authService;
 
     /**
-     * Crea ambos servicios sobre los mismos mocks y el mismo reloj fijo.
+     * Crea ambos servicios sobre los mismos mocks y el mismo reloj fijo
      */
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         when(passwordEncoder.encode(anyString())).thenReturn("dummy-hash");
-        roleService = new RoleServiceImpl(userRepository, auditPublisher, clock);
-        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtService, auditPublisher, clock);
+        AuditRecorder recorder = new AuditRecorder(auditPublisher, clock);
+        roleService = new RoleServiceImpl(userRepository, recorder);
+        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtService, recorder,
+                new RequestValidator(Validation.buildDefaultValidatorFactory().getValidator()));
     }
 
     /**
-     * Tras agregar el rol BRIGADISTA, el siguiente login emite el token con ESTUDIANTE y BRIGADISTA.
+     * Tras agregar el rol BRIGADISTA, el siguiente login emite el token con ESTUDIANTE y BRIGADISTA
      */
     @Test
     void nextLogin_afterAddingARole_issuesTheTokenWithTheNewRoles() {
@@ -97,12 +102,13 @@ class RoleChangeNextLoginTest {
         ChangeRolesRequest change = new ChangeRolesRequest();
         change.setIds(List.of(USER_ID.toString()));
         change.setAgregar(List.of("BRIGADISTA"));
-        roleService.changeRoles(new RequesterIdentity(ADMIN_ID, EnumSet.of(UserRole.ADMIN)), change, "corr-1");
+        roleService.changeRoles(new RequesterIdentity(ADMIN_ID, EnumSet.of(UserRole.ADMIN)), change,
+                "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90");
 
         LoginRequest login = new LoginRequest();
         login.setCorreo(EMAIL);
         login.setContrasena(PASSWORD);
-        authService.login(login, "corr-2");
+        authService.login(login, "1c2f9d34-5b7a-4e0c-9d61-7a4b8e3f2a10");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<UserRole>> roles = ArgumentCaptor.forClass(List.class);

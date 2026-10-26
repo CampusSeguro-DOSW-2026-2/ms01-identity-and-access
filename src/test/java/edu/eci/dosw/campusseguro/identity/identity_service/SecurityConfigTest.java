@@ -72,10 +72,10 @@ class SecurityConfigTest {
      */
     @Test
     void protectedRoute_withCorrelationId_returnsTheSameValueInHeaderAndBody() throws Exception {
-        mockMvc.perform(get("/api/v1/roles").header(CorrelationIds.HEADER, "c19b-472d-a12b"))
+        mockMvc.perform(get("/api/v1/roles").header(CorrelationIds.HEADER, "c19b472d-7a2a-4d3b-a12b-abcdef123456"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(header().string(CorrelationIds.HEADER, "c19b-472d-a12b"))
-                .andExpect(jsonPath("$.correlation_id").value("c19b-472d-a12b"));
+                .andExpect(header().string(CorrelationIds.HEADER, "c19b472d-7a2a-4d3b-a12b-abcdef123456"))
+                .andExpect(jsonPath("$.correlation_id").value("c19b472d-7a2a-4d3b-a12b-abcdef123456"));
     }
 
     /**
@@ -232,5 +232,56 @@ class SecurityConfigTest {
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(header().string("Allow", "PATCH"))
                 .andExpect(jsonPath("$.codigo").value("METODO_NO_PERMITIDO"));
+    }
+
+    /**
+     * El health check es público para el Gateway y los orquestadores, en este test no existe el endpoint, por
+     * eso la respuesta es el 404 normalizado y no un 401
+     *
+     * @throws Exception si falla la peticion simulada
+     */
+    @Test
+    void healthEndpoint_isPublic() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"));
+    }
+
+    /**
+     * Los demás endpoints de actuator no son públicos
+     *
+     * @throws Exception si falla la peticion simulada
+     */
+    @Test
+    void otherActuatorEndpoints_areNotPublic() throws Exception {
+        mockMvc.perform(get("/actuator/env"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Swagger solo es público en el desarrollo local, por defecto exige identidad
+     *
+     * @param path ruta de la documentación interactiva
+     * @throws Exception si falla la peticion simulada
+     */
+    @ParameterizedTest
+    @ValueSource(strings = { "/swagger-ui/index.html", "/swagger-ui.html", "/v3/api-docs" })
+    void swaggerRoutes_areNotPublicByDefault(String path) throws Exception {
+        mockMvc.perform(get(path))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * No se permite CORS en el microservicio, lo gestiona el Gateway
+     *
+     * @throws Exception si falla la peticion simulada
+     */
+    @Test
+    void cors_isNotConfiguredInTheMicroservice() throws Exception {
+        mockMvc.perform(get("/api/v1/roles")
+                .header("Origin", "http://localhost:3000")
+                .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE"))
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 }

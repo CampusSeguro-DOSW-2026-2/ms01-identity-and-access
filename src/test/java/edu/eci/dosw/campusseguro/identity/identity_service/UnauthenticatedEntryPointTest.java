@@ -64,6 +64,7 @@ class UnauthenticatedEntryPointTest {
         assertEquals(401, JsonPath.<Integer>read(body, "$.status"));
         assertEquals("NO_AUTENTICADO", JsonPath.<String>read(body, "$.codigo"));
         assertEquals(List.of(), JsonPath.<List<Object>>read(body, "$.errores"));
+        assertEquals(5, JsonPath.<java.util.Map<String, Object>>read(body, "$").size());
     }
 
     /**
@@ -102,11 +103,11 @@ class UnauthenticatedEntryPointTest {
      */
     @Test
     void commence_withCorrelationHeader_returnsItInTheBody() throws Exception {
-        request.addHeader(CorrelationIds.HEADER, "c19b-472d-a12b");
+        request.addHeader(CorrelationIds.HEADER, "c19b472d-7a2a-4d3b-a12b-abcdef123456");
 
         commence();
 
-        assertEquals("c19b-472d-a12b",
+        assertEquals("c19b472d-7a2a-4d3b-a12b-abcdef123456",
                 JsonPath.<String>read(response.getContentAsString(), "$.correlation_id"));
     }
 

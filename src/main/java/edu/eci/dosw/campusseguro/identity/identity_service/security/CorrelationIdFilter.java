@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -20,9 +21,10 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Garantiza el X-Correlation-ID de cada peticion (RNF-MS01-03), se conserva el recibido si es valido y
- * si falta se genera uno, el mismo valor se devuelve al cliente en la respuesta y queda disponible
- * para los controladores, los manejadores de error y la auditoria
+ * Garantiza el X-Correlation-ID de cada peticion (RNF-MS01-03), se conserva el recibido si es un UUID v4
+ * valido y si falta o no es valido se genera uno, el mismo valor se devuelve al cliente en la respuesta y
+ * queda disponible para los controladores, los manejadores de error y la auditoria, ademas se publica en el
+ * MDC del log (RNF-MS01-05) para que cada linea de log de la peticion inicie con el
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -41,8 +43,14 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
         String correlationId = CorrelationIds.resolve(request.getHeader(CorrelationIds.HEADER));
+        request.setAttribute(CorrelationIds.ATTRIBUTE, correlationId);
         response.setHeader(CorrelationIds.HEADER, correlationId);
-        filterChain.doFilter(new CorrelationIdRequest(request, correlationId), response);
+        MDC.put(CorrelationIds.MDC_KEY, correlationId);
+        try {
+            filterChain.doFilter(new CorrelationIdRequest(request, correlationId), response);
+        } finally {
+            MDC.remove(CorrelationIds.MDC_KEY);
+        }
     }
 
     /**

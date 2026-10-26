@@ -1,16 +1,19 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
-import java.util.*;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -18,297 +21,344 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
+import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 import jakarta.servlet.http.HttpServletRequest;
 
+/**
+ * Manejador global de excepciones (RNF-MS01-04, Estándares de Integración, sección 7.3), todo error,
+ * incluidos los del framework, sale con el ErrorResponse de cinco campos y un código del catálogo, sin
+ * exponer trazas internas
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    public static final String REQUIRED_PARAMETER_MESSAGE = "El parámetro es obligatorio.";
+    public static final String INVALID_PARAMETER_MESSAGE = "Valor no válido.";
+
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    private static final String CORRELATION_HEADER = "X-Correlation-ID";
-
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<Map<String, String>> handleEmailExists(EmailAlreadyExistsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
-    }
-
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handleNotFound(UserNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
-    }
-
     /**
-     * RF-MS01-02 A1: credenciales incorrectas o cuenta inexistente; el sistema responde 401 con un
-     * mensaje genérico (“credenciales incorrectas”) y emite a MS08 el evento de auditoría del
-     * intento fallido.
-     * 
-     * RN-MS01-05: Ante credenciales inválidas no se revela si falló el correo o la contraseña.
+     * RF-MS01-02 A1: credenciales incorrectas o cuenta inexistente, el sistema responde 401 con un
+     * mensaje genérico y no revela cuál de los dos datos falló (RN-MS01-05)
+     *
+     * @param ex excepción con el mensaje genérico
+     * @param request petición, de la que se toma el correlation id
+     * @return 401 con el cuerpo de error normalizado
      */
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(
-                HttpStatus.UNAUTHORIZED.value(), "CREDENCIALES_INCORRECTAS", ex.getMessage(),
-                correlationId(request)));
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex,
+            HttpServletRequest request) {
+        return build(ErrorCode.BAD_CREDENTIALS, ex.getMessage(), List.of(), request);
     }
 
     /**
-     * RF-MS01-02 A2: cuenta inactiva; el sistema responde 403, indica que debe contactar a un
-     * administrador y emite a MS08 el evento de auditoría.
-     * 
-     * RN-MS01-06: Una cuenta INACTIVA nunca inicia sesión, aunque las credenciales sean correctas.
-     * 
-    */
+     * RF-MS01-02 A2: cuenta inactiva, el sistema responde 403 e indica que debe contactar a un
+     * administrador (RN-MS01-06)
+     *
+     * @param ex excepción con el mensaje del formulario F-02
+     * @param request petición, de la que se toma el correlation id
+     * @return 403 con el cuerpo de error normalizado
+     */
     @ExceptionHandler(InactiveAccountException.class)
     public ResponseEntity<ErrorResponse> handleInactiveAccount(InactiveAccountException ex,
             HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
-                HttpStatus.FORBIDDEN.value(), "CUENTA_INACTIVA", ex.getMessage(),
-                correlationId(request)));
+        return build(ErrorCode.INACTIVE_ACCOUNT, ex.getMessage(), List.of(), request);
     }
 
     /**
      * RN-MS01-23: no se pudo establecer la identidad de quien llama (faltan las cabeceras X-User-Id /
-     * X-User-Role o su valor no es valido); el sistema responde 401 con codigo NO_AUTENTICADO
+     * X-User-Role o su valor no es válido), el sistema responde 401 con código NO_AUTENTICADO
      *
-     * @param ex excepcion con el motivo
-     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @param ex excepción con el motivo
+     * @param request petición, de la que se toma el correlation id
      * @return 401 con el cuerpo de error normalizado
      */
     @ExceptionHandler(UnauthenticatedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthenticated(UnauthenticatedException ex,
             HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(
-                HttpStatus.UNAUTHORIZED.value(), "NO_AUTENTICADO", ex.getMessage(),
-                correlationId(request)));
+        return build(ErrorCode.UNAUTHENTICATED, ex.getMessage(), List.of(), request);
     }
 
     /**
-     * RF-MS01-05 A1 y A2: el solicitante no es administrador o intenta modificar sus propios roles; el
-     * sistema responde 403 con codigo PROHIBIDO
+     * El solicitante no puede realizar la operación porque no tiene el permiso necesario o porque intenta
+     * cambiar su propia cuenta (RF-MS01-05 A1 y A2, RF-MS01-07 A1 y A2), el sistema responde 403 con código
+     * PROHIBIDO
      *
-     * @param ex excepcion con el motivo
-     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @param ex excepción con el motivo
+     * @param request petición, de la que se toma el correlation id
      * @return 403 con el cuerpo de error normalizado
      */
     @ExceptionHandler(ForbiddenOperationException.class)
     public ResponseEntity<ErrorResponse> handleForbiddenOperation(ForbiddenOperationException ex,
             HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(
-                HttpStatus.FORBIDDEN.value(), "PROHIBIDO", ex.getMessage(),
-                correlationId(request)));
+        return build(ErrorCode.FORBIDDEN, ex.getMessage(), List.of(), request);
     }
 
     /**
-     * RG-06 y F-09: datos invalidos o regla de validacion incumplida (por ejemplo, un usuario que
-     * quedaria sin roles); el sistema responde 400 con codigo VALIDACION y el detalle por campo
+     * RG-06: datos inválidos o regla de validación incumplida, el sistema responde 400 con código
+     * VALIDACION y el detalle por campo
      *
-     * @param ex excepcion con el mensaje y los errores por campo
-     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @param ex excepción con el mensaje y los errores por campo
+     * @param request petición, de la que se toma el correlation id
      * @return 400 con el cuerpo de error normalizado
      */
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<ErrorResponse> handleInvalidRequest(InvalidRequestException ex,
             HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(
-                HttpStatus.BAD_REQUEST.value(), "VALIDACION", ex.getMessage(), ex.getErrors(),
-                correlationId(request)));
+        return build(ErrorCode.VALIDATION, ex.getMessage(), ex.getErrors(), request);
     }
 
     /**
-     * RF-MS01-05 A3: algun usuario de la peticion no existe; el sistema responde 404 con codigo
-     * NO_ENCONTRADO y no aplica ningun cambio
+     * RG-06: el correo ya está registrado, el sistema responde 409 con código CONFLICTO
      *
-     * @param ex excepcion con el mensaje y los ids que no existen
-     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @param ex excepción con el mensaje del formulario F-01
+     * @param request petición, de la que se toma el correlation id
+     * @return 409 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleEmailExists(EmailAlreadyExistsException ex,
+            HttpServletRequest request) {
+        return build(ErrorCode.CONFLICT, ex.getMessage(), List.of(), request);
+    }
+
+    /**
+     * Uno o más usuarios de la petición no existen, el sistema responde 404 con código NO_ENCONTRADO y no
+     * aplica ningún cambio
+     *
+     * @param ex excepción con el mensaje del formulario F-08 y F-09
+     * @param request petición, de la que se toma el correlation id
      * @return 404 con el cuerpo de error normalizado
      */
-    @ExceptionHandler(UsersNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleUsersNotFound(UsersNotFoundException ex,
-            HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
-                HttpStatus.NOT_FOUND.value(), "NO_ENCONTRADO", ex.getMessage(),
-                correlationId(request)));
+    @ExceptionHandler({ UserNotFoundException.class, UsersNotFoundException.class })
+    public ResponseEntity<ErrorResponse> handleUserNotFound(RuntimeException ex, HttpServletRequest request) {
+        return build(ErrorCode.NOT_FOUND, ex.getMessage(), List.of(), request);
     }
 
     /**
-     * RNF-MS01-04: la ruta existe pero no admite el metodo HTTP usado, el sistema responde 405 con
-     * codigo METODO_NO_PERMITIDO
+     * Falla la validación declarativa de un cuerpo, el sistema responde 400 con código VALIDACION y un
+     * error por campo con el nombre que tiene en el contrato
      *
-     * @param ex excepcion con los metodos que si admite la ruta
-     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @param ex excepción con los errores de validación
+     * @param request petición, de la que se toma el correlation id
+     * @return 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
+        Object target = ex.getBindingResult().getTarget();
+        Class<?> type = Object.class;
+        if (target != null) {
+            type = target.getClass();
+        }
+        List<ErrorResponse.ErrorDetail> errors = ValidationErrors.fromFieldErrors(type,
+                ex.getBindingResult().getFieldErrors());
+        return build(ErrorCode.VALIDATION, ValidationErrors.INVALID_DATA_MESSAGE, errors, request);
+    }
+
+    /**
+     * El cuerpo no se puede leer (JSON mal formado, tipos incorrectos o cuerpo ausente), el sistema
+     * responde 400 con código VALIDACION, el detalle de la causa no se devuelve ni se registra porque
+     * puede contener datos del cliente
+     *
+     * @param ex excepción de lectura del cuerpo
+     * @param request petición, de la que se toma el correlation id
+     * @return 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex,
+            HttpServletRequest request) {
+        log.warn("Cuerpo de la petición ilegible: {}", ex.getClass().getSimpleName());
+        return build(ErrorCode.VALIDATION, ValidationErrors.INVALID_DATA_MESSAGE, List.of(), request);
+    }
+
+    /**
+     * Falta una cabecera obligatoria, si es una de identidad el sistema responde 401 NO_AUTENTICADO
+     * (RN-MS01-23) y si es otra responde 400 VALIDACION
+     *
+     * @param ex excepción con el nombre de la cabecera ausente
+     * @param request petición, de la que se toma el correlation id
+     * @return 401 o 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeader(MissingRequestHeaderException ex,
+            HttpServletRequest request) {
+        String header = ex.getHeaderName();
+        if (IdentityHeaderParser.USER_ID_HEADER.equalsIgnoreCase(header)
+                || IdentityHeaderParser.USER_ROLE_HEADER.equalsIgnoreCase(header)) {
+            return build(ErrorCode.UNAUTHENTICATED, IdentityHeaderParser.MISSING_MESSAGE, List.of(), request);
+        }
+        List<ErrorResponse.ErrorDetail> errors = List.of(
+                new ErrorResponse.ErrorDetail(header, REQUIRED_PARAMETER_MESSAGE));
+        return build(ErrorCode.VALIDATION, ValidationErrors.INVALID_DATA_MESSAGE, errors, request);
+    }
+
+    /**
+     * Falta un parámetro de consulta obligatorio, el sistema responde 400 con código VALIDACION
+     *
+     * @param ex excepción con el nombre del parámetro ausente
+     * @param request petición, de la que se toma el correlation id
+     * @return 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException ex,
+            HttpServletRequest request) {
+        List<ErrorResponse.ErrorDetail> errors = List.of(
+                new ErrorResponse.ErrorDetail(ex.getParameterName(), REQUIRED_PARAMETER_MESSAGE));
+        return build(ErrorCode.VALIDATION, ValidationErrors.INVALID_DATA_MESSAGE, errors, request);
+    }
+
+    /**
+     * Un parámetro de ruta o de consulta tiene un tipo inválido, el sistema responde 400 con código
+     * VALIDACION
+     *
+     * @param ex excepción con el nombre del parámetro
+     * @param request petición, de la que se toma el correlation id
+     * @return 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request) {
+        List<ErrorResponse.ErrorDetail> errors = List.of(
+                new ErrorResponse.ErrorDetail(ex.getName(), INVALID_PARAMETER_MESSAGE));
+        return build(ErrorCode.VALIDATION, ValidationErrors.INVALID_DATA_MESSAGE, errors, request);
+    }
+
+    /**
+     * La ruta existe pero no admite el método HTTP usado, el sistema responde 405 con código
+     * METODO_NO_PERMITIDO
+     *
+     * @param ex excepción con los métodos que sí admite la ruta
+     * @param request petición, de la que se toma el correlation id
      * @return 405 con el cuerpo de error normalizado
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex,
             HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(
-                ErrorResponse.of(HttpStatus.METHOD_NOT_ALLOWED.value(), "METODO_NO_PERMITIDO",
-                        "Método HTTP no permitido.", correlationId(request)));
+        return build(ErrorCode.METHOD_NOT_ALLOWED, ErrorCode.METHOD_NOT_ALLOWED.getMessage(), List.of(), request,
+                ex.getHeaders());
     }
 
     /**
-     * RNF-MS01-04: el cuerpo llega con un tipo de contenido que la ruta no admite, el sistema responde
-     * 415 con codigo MEDIO_NO_SOPORTADO
+     * El cuerpo llega con un tipo de contenido que la ruta no admite, el sistema responde 415 con código
+     * TIPO_NO_SOPORTADO
      *
-     * @param ex excepcion con los tipos de contenido que si admite la ruta
-     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @param ex excepción con los tipos de contenido que sí admite la ruta
+     * @param request petición, de la que se toma el correlation id
      * @return 415 con el cuerpo de error normalizado
      */
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex,
             HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).headers(ex.getHeaders()).body(
-                ErrorResponse.of(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), "MEDIO_NO_SOPORTADO",
-                        "Tipo de contenido no soportado.", correlationId(request)));
+        return build(ErrorCode.UNSUPPORTED_MEDIA_TYPE, ErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage(), List.of(),
+                request, ex.getHeaders());
     }
 
     /**
-     * RNF-MS01-04: la ruta pedida no existe, el sistema responde 404 con codigo NO_ENCONTRADO
+     * La ruta pedida no existe, el sistema responde 404 con código NO_ENCONTRADO
      *
-     * @param ex excepcion de ruta inexistente
-     * @param request peticion, de la que se toma el X-Correlation-ID
+     * @param ex excepción de ruta inexistente
+     * @param request petición, de la que se toma el correlation id
      * @return 404 con el cuerpo de error normalizado
      */
     @ExceptionHandler({ NoResourceFoundException.class, NoHandlerFoundException.class })
     public ResponseEntity<ErrorResponse> handleRouteNotFound(Exception ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(
-                HttpStatus.NOT_FOUND.value(), "NO_ENCONTRADO", "Recurso no encontrado.",
-                correlationId(request)));
+        return build(ErrorCode.NOT_FOUND, ErrorCode.NOT_FOUND.getMessage(), List.of(), request);
     }
 
     /**
-     * RNF-MS01-04: falla tecnica no controlada, el sistema responde 500 con codigo ERROR_INTERNO sin
-     * exponer trazas internas, el detalle queda solo en los logs con el correlation id, las excepciones
-     * propias de Spring MVC que ya traen su estado se dejan a su tratamiento normal
+     * Cualquier otra excepción: las propias de Spring MVC que ya traen su estado HTTP se traducen al
+     * código del catálogo que corresponde a ese estado, y una falla técnica no controlada responde 500 con
+     * código ERROR_INTERNO sin exponer trazas, el detalle queda solo en el log con el correlation id
      *
-     * @param ex excepcion no controlada
-     * @param request peticion, de la que se toma el X-Correlation-ID
-     * @return 500 con el cuerpo de error normalizado
+     * @param ex excepción no controlada
+     * @param request petición, de la que se toma el correlation id
+     * @return la respuesta con el cuerpo de error normalizado
      */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorResponse> handleUnexpected(RuntimeException ex, HttpServletRequest request) {
-        if (ex instanceof org.springframework.web.ErrorResponse) {
-            throw ex;
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
+        if (ex instanceof org.springframework.web.ErrorResponse springError) {
+            return fromFrameworkStatus(springError, request);
         }
-        String correlationId = correlationId(request);
-        log.error("[{}] Error no controlado", correlationId, ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.of(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(), "ERROR_INTERNO", "Error interno del servidor.",
-                correlationId));
+        log.error("Error no controlado", ex);
+        return build(ErrorCode.INTERNAL_ERROR, ErrorCode.INTERNAL_ERROR.getMessage(), List.of(), request);
     }
 
     /**
-     * RG-04: Se rechazan (HTTP 400) los campos no definidos en el contrato (en especial roles,
-     * estado o id enviados por el usuario en registro y perfil).
-    */
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex,
+     * Traduce una excepción del framework al código del catálogo que corresponde a su estado HTTP
+     *
+     * @param springError excepción de Spring MVC que ya trae su estado HTTP
+     * @param request petición, de la que se toma el correlation id
+     * @return la respuesta con el cuerpo de error normalizado
+     */
+    private ResponseEntity<ErrorResponse> fromFrameworkStatus(org.springframework.web.ErrorResponse springError,
             HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(
-                HttpStatus.BAD_REQUEST.value(), "VALIDACION", "Datos inválidos.", correlationId(request)));
-    }
-
-    /**
-     * Atrapa a la excepcion que corresponde al codigo 400 MethodArgumentNotValidException
-     */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        if (ex.getBindingResult().getTarget() instanceof LoginRequest) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(normalizedValidationError(ex, request));
+        int value = springError.getStatusCode().value();
+        if (value == HttpStatus.NOT_ACCEPTABLE.value()) {
+            value = HttpStatus.UNSUPPORTED_MEDIA_TYPE.value();
         }
-        Map<String, String> errors = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(e -> errors.putIfAbsent(e.getField(), e.getDefaultMessage()));
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
-    }
-
-    /**
-     * Organiza los mensajes de la excepcion, deja un solo mensaje por campo, y devuelve el error en formato DTO
-     * @param ex la excepcion
-     * @param request el request que que se envia con el error
-     * @return el error en formato DTO (record en este caso)
-     */
-    private ErrorResponse normalizedValidationError(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        Map<String, String> messageByField = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(e -> messageByField.putIfAbsent(e.getField(), e.getDefaultMessage()));
-        List<ErrorResponse.ErrorDetail> details = messageByField.entrySet().stream()
-                .map(e -> new ErrorResponse.ErrorDetail(e.getKey(), e.getValue()))
-                .sorted(Comparator.comparing(ErrorResponse.ErrorDetail::campo))
-                .toList();
-        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "VALIDACION", "Datos inválidos.", details,
-                correlationId(request));
-    }
-
-    /**
-     * Verifica el estado del correlationId, si es invalido devuelve null, sino elimina espacios a los
-     * lados y lo devuelve
-     * @param request el request al que se le extrae el correlationId
-     * @return el correlactionId verificado, devuelve null si es invalido
-     */
-    private static String correlationId(HttpServletRequest request) {
-        String value = request.getHeader(CORRELATION_HEADER);
-
-        if (value == null || value.isBlank()) {
-            return null;
-        } else {
-            return value.trim();
+        if (value >= HttpStatus.INTERNAL_SERVER_ERROR.value()) {
+            log.error("Error del framework con estado {}", value, (Exception) springError);
+            value = HttpStatus.INTERNAL_SERVER_ERROR.value();
         }
+        HttpStatus status = HttpStatus.resolve(value);
+        if (status == null) {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        ErrorCode code = ErrorCode.forStatus(status.value());
+        return respond(status, code, code.getMessage(), List.of(), request, springError.getHeaders());
     }
 
     /**
-     * 
-     * @param ex
-     * @return
+     * Construye la respuesta de error sin cabeceras adicionales, con el estado HTTP del código
+     *
+     * @param code código del catálogo de estados y códigos
+     * @param message texto seguro en español
+     * @param errors errores por campo, vacío si no hay
+     * @param request petición, de la que se toma el correlation id
+     * @return la respuesta con el cuerpo de error normalizado
      */
-    @ExceptionHandler(MissingRequestHeaderException.class)
-    public ResponseEntity<Map<String, String>> handleMissingHeader(MissingRequestHeaderException ex) {
-        return ResponseEntity.badRequest().body(Map.of("error", "Falta el header " + ex.getHeaderName()));
+    private ResponseEntity<ErrorResponse> build(ErrorCode code, String message,
+            List<ErrorResponse.ErrorDetail> errors, HttpServletRequest request) {
+        return build(code, message, errors, request, HttpHeaders.EMPTY);
     }
 
     /**
-     * 
-     * @param ex
-     * @return
+     * Construye la respuesta de error con el estado HTTP del código y las cabeceras que exige el protocolo
+     * para ese estado, como Allow en un 405
+     *
+     * @param code código del catálogo de estados y códigos
+     * @param message texto seguro en español
+     * @param errors errores por campo, vacío si no hay
+     * @param request petición, de la que se toma el correlation id
+     * @param headers cabeceras adicionales de la respuesta
+     * @return la respuesta con el cuerpo de error normalizado
      */
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Map<String, String>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        return ResponseEntity.badRequest().body(Map.of("error", "Valor inválido para " + ex.getName()));
+    private ResponseEntity<ErrorResponse> build(ErrorCode code, String message,
+            List<ErrorResponse.ErrorDetail> errors, HttpServletRequest request, HttpHeaders headers) {
+        return respond(HttpStatus.valueOf(code.getStatus()), code, message, errors, request, headers);
     }
 
     /**
-     * 
-     * @param ex
-     * @return
+     * Construye la respuesta de error con el cuerpo en JSON, se usa cuando el estado HTTP de la respuesta
+     * no es el del código porque lo fija el framework
+     *
+     * @param status estado HTTP de la respuesta
+     * @param code código del catálogo de estados y códigos
+     * @param message texto seguro en español
+     * @param errors errores por campo, vacío si no hay
+     * @param request petición, de la que se toma el correlation id
+     * @param headers cabeceras adicionales de la respuesta
+     * @return la respuesta con el cuerpo de error normalizado
      */
-    @ExceptionHandler(AdminOrAuditorRequiredException.class)
-    public ResponseEntity<Map<String, Object>> handleAdminOrAuditorRequired(AdminOrAuditorRequiredException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "status", 403, "codigo", "ACCESO_DENEGADO",
-                "mensaje", "No cuenta con los permisos suficientes para realizar esta operación.", "errores", List.of()));
-    }
-
-    /**
-     * 
-     * @param ex
-     * @return
-     */
-    @ExceptionHandler(SelfStatusChangeForbiddenException.class)
-    public ResponseEntity<Map<String, Object>> handleSelfStatusChangeForbidden(SelfStatusChangeForbiddenException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "status", 403, "codigo", "ACCESO_DENEGADO",
-                "mensaje", "Solo otro administrador diferente de usted puede realizar esa accion.", "errores", List.of()));
-    }
-
-    /**
-     * 
-     * @param ex
-     * @return
-     */
-    @ExceptionHandler(InvalidSearchParamException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidSearch(InvalidSearchParamException ex) {
-        return ResponseEntity.badRequest().body(Map.of(
-                "status", 400, "codigo", "VALIDACION", "mensaje", ex.getMessage(), "errores", List.of()));
+    private ResponseEntity<ErrorResponse> respond(HttpStatus status, ErrorCode code, String message,
+            List<ErrorResponse.ErrorDetail> errors, HttpServletRequest request, HttpHeaders headers) {
+        ErrorResponse body = new ErrorResponse(status.value(), code.getCode(), message, errors,
+                CorrelationIds.current(request));
+        return ResponseEntity.status(status)
+                .headers(headers)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 }

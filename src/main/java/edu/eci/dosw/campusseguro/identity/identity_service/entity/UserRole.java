@@ -9,8 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Roles de CampusSeguro y sus permisos (RN-MS01-14).
- *
+ * Roles de CampusSeguro y sus permisos (RN-MS01-14)
  */
 public enum UserRole {
 

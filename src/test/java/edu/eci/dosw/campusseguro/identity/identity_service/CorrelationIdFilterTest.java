@@ -3,6 +3,8 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
@@ -12,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -25,6 +28,8 @@ import jakarta.servlet.http.HttpServletRequest;
  * y se devuelve al cliente, el valor resuelto es el que ven los controladores y los manejadores de error
  */
 class CorrelationIdFilterTest {
+
+    private static final String VALID = "c19b472d-7a2a-4d3b-a12b-abcdef123456";
 
     private CorrelationIdFilter filter;
     private MockHttpServletRequest request;
@@ -59,12 +64,12 @@ class CorrelationIdFilterTest {
      */
     @Test
     void doFilter_validHeader_isPreservedAndReturned() throws Exception {
-        request.addHeader(CorrelationIds.HEADER, "c19b-472d-a12b");
+        request.addHeader(CorrelationIds.HEADER, VALID);
 
         runFilter();
 
-        assertEquals("c19b-472d-a12b", response.getHeader(CorrelationIds.HEADER));
-        assertEquals("c19b-472d-a12b", seenByChain.get().getHeader(CorrelationIds.HEADER));
+        assertEquals(VALID, response.getHeader(CorrelationIds.HEADER));
+        assertEquals(VALID, seenByChain.get().getHeader(CorrelationIds.HEADER));
     }
 
     /**
@@ -118,13 +123,13 @@ class CorrelationIdFilterTest {
      */
     @Test
     void doFilter_getHeaders_returnsOnlyTheResolvedValue() throws Exception {
-        request.addHeader(CorrelationIds.HEADER, "uno");
-        request.addHeader(CorrelationIds.HEADER, "dos");
+        request.addHeader(CorrelationIds.HEADER, VALID);
+        request.addHeader(CorrelationIds.HEADER, "1c2f9d34-5b7a-4e0c-9d61-7a4b8e3f2a10");
 
         runFilter();
 
         List<String> values = Collections.list(seenByChain.get().getHeaders(CorrelationIds.HEADER));
-        assertEquals(List.of("uno"), values);
+        assertEquals(List.of(VALID), values);
     }
 
     /**
@@ -155,5 +160,50 @@ class CorrelationIdFilterTest {
         runFilter();
 
         assertEquals("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c", seenByChain.get().getHeader("X-User-Id"));
+    }
+
+    /**
+     * El valor resuelto queda como atributo de la petición para los controladores y el manejador de /error
+     *
+     * @throws Exception si falla el filtro
+     */
+    @Test
+    void doFilter_exposesTheResolvedValueAsRequestAttribute() throws Exception {
+        request.addHeader(CorrelationIds.HEADER, VALID);
+
+        runFilter();
+
+        assertEquals(VALID, request.getAttribute(CorrelationIds.ATTRIBUTE));
+    }
+
+    /**
+     * Durante la petición el valor está en el MDC del log y al terminar se limpia
+     *
+     * @throws Exception si falla el filtro
+     */
+    @Test
+    void doFilter_putsTheValueInTheMdcOnlyWhileTheRequestRuns() throws Exception {
+        request.addHeader(CorrelationIds.HEADER, VALID);
+        AtomicReference<String> inside = new AtomicReference<>();
+        FilterChain chain = (req, res) -> inside.set(MDC.get(CorrelationIds.MDC_KEY));
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(VALID, inside.get());
+        assertNull(MDC.get(CorrelationIds.MDC_KEY));
+    }
+
+    /**
+     * Si la cadena lanza un error, el MDC también se limpia
+     */
+    @Test
+    void doFilter_whenTheChainFails_stillClearsTheMdc() {
+        FilterChain chain = (req, res) -> {
+            throw new IllegalStateException("fallo simulado");
+        };
+
+        assertThrows(IllegalStateException.class, () -> filter.doFilter(request, response, chain));
+
+        assertNull(MDC.get(CorrelationIds.MDC_KEY));
     }
 }

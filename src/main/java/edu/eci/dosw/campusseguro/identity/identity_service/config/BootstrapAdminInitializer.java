@@ -19,10 +19,10 @@ import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserReposi
 /**
  * Crea el primer administrador al arrancar (RN-MS01-12)
  *
- * Solo se crea si no existe ningun usuario con rol ADMIN y si estan definidas las variables de entorno
+ * Solo se crea si todavia no existe ningun administrador y si estan definidas las variables de entorno
  * BOOTSTRAP_ADMIN_EMAIL y BOOTSTRAP_ADMIN_PASSWORD (o las propiedades bootstrap.admin.email y
- * bootstrap.admin.password); nunca se guardan en el repositorio. El usuario queda ACTIVO con el rol
- * ADMIN, con BOOTSTRAP_ADMIN_FIRST_NAME y BOOTSTRAP_ADMIN_LAST_NAME se le da un nombre
+ * bootstrap.admin.password); El usuario queda activo y con BOOTSTRAP_ADMIN_FIRST_NAME y
+ * BOOTSTRAP_ADMIN_LAST_NAME se le da un nombre
  */
 @Component
 public class BootstrapAdminInitializer implements ApplicationRunner {
@@ -40,7 +40,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     private final String lastName;
 
     /**
-     * Crea el inicializador con el repositorio y los datos del primer administrador.
+     * Crea el inicializador con el repositorio y los datos del primer administrador
      *
      * @param userRepository repositorio de acceso a los usuarios
      * @param passwordEncoder codificador con el que se guarda la contrasena
@@ -67,7 +67,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     /**
      * Ejecuta la creacion del primer administrador una vez arrancada la aplicacion
      *
-     * @param args
+     * @param args argumentos de arranque de la aplicación
      */
     @Override
     public void run(ApplicationArguments args) {
@@ -75,8 +75,8 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     }
 
     /**
-     * Crea el primer administrador si hay datos configurados, si todavia no existe ningun ADMIN y si el
-     * correo no pertenece ya a otro usuario
+     * Crea el primer administrador si hay datos configurados, si todavia no existe ningun administrador y si
+     * el correo no pertenece ya a otro usuario
      *
      * @return true si se creo el administrador; false si no hizo falta o no fue posible
      */
@@ -123,7 +123,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     }
 
     /**
-     * Devuelve el valor recortado, o uno por defecto si esta vacio.
+     * Devuelve el valor recortado, o uno por defecto si esta vacio
      *
      * @param value valor leido de la configuracion
      * @param defaultValue valor que se usa cuando no hay uno configurado

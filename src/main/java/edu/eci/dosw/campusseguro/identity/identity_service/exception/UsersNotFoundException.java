@@ -6,7 +6,7 @@ import java.util.UUID;
 /**
  * Uno o mas usuarios de la peticion no existen. Se traduce a HTTP 404 con codigo NO_ENCONTRADO y el
  * mensaje "Usuario no encontrado." de los formularios F-08 y F-09. Las operaciones por lote son
- * atomicas: cuando se lanza esta excepcion no se aplica ningun cambio.
+ * atomicas: cuando se lanza esta excepcion no se aplica ningun cambio
  */
 public class UsersNotFoundException extends RuntimeException {
 
@@ -15,7 +15,7 @@ public class UsersNotFoundException extends RuntimeException {
     private final List<UUID> missingIds;
 
     /**
-     * Crea la excepcion con los identificadores que no existen.
+     * Crea la excepcion con los identificadores que no existen
      *
      * @param missingIds identificadores de los usuarios que no se encontraron
      */
@@ -25,7 +25,7 @@ public class UsersNotFoundException extends RuntimeException {
     }
 
     /**
-     * Devuelve los identificadores de los usuarios que no existen.
+     * Devuelve los identificadores de los usuarios que no existen
      *
      * @return lista inmutable con los identificadores no encontrados
      */

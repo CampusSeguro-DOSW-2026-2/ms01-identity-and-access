@@ -1,7 +1,9 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.security;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -41,9 +43,23 @@ public record RequesterIdentity(UUID userId, Set<UserRole> roles) {
      * Indica si alguno de los roles del solicitante concede el permiso
      *
      * @param permission permiso que se desea comprobar
-     * @return true si sus permisos si continen el permiso a comprobar, false caso contrario
+     * @return true si sus permisos contienen el permiso a comprobar, false en caso contrario
      */
     public boolean hasPermission(Permission permission) {
         return permissions().contains(permission);
+    }
+
+    /**
+     * Devuelve los roles del solicitante con el mismo formato de la cabecera X-User-Role, separados por
+     * coma, sin espacios y en orden alfabetico (Estandares de Integracion, seccion 4)
+     *
+     * @return los nombres de los roles separados por coma
+     */
+    public String rolesHeader() {
+        List<String> names = new ArrayList<>();
+        for (UserRole role : UserRole.sortedByName(roles)) {
+            names.add(role.name());
+        }
+        return String.join(",", names);
     }
 }
