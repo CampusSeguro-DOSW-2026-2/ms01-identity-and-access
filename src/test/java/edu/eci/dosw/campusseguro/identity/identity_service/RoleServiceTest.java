@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEvent;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesResponse;
@@ -51,7 +52,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleServiceIm
 
 /**
  * RF-MS01-05 / historias KAIR-36 y KAIR-41: consulta de roles con permisos, flujo base del cambio de roles,
- * flujos alternos A1 a A4, atomicidad, auditoria CAMBIO_ROL y reglas RN-MS01-11 a RN-MS01-14.
+ * flujos alternos A1 a A4, atomicidad, auditoria CAMBIO_ROL y reglas RN-MS01-11 a RN-MS01-14
  */
 @ExtendWith(MockitoExtension.class)
 class RoleServiceTest {
@@ -60,7 +61,7 @@ class RoleServiceTest {
     private static final UUID ADMIN_ID = UUID.fromString("a0000000-0000-4000-8000-000000000001");
     private static final UUID USER_A = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
     private static final UUID USER_B = UUID.fromString("7c2e1d3f-9e5b-4d2c-8b88-4a3f7e2b1c0d");
-    private static final String CORRELATION_ID = "corr-1";
+    private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
     @Mock
     private UserRepository userRepository;
@@ -71,15 +72,16 @@ class RoleServiceTest {
     private RoleServiceImpl roleService;
 
     /**
-     * Crea el servicio con un reloj fijo para que la fecha de los eventos sea predecible.
+     * Crea el servicio con un reloj fijo para que la fecha de los eventos sea predecible
      */
     @BeforeEach
     void setUp() {
-        roleService = new RoleServiceImpl(userRepository, auditPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
+        roleService = new RoleServiceImpl(userRepository,
+                new AuditRecorder(auditPublisher, Clock.fixed(NOW, ZoneOffset.UTC)));
     }
 
     /**
-     * Identidad de un administrador.
+     * Identidad de un administrador
      *
      * @return identidad con el rol ADMIN
      */
@@ -88,7 +90,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Identidad de un usuario con los roles indicados.
+     * Identidad de un usuario con los roles indicados
      *
      * @param roles roles del solicitante
      * @return identidad con esos roles
@@ -100,7 +102,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Usuario con roles modificables, como los que entrega Hibernate.
+     * Usuario con roles modificables, como los que entrega Hibernate
      *
      * @param id identificador del usuario
      * @param roles roles actuales
@@ -115,7 +117,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Arma el cuerpo de la peticion.
+     * Arma el cuerpo de la peticion
      *
      * @param ids identificadores de usuario
      * @param add nombres de roles a agregar
@@ -131,7 +133,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Captura los eventos de auditoria publicados.
+     * Captura los eventos de auditoria publicados
      *
      * @param expected cantidad de eventos que debieron publicarse
      * @return los eventos, en el orden en que se publicaron
@@ -145,7 +147,7 @@ class RoleServiceTest {
     // ------------------------------------------------------------------ GET /roles
 
     /**
-     * El ADMIN recibe los ocho roles del catalogo, cada uno con los codigos de sus permisos.
+     * El ADMIN recibe los ocho roles del catalogo, cada uno con los codigos de sus permisos
      */
     @Test
     void getRoles_admin_returnsTheWholeCatalog() {
@@ -161,7 +163,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Un usuario que no es administrador recibe solo su propio rol.
+     * Un usuario que no es administrador recibe solo su propio rol
      */
     @Test
     void getRoles_nonAdmin_returnsOnlyItsOwnRole() {
@@ -173,7 +175,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Un usuario con varios roles recibe cada uno de ellos y ningun otro.
+     * Un usuario con varios roles recibe cada uno de ellos y ningun otro
      */
     @Test
     void getRoles_userWithSeveralRoles_returnsEachOfItsRoles() {
@@ -186,7 +188,7 @@ class RoleServiceTest {
     }
 
     /**
-     * El AUDITOR puede listar usuarios pero no ve el catalogo completo de roles.
+     * El AUDITOR puede listar usuarios pero no ve el catalogo completo de roles
      */
     @Test
     void getRoles_auditor_doesNotSeeTheWholeCatalog() {
@@ -197,7 +199,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Un usuario que ademas tiene ADMIN recibe el catalogo completo (MR-01: union de permisos).
+     * Un usuario que ademas tiene ADMIN recibe el catalogo completo (MR-01: union de permisos)
      */
     @Test
     void getRoles_userWithAdminAmongItsRoles_returnsTheWholeCatalog() {
@@ -211,7 +213,7 @@ class RoleServiceTest {
 
     /**
      * Flujo base: agregar un rol responde con los roles resultantes, persiste el cambio y audita un
-     * evento EXITO con quien, a quien y los roles anterior y nuevo.
+     * evento EXITO con quien, a quien y los roles anterior y nuevo
      */
     @Test
     void changeRoles_addRole_updatesPersistsAndAudits() {
@@ -231,15 +233,15 @@ class RoleServiceTest {
         assertEquals(AuditAction.CAMBIO_ROL, event.accion());
         assertEquals(AuditResult.EXITO, event.resultado());
         assertEquals(ADMIN_ID, event.usuarioId());
-        assertEquals("users/" + USER_A, event.recursoAfectado());
-        assertEquals("rol_anterior=ESTUDIANTE;rol_nuevo=ESTUDIANTE,PROFESOR", event.detalle());
+        assertEquals("usuario:" + USER_A, event.recursoAfectado());
+        assertEquals("agregados=PROFESOR;retirados=", event.detalle());
         assertEquals(CORRELATION_ID, event.correlationId());
         assertEquals(NOW, event.fecha());
-        assertNull(event.correo());
+        assertEquals("ADMIN", event.usuarioRoles());
     }
 
     /**
-     * Retirar un rol deja al usuario con los demas.
+     * Retirar un rol deja al usuario con los demas
      */
     @Test
     void changeRoles_removeRole_keepsTheOthers() {
@@ -251,11 +253,11 @@ class RoleServiceTest {
 
         assertEquals(List.of(UserRole.ESTUDIANTE), response.resultados().get(0).roles());
         assertEquals(Set.of(UserRole.ESTUDIANTE), target.getRoles());
-        assertEquals("rol_anterior=ESTUDIANTE,PROFESOR;rol_nuevo=ESTUDIANTE", publishedEvents(1).get(0).detalle());
+        assertEquals("agregados=;retirados=PROFESOR", publishedEvents(1).get(0).detalle());
     }
 
     /**
-     * Agregar y retirar en la misma peticion permite reemplazar un rol por otro.
+     * Agregar y retirar en la misma peticion permite reemplazar un rol por otro
      */
     @Test
     void changeRoles_addAndRemove_replacesTheRole() {
@@ -269,7 +271,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Los roles resultantes se entregan en orden alfabetico, sin importar el orden en que se agregaron.
+     * Los roles resultantes se entregan en orden alfabetico, sin importar el orden en que se agregaron
      */
     @Test
     void changeRoles_resultingRolesAreSortedAlphabetically() {
@@ -286,7 +288,7 @@ class RoleServiceTest {
 
     /**
      * Varios usuarios en una sola operacion: se responde en el orden de la peticion y se audita un
-     * evento por usuario.
+     * evento por usuario
      */
     @Test
     void changeRoles_severalUsers_respondsInRequestOrderAndAuditsEach() {
@@ -303,13 +305,13 @@ class RoleServiceTest {
         assertEquals(List.of(UserRole.AUDITOR, UserRole.ESTUDIANTE), response.resultados().get(1).roles());
 
         List<AuditEvent> events = publishedEvents(2);
-        assertEquals("users/" + USER_B, events.get(0).recursoAfectado());
-        assertEquals("users/" + USER_A, events.get(1).recursoAfectado());
+        assertEquals("usuario:" + USER_B, events.get(0).recursoAfectado());
+        assertEquals("usuario:" + USER_A, events.get(1).recursoAfectado());
         verify(userRepository).saveAllAndFlush(any());
     }
 
     /**
-     * Se consulta el repositorio una sola vez con los ids pedidos, sin repetidos.
+     * Se consulta el repositorio una sola vez con los ids pedidos, sin repetidos
      */
     @Test
     void changeRoles_looksUpTheDistinctIdsInOneQuery() {
@@ -328,7 +330,7 @@ class RoleServiceTest {
 
     /**
      * Agregar un rol que ya tiene, o retirar uno que no tiene, no cambia nada: no se reescribe la fila
-     * del usuario, pero la peticion se audita.
+     * del usuario, pero la peticion se audita
      */
     @Test
     void changeRoles_noEffectiveChange_doesNotSaveButAudits() {
@@ -340,11 +342,11 @@ class RoleServiceTest {
 
         assertEquals(List.of(UserRole.ESTUDIANTE), response.resultados().get(0).roles());
         verify(userRepository, never()).saveAllAndFlush(any());
-        assertEquals("rol_anterior=ESTUDIANTE;rol_nuevo=ESTUDIANTE", publishedEvents(1).get(0).detalle());
+        assertEquals("agregados=;retirados=", publishedEvents(1).get(0).detalle());
     }
 
     /**
-     * Solo se persisten los usuarios cuyos roles realmente cambian.
+     * Solo se persisten los usuarios cuyos roles realmente cambian
      */
     @Test
     void changeRoles_savesOnlyTheUsersThatChange() {
@@ -371,14 +373,14 @@ class RoleServiceTest {
                 request(List.of(USER_A.toString()), List.of("PROFESOR"), null), CORRELATION_ID);
 
         assertEquals(List.of(UserRole.PROFESOR), response.resultados().get(0).roles());
-        assertEquals("rol_anterior=;rol_nuevo=PROFESOR", publishedEvents(1).get(0).detalle());
+        assertEquals("agregados=PROFESOR;retirados=", publishedEvents(1).get(0).detalle());
     }
 
     // ------------------------------------------------------------------ A1, A2
 
     /**
      * A1 / MR-05 / RN-MS01-12: el administrador no puede modificar sus propios roles. Responde 403, no
-     * toca la base de datos y audita un FALLO.
+     * toca la base de datos y audita un FALLO
      */
     @Test
     void changeRoles_adminModifiesItself_isForbiddenAndAudited() {
@@ -392,12 +394,12 @@ class RoleServiceTest {
         assertEquals(AuditAction.CAMBIO_ROL, event.accion());
         assertEquals(AuditResult.FALLO, event.resultado());
         assertEquals(ADMIN_ID, event.usuarioId());
-        assertEquals("users/" + ADMIN_ID, event.recursoAfectado());
+        assertEquals("usuario:" + ADMIN_ID, event.recursoAfectado());
         assertEquals("AUTOMODIFICACION_DE_ROLES", event.detalle());
     }
 
     /**
-     * A1: si entre los usuarios objetivo esta el propio administrador, no se cambia a ninguno (atomico).
+     * A1: si entre los usuarios objetivo esta el propio administrador, no se cambia a ninguno (atomico)
      */
     @Test
     void changeRoles_selfAmongSeveralTargets_changesNobody() {
@@ -411,7 +413,7 @@ class RoleServiceTest {
 
     /**
      * A2 / RN-MS01-11: quien no es administrador recibe 403, no se toca la base de datos y se audita un
-     * FALLO sin usuario afectado.
+     * FALLO sin usuario afectado
      */
     @Test
     void changeRoles_nonAdmin_isForbiddenAndAudited() {
@@ -419,7 +421,7 @@ class RoleServiceTest {
                 () -> roleService.changeRoles(requesterWith(UserRole.ESTUDIANTE),
                         request(List.of(USER_A.toString()), List.of("ADMIN"), null), CORRELATION_ID));
 
-        assertEquals("No tiene permisos para realizar esta operación.", error.getMessage());
+        assertEquals("No cuenta con los permisos suficientes para realizar esta operación.", error.getMessage());
         verifyNoInteractions(userRepository);
         AuditEvent event = publishedEvents(1).get(0);
         assertEquals(AuditResult.FALLO, event.resultado());
@@ -430,7 +432,7 @@ class RoleServiceTest {
 
     /**
      * MR-01: ningun rol hereda de otro, asi que combinar COORDINADOR y AUDITOR no da permiso de cambiar
-     * roles.
+     * roles
      */
     @Test
     void changeRoles_rolesWithoutTheUserRolesPermission_areForbiddenEvenCombined() {
@@ -442,7 +444,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Quien tiene ADMIN junto con otros roles si puede cambiar roles (MR-01: union de permisos).
+     * Quien tiene ADMIN junto con otros roles si puede cambiar roles (MR-01: union de permisos)
      */
     @Test
     void changeRoles_adminWithOtherRoles_isAllowed() {
@@ -458,7 +460,7 @@ class RoleServiceTest {
 
     /**
      * La autorizacion se comprueba antes que el cuerpo: un no administrador con un cuerpo invalido recibe
-     * 403 y no 400.
+     * 403 y no 400
      */
     @Test
     void changeRoles_nonAdminWithInvalidBody_getsForbiddenFirst() {
@@ -472,7 +474,7 @@ class RoleServiceTest {
 
     /**
      * A3: si algun usuario no existe responde 404, no se aplica ningun cambio (ni a los que si existen)
-     * y se audita un FALLO por cada id inexistente.
+     * y se audita un FALLO por cada id inexistente
      */
     @Test
     void changeRoles_unknownUser_isNotFoundAndChangesNobody() {
@@ -491,7 +493,7 @@ class RoleServiceTest {
 
         AuditEvent event = publishedEvents(1).get(0);
         assertEquals(AuditResult.FALLO, event.resultado());
-        assertEquals("users/" + USER_B, event.recursoAfectado());
+        assertEquals("usuario:" + USER_B, event.recursoAfectado());
         assertEquals("USUARIO_NO_ENCONTRADO", event.detalle());
     }
 
@@ -499,7 +501,7 @@ class RoleServiceTest {
 
     /**
      * A4 / RN-MS01-13: si el resultado deja a un usuario sin roles responde 400, no aplica ningun cambio
-     * y audita un FALLO.
+     * y audita un FALLO
      */
     @Test
     void changeRoles_userWouldLoseAllRoles_isRejected() {
@@ -516,12 +518,12 @@ class RoleServiceTest {
 
         AuditEvent event = publishedEvents(1).get(0);
         assertEquals(AuditResult.FALLO, event.resultado());
-        assertEquals("users/" + USER_A, event.recursoAfectado());
+        assertEquals("usuario:" + USER_A, event.recursoAfectado());
         assertEquals("USUARIO_SIN_ROLES", event.detalle());
     }
 
     /**
-     * Atomicidad: si uno de varios usuarios quedaria sin roles, ninguno de los demas se modifica.
+     * Atomicidad: si uno de varios usuarios quedaria sin roles, ninguno de los demas se modifica
      */
     @Test
     void changeRoles_oneOfSeveralWouldBeEmpty_changesNobody() {
@@ -536,11 +538,11 @@ class RoleServiceTest {
         assertEquals(Set.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), safe.getRoles());
         assertEquals(Set.of(UserRole.ESTUDIANTE), risky.getRoles());
         verify(userRepository, never()).saveAllAndFlush(any());
-        assertEquals("users/" + USER_B, publishedEvents(1).get(0).recursoAfectado());
+        assertEquals("usuario:" + USER_B, publishedEvents(1).get(0).recursoAfectado());
     }
 
     /**
-     * Retirar el unico rol esta permitido si en la misma peticion se agrega otro.
+     * Retirar el unico rol esta permitido si en la misma peticion se agrega otro
      */
     @Test
     void changeRoles_removingTheOnlyRoleWhileAddingAnother_isAllowed() {
@@ -558,7 +560,7 @@ class RoleServiceTest {
 
     /**
      * Un cuerpo invalido responde 400 sin consultar la base de datos ni auditar (no hubo cambio que
-     * auditar).
+     * auditar)
      */
     @Test
     void changeRoles_invalidBody_isRejectedBeforeTouchingAnything() {
@@ -569,7 +571,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Un X-Correlation-ID invalido o ausente se reemplaza por uno generado, que se usa en la auditoria.
+     * Un X-Correlation-ID invalido o ausente se reemplaza por uno generado, que se usa en la auditoria
      */
     @Test
     void changeRoles_invalidOrMissingCorrelationId_generatesOne() {
@@ -589,7 +591,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Un X-Correlation-ID valido se usa recortado.
+     * Un X-Correlation-ID valido se usa recortado
      */
     @Test
     void changeRoles_validCorrelationId_isUsedTrimmed() {
@@ -597,13 +599,13 @@ class RoleServiceTest {
         when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
 
         roleService.changeRoles(admin(), request(List.of(USER_A.toString()), List.of("PROFESOR"), null),
-                "  c19b-472d-a12b  ");
+                "  c19b472d-7a2a-4d3b-a12b-abcdef123456  ");
 
-        assertEquals("c19b-472d-a12b", publishedEvents(1).get(0).correlationId());
+        assertEquals("c19b472d-7a2a-4d3b-a12b-abcdef123456", publishedEvents(1).get(0).correlationId());
     }
 
     /**
-     * RNF-MS01-10: si MS08 falla, la respuesta al cliente no cambia.
+     * RNF-MS01-10: si MS08 falla, la respuesta al cliente no cambia
      */
     @Test
     void changeRoles_auditFailure_doesNotChangeTheResponse() {
@@ -618,7 +620,7 @@ class RoleServiceTest {
     }
 
     /**
-     * Si falla la persistencia no se emite ningun evento de exito.
+     * Si falla la persistencia no se emite ningun evento de exito
      */
     @Test
     void changeRoles_persistenceFailure_emitsNoSuccessEvent() {
@@ -633,7 +635,7 @@ class RoleServiceTest {
     }
 
     /**
-     * El cambio de roles corre en una sola transaccion, que es lo que lo hace atomico.
+     * El cambio de roles corre en una sola transaccion, que es lo que lo hace atomico
      *
      * @throws NoSuchMethodException si el metodo no existe
      */

@@ -1,6 +1,5 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -17,8 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
-import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEvent;
-import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
+import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesResponse;
@@ -26,6 +24,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.RolePermissionsRe
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFoundException;
@@ -34,19 +33,16 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * RF-MS01-05 Gestion de roles y permisos.
+ * Gestión de roles y permisos (RF-MS01-05)
  *
- * Consulta de roles, el ADMINISTRADOR recibe el catalogo completo y los demas solo sus propios roles
- *
- * Cambio de roles, solo lo hace el ADMINISTRADOR
- *
+ * La consulta de roles y el cambio de roles los decide el permiso que concede la matriz Rol-Permiso y
+ * nunca el nombre de un rol, cada cambio de roles se audita en MS08 (RNF-MS01-10)
  */
 @Service
 public class RoleServiceImpl implements RoleService {
 
     private static final Logger log = LoggerFactory.getLogger(RoleServiceImpl.class);
 
-    static final String FORBIDDEN_MESSAGE = "No tiene permisos para realizar esta operación.";
     static final String SELF_MODIFICATION_MESSAGE = "No puede modificar sus propios roles.";
     static final String LAST_ROLE_MESSAGE = "Cada usuario debe conservar al menos un rol.";
 
@@ -55,31 +51,26 @@ public class RoleServiceImpl implements RoleService {
     static final String REASON_USER_NOT_FOUND = "USUARIO_NO_ENCONTRADO";
     static final String REASON_WITHOUT_ROLES = "USUARIO_SIN_ROLES";
 
-    static final String RESOURCE_PREFIX = "users/";
-
     private final UserRepository userRepository;
-    private final AuditEventPublisher auditPublisher;
-    private final Clock clock;
+    private final AuditRecorder auditRecorder;
 
     /**
-     * Crea el servicio con sus dependencias.
+     * Crea el servicio con sus dependencias
      *
-     * @param userRepository repositorio de sacceso a los usuarios y sus roles
-     * @param auditPublisher auditoria de MS08
-     * @param clock reloj UTC
+     * @param userRepository repositorio de acceso a los usuarios y sus roles
+     * @param auditRecorder registrador de los eventos de auditoría de MS08
      */
-    public RoleServiceImpl(UserRepository userRepository, AuditEventPublisher auditPublisher, Clock clock) {
+    public RoleServiceImpl(UserRepository userRepository, AuditRecorder auditRecorder) {
         this.userRepository = userRepository;
-        this.auditPublisher = auditPublisher;
-        this.clock = clock;
+        this.auditRecorder = auditRecorder;
     }
 
     /**
-     * Consulta los roles con sus permisos, el que tenga el permiso ms01:role:read_all recibe todos
-     * los roles, los demas reciben solo los roles propios.
+     * Consulta los roles con sus permisos, quien tenga el permiso de lectura de todos los roles recibe
+     * el catálogo completo y los demás reciben solo sus propios roles
      *
      * @param requester identidad de quien consulta
-     * @return los roles cada uno con los codigos de sus permisos
+     * @return los roles, cada uno con los códigos de sus permisos
      */
     @Override
     public List<RolePermissionsResponse> getRoles(RequesterIdentity requester) {
@@ -95,15 +86,17 @@ public class RoleServiceImpl implements RoleService {
     }
 
     /**
-     * Agrega y retira roles a uno o varios usuarios
+     * Agrega y retira roles a uno o varios usuarios en una sola operación atómica, cada usuario
+     * procesado se audita en MS08
      *
-     * @param requester identidad de quien solicita; debe tener el permiso ms01:user:roles
+     * @param requester identidad de quien solicita
      * @param request cuerpo con los usuarios objetivo y los roles a agregar y a retirar
-     * @param correlationId correlationId
+     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
      * @return los roles finales de cada usuario
-     * @throws ForbiddenOperationException si el solicitante no es administrador o se incluye a si mismo
-     * @throws InvalidRequestException si el cuerpo es invalido o algun usuario quedaria sin roles
-     * @throws UsersNotFoundException si algun usuario objetivo no existe
+     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido o se incluye a sí
+     *         mismo
+     * @throws InvalidRequestException si el cuerpo es inválido o algún usuario quedaría sin roles
+     * @throws UsersNotFoundException si algún usuario objetivo no existe
      */
     @Override
     @Transactional
@@ -112,18 +105,18 @@ public class RoleServiceImpl implements RoleService {
         String corr = CorrelationIds.resolve(correlationId);
 
         if (!requester.hasPermission(Permission.MS01_USER_ROLES)) {
-            publishFailure(requester.userId(), null, REASON_NOT_ALLOWED, corr);
-            log.warn("[{}] Cambio de roles rechazado: el solicitante {} no es administrador.", corr,
+            publishFailure(requester, null, REASON_NOT_ALLOWED, corr);
+            log.warn("Cambio de roles rechazado: el solicitante {} no tiene el permiso requerido",
                     requester.userId());
-            throw new ForbiddenOperationException(FORBIDDEN_MESSAGE);
+            throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
         }
 
         ChangeRolesCommand command = ChangeRolesValidator.validate(request);
 
         if (command.userIds().contains(requester.userId())) {
-            publishFailure(requester.userId(), requester.userId(), REASON_SELF_MODIFICATION, corr);
-            log.warn("[{}] Cambio de roles rechazado: el administrador {} intenta modificar sus propios roles.",
-                    corr, requester.userId());
+            publishFailure(requester, requester.userId(), REASON_SELF_MODIFICATION, corr);
+            log.warn("Cambio de roles rechazado: el usuario {} intenta modificar sus propios roles",
+                    requester.userId());
             throw new ForbiddenOperationException(SELF_MODIFICATION_MESSAGE);
         }
 
@@ -141,11 +134,11 @@ public class RoleServiceImpl implements RoleService {
         List<ChangeRolesResponse.UserRoles> results = new ArrayList<>();
         for (UUID id : command.userIds()) {
             RoleChange change = changes.get(id);
-            publishSuccess(requester.userId(), change, corr);
+            publishSuccess(requester, change, corr);
             results.add(new ChangeRolesResponse.UserRoles(id.toString(), UserRole.sortedByName(change.after())));
         }
-        log.info("[{}] Roles actualizados por el administrador {}: {} usuario(s) procesado(s), {} modificado(s).",
-                corr, requester.userId(), results.size(), modified.size());
+        log.info("Roles actualizados por el usuario {}: {} usuario(s) procesado(s), {} modificado(s)",
+                requester.userId(), results.size(), modified.size());
         return new ChangeRolesResponse(results);
     }
 
@@ -177,9 +170,9 @@ public class RoleServiceImpl implements RoleService {
         }
 
         for (UUID id : missing) {
-            publishFailure(requester.userId(), id, REASON_USER_NOT_FOUND, corr);
+            publishFailure(requester, id, REASON_USER_NOT_FOUND, corr);
         }
-        log.warn("[{}] Cambio de roles rechazado: {} usuario(s) inexistente(s).", corr, missing.size());
+        log.warn("Cambio de roles rechazado: {} usuario(s) inexistente(s)", missing.size());
         throw new UsersNotFoundException(missing);
     }
 
@@ -225,11 +218,11 @@ public class RoleServiceImpl implements RoleService {
             RoleChange change = changes.get(id);
             if (change.after().isEmpty()) {
                 anyEmpty = true;
-                publishFailure(requester.userId(), id, REASON_WITHOUT_ROLES, corr);
+                publishFailure(requester, id, REASON_WITHOUT_ROLES, corr);
             }
         }
         if (anyEmpty) {
-            log.warn("[{}] Cambio de roles rechazado: algun usuario quedaria sin roles.", corr);
+            log.warn("Cambio de roles rechazado: algún usuario quedaría sin roles");
             throw new InvalidRequestException(LAST_ROLE_MESSAGE, List.of());
         }
     }
@@ -252,54 +245,42 @@ public class RoleServiceImpl implements RoleService {
     }
 
     /**
-     * Audita en MS08 el cambio de roles exitoso de un usuario
+     * Audita en MS08 el cambio de roles exitoso de un usuario, el detalle lista los roles que realmente
+     * se agregaron y se retiraron
      *
-     * @param requesterId administrador que realizo el cambio
+     * @param requester identidad de quien realizó el cambio
      * @param change cambio aplicado al usuario
-     * @param corr correlationId
+     * @param corr correlation id de la petición
      */
-    private void publishSuccess(UUID requesterId, RoleChange change, String corr) {
-        String detail = "rol_anterior=" + join(change.before()) + ";rol_nuevo=" + join(change.after());
-        publish(AuditResult.EXITO, requesterId, change.user().getId(), detail, corr);
+    private void publishSuccess(RequesterIdentity requester, RoleChange change, String corr) {
+        Set<UserRole> added = EnumSet.noneOf(UserRole.class);
+        added.addAll(change.after());
+        added.removeAll(change.before());
+
+        Set<UserRole> removed = EnumSet.noneOf(UserRole.class);
+        removed.addAll(change.before());
+        removed.removeAll(change.after());
+
+        String detail = "agregados=" + join(added) + ";retirados=" + join(removed);
+        auditRecorder.recordAs(AuditAction.CAMBIO_ROL, AuditResult.EXITO, requester,
+                AuditRecorder.userResource(change.user().getId()), detail, corr);
     }
 
     /**
      * Audita en MS08 un cambio de roles rechazado
      *
-     * @param requesterId usuario que hizo la peticion
-     * @param targetId usuario afectado
+     * @param requester identidad de quien hizo la petición
+     * @param targetId usuario afectado, null si el rechazo no corresponde a un usuario concreto
      * @param reason motivo del rechazo
-     * @param corr correlationId
+     * @param corr correlation id de la petición
      */
-    private void publishFailure(UUID requesterId, UUID targetId, String reason, String corr) {
-        publish(AuditResult.FALLO, requesterId, targetId, reason, corr);
+    private void publishFailure(RequesterIdentity requester, UUID targetId, String reason, String corr) {
+        auditRecorder.recordAs(AuditAction.CAMBIO_ROL, AuditResult.FALLO, requester,
+                AuditRecorder.userResource(targetId), reason, corr);
     }
 
     /**
-     * Envia el evento CAMBIO_ROL al auditPublisher
-     *
-     * @param result EXITO o FALLO
-     * @param requesterId usuario que hizo la peticion
-     * @param targetId usuario afectado
-     * @param detail roles anterior y nuevo en un EXITO, o el motivo de un FALLO
-     * @param corr correlationId
-     */
-    private void publish(AuditResult result, UUID requesterId, UUID targetId, String detail, String corr) {
-        String resource = null;
-        if (targetId != null) {
-            resource = RESOURCE_PREFIX + targetId;
-        }
-        try {
-            auditPublisher.publish(new AuditEvent(AuditAction.CAMBIO_ROL, result, requesterId, null, detail,
-                    corr, clock.instant(), resource));
-        } catch (RuntimeException e) {
-            log.error("[{}] Falló la emisión del evento de auditoría CAMBIO_ROL/{}: {}", corr, result,
-                    e.toString());
-        }
-    }
-
-    /**
-     * Une los nombres de un conjunto de roles en un texto separado por comas, en orden alfabetico
+     * Une los nombres de un conjunto de roles en un texto separado por comas, en orden alfabético
      *
      * @param roles conjunto de roles
      * @return nombres separados por coma

@@ -1,7 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.audit;
 
 /**
- * Acciones auditables de MS01 (RNF-MS01-10).
+ * Acciones auditables de MS01 (RNF-MS01-10)
  */
 public enum AuditAction {
     REGISTRO,

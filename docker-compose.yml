@@ -3,15 +3,15 @@ services:
     image: postgres:17-alpine
     container_name: campus-postgres
     environment:
-      POSTGRES_DB: campus_db
-      POSTGRES_USER: campus_user
-      POSTGRES_PASSWORD: campus_password
+      POSTGRES_DB: ${DB_NAME:-campus_db}
+      POSTGRES_USER: ${DB_USERNAME:-campus_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-campus_password}
     ports:
       - "5432:5432"
     volumes:
       - campus-postgres-data:/var/lib/postgresql/data
- 
+      - ./database:/docker-entrypoint-initdb.d:ro
+
 volumes:
   campus-postgres-data:
     external: true
- 

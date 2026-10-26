@@ -18,6 +18,13 @@ public record LoginResponse(
 
     public static final String TOKEN_TYPE = "Bearer";
 
+    /**
+     * Datos mínimos del usuario autenticado que acompañan al token
+     *
+     * @param id identificador del usuario
+     * @param correo correo institucional del usuario
+     * @param roles roles del usuario en el momento de emitir el token
+     */
     public record UsuarioResumen(UUID id, String correo, List<UserRole> roles) {
     }
 }

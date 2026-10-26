@@ -31,7 +31,7 @@ class UserResponseRolesOrderTest {
         entity = new UserEntity();
         entity.setFirstName("Carlos");
         entity.setFirstLastName("Gomez");
-        entity.setEmail("carlos.gomez@mail.escuelaing.edu.co");
+        entity.setEmail("carlos.gomez@escuelaing.edu.co");
         entity.setState(UserState.ACTIVO);
         entity.setRoles(EnumSet.of(UserRole.PROFESOR, UserRole.ESTUDIANTE, UserRole.ADMIN));
     }
@@ -43,7 +43,7 @@ class UserResponseRolesOrderTest {
     void userResponse_fromEntity_sortsTheRoles() {
         UserResponse response = UserResponse.fromEntity(entity);
 
-        assertEquals(List.of(UserRole.ADMIN, UserRole.ESTUDIANTE, UserRole.PROFESOR), response.getRoles());
+        assertEquals(List.of(UserRole.ADMIN, UserRole.ESTUDIANTE, UserRole.PROFESOR), response.roles());
     }
 
     /**
@@ -53,7 +53,7 @@ class UserResponseRolesOrderTest {
     void userProfileResponse_fromEntity_sortsTheRoles() {
         UserProfileResponse response = UserProfileResponse.fromEntity(entity);
 
-        assertEquals(List.of(UserRole.ADMIN, UserRole.ESTUDIANTE, UserRole.PROFESOR), response.getRoles());
+        assertEquals(List.of(UserRole.ADMIN, UserRole.ESTUDIANTE, UserRole.PROFESOR), response.roles());
     }
 
     /**
@@ -63,7 +63,7 @@ class UserResponseRolesOrderTest {
     void fromEntity_userWithoutRoles_returnsAnEmptyList() {
         entity.setRoles(null);
 
-        assertTrue(UserResponse.fromEntity(entity).getRoles().isEmpty());
-        assertTrue(UserProfileResponse.fromEntity(entity).getRoles().isEmpty());
+        assertTrue(UserResponse.fromEntity(entity).roles().isEmpty());
+        assertTrue(UserProfileResponse.fromEntity(entity).roles().isEmpty());
     }
 }

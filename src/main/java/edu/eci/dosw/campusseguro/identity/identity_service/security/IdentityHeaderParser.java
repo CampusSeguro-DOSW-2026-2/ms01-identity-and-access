@@ -11,7 +11,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.Unauthentic
  * Convierte las cabeceras de identidad X-User-Id y X-User-Role en un RequesterIdentity
  *
  * Si faltan las cabeceras de identidad en un endpoint protegido se responde 401
- * 
+ *
  * Los valores que no corresponden a algo valido se rechazan con 401
  */
 public final class IdentityHeaderParser {
@@ -26,7 +26,7 @@ public final class IdentityHeaderParser {
     private static final String ROLE_SEPARATOR = ",";
 
     /**
-     * 
+     * No se instancia
      */
     private IdentityHeaderParser() {
     }
@@ -100,7 +100,7 @@ public final class IdentityHeaderParser {
     }
 
     /**
-     * Verifica si un String es nulo o esta lleno de espacios o vacio.
+     * Verifica si un String es nulo o esta lleno de espacios o vacio
      *
      * @param value String a verificar
      * @return true si el valor es null o esta en blanco

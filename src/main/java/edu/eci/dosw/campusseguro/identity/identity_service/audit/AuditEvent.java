@@ -5,51 +5,41 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Evento de auditoria que MS01 emite a MS08 (RNF-MS01-10)
+ * Evento de auditoría que MS01 emite a MS08 (RNF-MS01-10, Estándares de Integración, sección 12)
  *
- * Por diseno no tiene campos para contrasenas, hashes, codigos ni tokens
+ * Por diseño no tiene campos para contraseñas, hashes, códigos, tokens ni datos personales distintos
+ * de los ids
  *
- * @param accion que ocurrio (LOGIN, REGISTRO, ...)
+ * @param accion qué ocurrió (LOGIN, REGISTRO, ...)
  * @param resultado EXITO o FALLO
- * @param usuarioId id del usuario involucrado; null si el intento no corresponde a ninguna cuenta
- * @param correo correo con el que se intento la accion
- * @param detalle motivo breve y generico del fallo (p. ej. CREDENCIALES_INCORRECTAS); null en exito,
- *        salvo en CAMBIO_ROL, donde un exito lleva los roles rol_anterior=...;rol_nuevo=...
- * @param correlationId identificador de trazabilidad de la peticion (X-Correlation-ID)
+ * @param usuarioId usuario que ejecuta la acción; null si es anónimo, por ejemplo un login con un correo
+ *        inexistente
+ * @param usuarioRoles roles del usuario que ejecuta la acción tal como llegaron en X-User-Role, se propagan
+ *        al Gateway junto con el usuario cuando la acción la hace un usuario autenticado; null si la
+ *        petición era pública
+ * @param detalle código genérico del motivo del fallo (p. ej. CREDENCIALES_INCORRECTAS); null cuando no
+ *        aplica, y en un cambio de rol o de estado exitoso lleva lo que cambió
+ * @param correlationId identificador de trazabilidad de la petición (X-Correlation-ID)
  * @param fecha instante del evento (UTC)
- * @param recursoAfectado recurso sobre el que se actuo, p. ej. users/{id} (RNF-MS01-10, estandar de
- *        auditoria); null cuando la accion no recae sobre un recurso
+ * @param recursoAfectado recurso sobre el que se actuó con el formato tipo:id (p. ej. usuario:3f6c2a9e-...);
+ *        null solo cuando no hay un recurso identificable
  */
 public record AuditEvent(
         AuditAction accion,
         AuditResult resultado,
         UUID usuarioId,
-        String correo,
+        String usuarioRoles,
         String detalle,
         String correlationId,
         Instant fecha,
         String recursoAfectado) {
 
+    /**
+     * Valida que los componentes obligatorios estén presentes
+     */
     public AuditEvent {
         Objects.requireNonNull(accion, "accion");
         Objects.requireNonNull(resultado, "resultado");
         Objects.requireNonNull(fecha, "fecha");
-    }
-
-    /**
-     * Crea un evento que no recae sobre un recurso distinto del propio usuario (login, registro...),
-     * es decir, con recursoAfectado en null.
-     *
-     * @param accion que ocurrio
-     * @param resultado EXITO o FALLO
-     * @param usuarioId id del usuario involucrado, es null si no hay uno involucrado
-     * @param correo correo del usuario
-     * @param detalle motivo breve y generico del fallo
-     * @param correlationId identificador de trazabilidad de la peticion
-     * @param fecha instante del evento (UTC)
-     */
-    public AuditEvent(AuditAction accion, AuditResult resultado, UUID usuarioId, String correo,
-            String detalle, String correlationId, Instant fecha) {
-        this(accion, resultado, usuarioId, correo, detalle, correlationId, fecha, null);
     }
 }

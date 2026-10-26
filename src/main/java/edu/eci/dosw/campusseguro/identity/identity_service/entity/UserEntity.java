@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.CollectionTable;
@@ -20,6 +21,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+/**
+ * Usuario registrado en MS01 (tabla usuarios del modelo de datos), el correo se guarda siempre en
+ * minúsculas y la contraseña solo como hash
+ */
 @Entity
 @Table(name = "usuarios")
 public class UserEntity {
@@ -56,34 +61,139 @@ public class UserEntity {
     @Column(name = "estado", nullable = false, length = 10)
     private UserState state;
 
+    @CreationTimestamp
+    @Column(name = "creado_en", nullable = false, updatable = false)
+    private Instant createdAt;
+
     @UpdateTimestamp
     @Column(name = "actualizado_en", nullable = false)
     private Instant updatedAt;
 
     /**
-     * Seccion de gets y sets dentro de la entidad para acceder a su informacion.
+     * Devuelve el identificador del usuario
+     *
+     * @return el id del usuario, null si todavía no se guardó
      */
+    public UUID getId() {
+        return this.id;
+    }
 
-    public UUID getId(){ return this.id; }
-    public void setId(UUID id){ this.id = id; }
+    /**
+     * Coloca el identificador del usuario
+     *
+     * @param id id del usuario
+     */
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getFirstName(){ return this.firstName; }
-    public void setFirstName(String name){ this.firstName = name; }
+    /**
+     * Devuelve el primer nombre
+     *
+     * @return el primer nombre del usuario
+     */
+    public String getFirstName() {
+        return this.firstName;
+    }
 
-    public String getSecondName(){ return this.secondName; }
-    public void setSecondName(String name){ this.secondName = name; }
+    /**
+     * Coloca el primer nombre
+     *
+     * @param name primer nombre del usuario
+     */
+    public void setFirstName(String name) {
+        this.firstName = name;
+    }
 
-    public String getFirstLastName(){ return this.firstLastName; }
-    public void setFirstLastName(String lastName){ this.firstLastName = lastName; }
+    /**
+     * Devuelve el segundo nombre
+     *
+     * @return el segundo nombre, null si no tiene
+     */
+    public String getSecondName() {
+        return this.secondName;
+    }
 
-    public String getSecondLastName(){ return this.secondLastName; }
-    public void setSecondLastName(String lastName){ this.secondLastName = lastName; }
+    /**
+     * Coloca el segundo nombre
+     *
+     * @param name segundo nombre del usuario, null si no tiene
+     */
+    public void setSecondName(String name) {
+        this.secondName = name;
+    }
 
-    public String getEmail(){ return this.email; }
-    public void setEmail(String email){ this.email = email; }
+    /**
+     * Devuelve el primer apellido
+     *
+     * @return el primer apellido del usuario
+     */
+    public String getFirstLastName() {
+        return this.firstLastName;
+    }
 
-    public String getPassword(){ return this.password; }
-    public void setPassword(String password){ this.password = password; }
+    /**
+     * Coloca el primer apellido
+     *
+     * @param lastName primer apellido del usuario
+     */
+    public void setFirstLastName(String lastName) {
+        this.firstLastName = lastName;
+    }
+
+    /**
+     * Devuelve el segundo apellido
+     *
+     * @return el segundo apellido, null si no tiene
+     */
+    public String getSecondLastName() {
+        return this.secondLastName;
+    }
+
+    /**
+     * Coloca el segundo apellido
+     *
+     * @param lastName segundo apellido del usuario, null si no tiene
+     */
+    public void setSecondLastName(String lastName) {
+        this.secondLastName = lastName;
+    }
+
+    /**
+     * Devuelve el correo institucional
+     *
+     * @return el correo del usuario, en minúsculas
+     */
+    public String getEmail() {
+        return this.email;
+    }
+
+    /**
+     * Coloca el correo institucional
+     *
+     * @param email correo del usuario, ya normalizado a minúsculas
+     */
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    /**
+     * Devuelve el hash de la contraseña
+     *
+     * @return el hash BCrypt de la contraseña, nunca el texto plano
+     */
+    public String getPassword() {
+        return this.password;
+    }
+
+    /**
+     * Coloca el hash de la contraseña
+     *
+     * @param password hash BCrypt de la contraseña
+     */
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
     /**
      * Devuelve los roles del usuario, nunca es null y no tiene un orden definido, para entregarlos
@@ -116,7 +226,39 @@ public class UserEntity {
         this.roles.addAll(finalRoles);
     }
 
-    public UserState getState(){ return this.state; }
-    public void setState(UserState state){ this.state = state; }
+    /**
+     * Devuelve el estado de la cuenta
+     *
+     * @return el estado del usuario
+     */
+    public UserState getState() {
+        return this.state;
+    }
 
+    /**
+     * Coloca el estado de la cuenta
+     *
+     * @param state estado del usuario
+     */
+    public void setState(UserState state) {
+        this.state = state;
+    }
+
+    /**
+     * Devuelve la fecha de registro
+     *
+     * @return el instante en que se creó el usuario, null si todavía no se guardó
+     */
+    public Instant getCreatedAt() {
+        return this.createdAt;
+    }
+
+    /**
+     * Devuelve la fecha de la última modificación
+     *
+     * @return el instante de la última modificación, null si todavía no se guardó
+     */
+    public Instant getUpdatedAt() {
+        return this.updatedAt;
+    }
 }

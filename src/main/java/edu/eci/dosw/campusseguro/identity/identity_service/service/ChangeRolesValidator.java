@@ -11,18 +11,20 @@ import java.util.regex.Pattern;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
  * Valida el cuerpo de PATCH /api/v1/users/roles segun el formulario F-09 y lo convierte en un
  * ChangeRolesCommand
  *
  * ids: al menos un usuario y todos con formato de identificador valido
- * 
+ *
  * agregar / retirar: solo roles del catalogo y sin repetir (0 a 8 por lista)
- * 
+ *
  * Ambas listas vacias: "Indique roles a agregar o retirar."
- * 
+ *
  * Un rol en ambas listas: "Un rol no puede agregarse y retirarse a la vez."
  */
 public final class ChangeRolesValidator {
@@ -31,7 +33,7 @@ public final class ChangeRolesValidator {
     public static final String FIELD_ADD = "agregar";
     public static final String FIELD_REMOVE = "retirar";
 
-    public static final String INVALID_DATA_MESSAGE = "Datos inválidos.";
+    public static final String INVALID_DATA_MESSAGE = ErrorCode.VALIDATION.getMessage();
     public static final String MISSING_USERS_MESSAGE = "Seleccione al menos un usuario.";
     public static final String INVALID_USER_ID_MESSAGE = "Identificador de usuario no válido.";
     public static final String INVALID_ROLES_MESSAGE = "Seleccione roles válidos.";
@@ -42,6 +44,7 @@ public final class ChangeRolesValidator {
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     /**
+     * Clase de utilidad, no se instancia
      */
     private ChangeRolesValidator() {
     }
@@ -54,13 +57,13 @@ public final class ChangeRolesValidator {
      * @throws InvalidRequestException si algun dato incumple F-09 y se lanza HTTP 400
      */
     public static ChangeRolesCommand validate(ChangeRolesRequest request) {
-        List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
+        List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(request.unknownFieldErrors());
         Set<UUID> userIds = parseUserIds(request.getIds(), errors);
         Set<UserRole> rolesToAdd = parseRoles(FIELD_ADD, request.getAgregar(), errors);
         Set<UserRole> rolesToRemove = parseRoles(FIELD_REMOVE, request.getRetirar(), errors);
 
         if (!errors.isEmpty()) {
-            throw new InvalidRequestException(INVALID_DATA_MESSAGE, errors);
+            throw new InvalidRequestException(INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
         }
         if (rolesToAdd.isEmpty() && rolesToRemove.isEmpty()) {
             throw new InvalidRequestException(NO_ROLES_GIVEN_MESSAGE, List.of());

@@ -19,14 +19,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 /**
  * RN-MS01-23 / estandares de integracion: la identidad de quien llama se toma de las cabeceras X-User-Id y
  * X-User-Role del API Gateway; si faltan o no son validas la peticion es 401. Tambien cubre la
- * autorizacion por permisos de RequesterIdentity (MR-01, MR-07).
+ * autorizacion por permisos de RequesterIdentity (MR-01, MR-07)
  */
 class IdentityHeaderParserTest {
 
     private static final String USER_ID = "5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c";
 
     /**
-     * Una identidad con un solo rol se interpreta correctamente.
+     * Una identidad con un solo rol se interpreta correctamente
      */
     @Test
     void parse_singleRole_returnsTheIdentity() {
@@ -37,7 +37,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Varios roles separados por coma se interpretan todos, ignorando espacios y repetidos.
+     * Varios roles separados por coma se interpretan todos, ignorando espacios y repetidos
      */
     @Test
     void parse_severalRoles_ignoresSpacesAndDuplicates() {
@@ -49,7 +49,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Una coma sobrante no invalida la cabecera siempre que haya al menos un rol.
+     * Una coma sobrante no invalida la cabecera siempre que haya al menos un rol
      */
     @Test
     void parse_trailingComma_isTolerated() {
@@ -59,7 +59,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Sin X-User-Id la identidad no se puede establecer (401).
+     * Sin X-User-Id la identidad no se puede establecer (401)
      */
     @Test
     void parse_missingUserId_throwsUnauthenticated() {
@@ -70,7 +70,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Sin X-User-Role la identidad no se puede establecer (401).
+     * Sin X-User-Role la identidad no se puede establecer (401)
      */
     @Test
     void parse_missingRole_throwsUnauthenticated() {
@@ -81,7 +81,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Las cabeceras en blanco cuentan como ausentes.
+     * Las cabeceras en blanco cuentan como ausentes
      */
     @Test
     void parse_blankHeaders_throwUnauthenticated() {
@@ -90,7 +90,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Una cabecera de roles que solo tiene separadores no establece ningun rol (401).
+     * Una cabecera de roles que solo tiene separadores no establece ningun rol (401)
      */
     @Test
     void parse_onlySeparators_throwsUnauthenticated() {
@@ -101,7 +101,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Un X-User-Id que no es un UUID se rechaza (401).
+     * Un X-User-Id que no es un UUID se rechaza (401)
      */
     @Test
     void parse_userIdWithoutUuidFormat_throwsUnauthenticated() {
@@ -112,7 +112,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Un rol fuera del catalogo se rechaza (401), aunque los demas sean validos.
+     * Un rol fuera del catalogo se rechaza (401), aunque los demas sean validos
      */
     @Test
     void parse_roleOutsideTheCatalog_throwsUnauthenticated() {
@@ -123,7 +123,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Los nombres de rol van en mayusculas; en minusculas no pertenecen al catalogo (401).
+     * Los nombres de rol van en mayusculas; en minusculas no pertenecen al catalogo (401)
      */
     @Test
     void parse_lowercaseRole_throwsUnauthenticated() {
@@ -131,7 +131,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * MR-01: los permisos del solicitante son la union de los permisos de todos sus roles.
+     * MR-01: los permisos del solicitante son la union de los permisos de todos sus roles
      */
     @Test
     void requesterPermissions_areTheUnionOfItsRoles() {
@@ -143,7 +143,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Solo quien tiene el rol ADMIN tiene el permiso para cambiar roles.
+     * Solo quien tiene el rol ADMIN tiene el permiso para cambiar roles
      */
     @Test
     void onlyAdminHasTheChangeRolesPermission() {
@@ -155,7 +155,7 @@ class IdentityHeaderParserTest {
     }
 
     /**
-     * Los roles de la identidad son un conjunto inmutable que no cambia si cambia el original.
+     * Los roles de la identidad son un conjunto inmutable que no cambia si cambia el original
      */
     @Test
     void requesterIdentity_rolesAreAnImmutableCopy() {

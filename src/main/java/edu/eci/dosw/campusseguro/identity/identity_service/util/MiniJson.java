@@ -4,21 +4,24 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 /**
- * Serializador JSON minimo y determinista.
+ * Serializador JSON minimo y determinista
  *
  * Se usa para el encabezado y el cuerpo del JWT y para el cuerpo del evento de auditoria, donde la
  * forma es fija y pequena. Asi la emision del token no depende de la version de Jackson ni de su
- * configuracion. Soporta: null, CharSequence, Boolean, Number, Enum, Map y cualquier Iterable.
+ * configuracion. Soporta: null, CharSequence, Boolean, Number, Enum, Map y cualquier Iterable
  */
 public final class MiniJson {
 
+    /**
+     * No se instancia
+     */
     private MiniJson() {
     }
 
     /**
-     * Serializa un objeto soportado en una cadena de texto con formato JSON.
-     * 
-     * @param value el objeto a serializar (puede ser Map, Iterable, Number, Boolean, Enum, CharSequence o null
+     * Serializa un objeto soportado en una cadena de texto con formato JSON
+     *
+     * @param value el objeto a serializar, puede ser Map, Iterable, Number, Boolean, Enum, CharSequence o null
      * @return una cadena de texto que representa el objeto en formato JSON
      */
     public static String write(Object value) {
@@ -28,9 +31,9 @@ public final class MiniJson {
     }
 
     /**
-     * Evalúa el tipo del objeto recibido y lo serializa adecuadamente, acumulando el resultado 
-     * en el acumulador de texto proporcionado.
-     * 
+     * Evalúa el tipo del objeto recibido y lo serializa adecuadamente, acumulando el resultado
+     * en el acumulador de texto proporcionado
+     *
      * @param value el objeto actual a procesar y adjuntar
      * @param out el constructor de cadenas acumulativo donde se escribe el resultado
      */
@@ -55,8 +58,8 @@ public final class MiniJson {
     }
 
     /**
-     * Serializa un mapa de tipo llave-valor en un objeto JSON con llaves delimitadas por llaves {}.
-     * 
+     * Serializa un mapa de tipo llave-valor en un objeto JSON con llaves delimitadas por llaves {}
+     *
      * @param map el mapa de entradas a serializar como propiedades del objeto JSON
      * @param out el acumulador de cadenas donde se escribe el objeto JSON resultante
      */
@@ -76,8 +79,8 @@ public final class MiniJson {
     }
 
     /**
-     * Serializa una colección iterable de elementos en un arreglo JSON delimitado por corchetes [].
-     * 
+     * Serializa una colección iterable de elementos en un arreglo JSON delimitado por corchetes []
+     *
      * @param items la colección de elementos a serializar
      * @param out el acumulador de cadenas donde se escribe el arreglo JSON resultante
      */
@@ -95,9 +98,9 @@ public final class MiniJson {
     }
 
     /**
-     * Serializa un valor numérico asegurando un formato válido para JSON (manejando de forma plana 
-     * los decimales y restringiendo valores no válidos como NaN o infinitos).
-     * 
+     * Serializa un valor numérico asegurando un formato válido para JSON, manejando de forma plana
+     * los decimales y restringiendo valores no válidos como NaN o infinitos
+     *
      * @param number el objeto numérico a serializar
      * @param out el acumulador de cadenas donde se adjunta la representación numérica
      */
@@ -116,9 +119,9 @@ public final class MiniJson {
     }
 
     /**
-     * Serializa una cadena de texto escapando correctamente los caracteres especiales 
-     * exigidos por el estándar JSON y delimitándola entre comillas dobles.
-     * 
+     * Serializa una cadena de texto escapando correctamente los caracteres especiales
+     * exigidos por el estándar JSON y delimitándola entre comillas dobles
+     *
      * @param text la cadena de texto plano a escapar y serializar
      * @param out el acumulador de cadenas donde se escribe el texto formateado
      */

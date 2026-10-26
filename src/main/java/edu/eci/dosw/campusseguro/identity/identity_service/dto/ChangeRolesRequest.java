@@ -2,20 +2,19 @@ package edu.eci.dosw.campusseguro.identity.identity_service.dto;
 
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Cuerpo de PATCH /api/v1/users/roles
- * 
+ *
  * ids: usuarios objetivo
  * agregar: roles que se agregan a cada usuario
  * retirar: roles que se retiran a cada usuario
- * 
- * cualquier campo no definido en el contrato se rechaza con HTTP 400
- * la identidad de quien solicita nunca viaja en el cuerpo, sino en las cabeceras
+ *
+ * cualquier campo no definido en el contrato se rechaza con HTTP 400 (RG-04)
+ * la identidad de quien solicita nunca viaja en el cuerpo, sino en las cabeceras (RG-07)
  */
-public class ChangeRolesRequest {
+public class ChangeRolesRequest extends StrictRequest {
 
     @JsonProperty("ids")
     private List<String> ids;
@@ -78,16 +77,5 @@ public class ChangeRolesRequest {
      */
     public void setRetirar(List<String> retirar) {
         this.retirar = retirar;
-    }
-
-    /**
-     * RG-04: Cualquier propiedad desconocida hace fallar la deserializacion
-     *
-     * @param name nombre de la propiedad no definida en el contrato
-     * @param value valor recibido para esa propiedad
-     */
-    @JsonAnySetter
-    public void rejectUnknownProperty(String name, Object value) {
-        throw new IllegalArgumentException("Campo no permitido: " + name);
     }
 }

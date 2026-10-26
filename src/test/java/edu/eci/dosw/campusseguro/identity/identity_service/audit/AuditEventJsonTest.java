@@ -1,8 +1,6 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.audit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,81 +10,77 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Evento de auditoria CAMBIO_ROL (RF-MS01-05, RNF-MS01-10): el evento lleva el recurso afectado (a quien
- * se le cambiaron los roles) y los roles anterior y nuevo, y los eventos que no lo usan (login) siguen
- * serializandose igual que antes.
+ * Cuerpo JSON del evento de auditoría (RNF-MS01-10, Estándares de Integración): modulo MS01, recurso
+ * afectado con el formato tipo:id, fecha en ISO UTC y sin datos personales
  *
- * Esta prueba esta en el mismo paquete que Ms08AuditEventPublisher porque toJson es privado del paquete.
+ * Esta prueba está en el mismo paquete que AuditEventPublisherImpl porque toJson es privado del paquete
  */
 class AuditEventJsonTest {
 
     private static final UUID ADMIN_ID = UUID.fromString("a0000000-0000-4000-8000-000000000001");
     private static final UUID TARGET_ID = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
     private static final Instant NOW = Instant.parse("2026-10-23T15:00:00Z");
+    private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
     /**
-     * El evento CAMBIO_ROL exitoso incluye quien lo hizo, a quien, y los roles anterior y nuevo.
+     * El evento CAMBIO_ROL exitoso incluye quién lo hizo, a quién y lo que cambió
      */
     @Test
-    void toJson_roleChangeSuccess_includesTheAffectedResourceAndTheRoles() {
-        AuditEvent event = new AuditEvent(AuditAction.CAMBIO_ROL, AuditResult.EXITO, ADMIN_ID, null,
-                "rol_anterior=ESTUDIANTE;rol_nuevo=ESTUDIANTE,PROFESOR", "corr-1", NOW, "users/" + TARGET_ID);
+    void toJson_roleChangeSuccess_includesTheAffectedResourceAndTheChanges() {
+        AuditEvent event = new AuditEvent(AuditAction.CAMBIO_ROL, AuditResult.EXITO, ADMIN_ID, "ADMIN",
+                "agregados=PROFESOR;retirados=", CORRELATION_ID, NOW, "usuario:" + TARGET_ID);
 
-        assertEquals("{\"modulo\":\"ms01-identity-and-access\",\"accion\":\"CAMBIO_ROL\",\"resultado\":\"EXITO\","
-                + "\"usuario_id\":\"" + ADMIN_ID + "\","
-                + "\"detalle\":\"rol_anterior=ESTUDIANTE;rol_nuevo=ESTUDIANTE,PROFESOR\","
-                + "\"recurso_afectado\":\"users/" + TARGET_ID + "\","
-                + "\"correlation_id\":\"corr-1\",\"fecha_hora\":\"2026-10-23T15:00:00Z\"}",
-                Ms08AuditEventPublisher.toJson(event));
+        assertEquals("{\"usuario_id\":\"" + ADMIN_ID + "\",\"modulo\":\"MS01\",\"accion\":\"CAMBIO_ROL\","
+                + "\"recurso_afectado\":\"usuario:" + TARGET_ID + "\",\"resultado\":\"EXITO\","
+                + "\"fecha_hora\":\"2026-10-23T15:00:00Z\",\"correlation_id\":\"" + CORRELATION_ID + "\","
+                + "\"detalle\":\"agregados=PROFESOR;retirados=\"}", AuditEventPublisherImpl.toJson(event));
     }
 
     /**
-     * Un evento sin recurso afectado no incluye la clave recurso_afectado (los eventos de login no
-     * cambian).
+     * Los roles del actor viajan solo como cabecera, nunca en el cuerpo
      */
     @Test
-    void toJson_withoutAffectedResource_omitsTheKey() {
-        AuditEvent event = new AuditEvent(AuditAction.LOGIN, AuditResult.EXITO, ADMIN_ID, "ana@escuelaing.edu.co",
-                null, "corr-2", NOW);
+    void toJson_neverIncludesTheActorRolesInTheBody() {
+        AuditEvent event = new AuditEvent(AuditAction.CAMBIO_ESTADO, AuditResult.EXITO, ADMIN_ID, "ADMIN", null,
+                CORRELATION_ID, NOW, "usuario:" + TARGET_ID);
 
-        String json = Ms08AuditEventPublisher.toJson(event);
+        String json = AuditEventPublisherImpl.toJson(event);
 
-        assertFalse(json.contains("recurso_afectado"));
-        assertEquals("{\"modulo\":\"ms01-identity-and-access\",\"accion\":\"LOGIN\",\"resultado\":\"EXITO\","
-                + "\"usuario_id\":\"" + ADMIN_ID + "\",\"correo\":\"ana@escuelaing.edu.co\","
-                + "\"correlation_id\":\"corr-2\",\"fecha_hora\":\"2026-10-23T15:00:00Z\"}", json);
+        assertTrue(!json.contains("usuario_roles"));
+        assertTrue(!json.contains("ADMIN"));
     }
 
     /**
-     * Un rechazo del cambio de roles lleva el motivo en detalle y el usuario afectado en recurso_afectado.
+     * Un evento anónimo sin recurso envía las claves opcionales con valor null
+     */
+    @Test
+    void toJson_anonymousEvent_sendsExplicitNulls() {
+        AuditEvent event = new AuditEvent(AuditAction.LOGIN, AuditResult.FALLO, null, null,
+                "CREDENCIALES_INCORRECTAS", CORRELATION_ID, NOW, null);
+
+        assertEquals("{\"usuario_id\":null,\"modulo\":\"MS01\",\"accion\":\"LOGIN\","
+                + "\"recurso_afectado\":null,\"resultado\":\"FALLO\","
+                + "\"fecha_hora\":\"2026-10-23T15:00:00Z\",\"correlation_id\":\"" + CORRELATION_ID + "\","
+                + "\"detalle\":\"CREDENCIALES_INCORRECTAS\"}", AuditEventPublisherImpl.toJson(event));
+    }
+
+    /**
+     * Un rechazo del cambio de roles lleva el motivo en detalle y el usuario afectado en recurso_afectado
      */
     @Test
     void toJson_roleChangeFailure_includesTheReason() {
-        AuditEvent event = new AuditEvent(AuditAction.CAMBIO_ROL, AuditResult.FALLO, ADMIN_ID, null,
-                "AUTOMODIFICACION_DE_ROLES", null, NOW, "users/" + ADMIN_ID);
+        AuditEvent event = new AuditEvent(AuditAction.CAMBIO_ROL, AuditResult.FALLO, ADMIN_ID, "ADMIN",
+                "AUTOMODIFICACION_DE_ROLES", CORRELATION_ID, NOW, "usuario:" + ADMIN_ID);
 
-        String json = Ms08AuditEventPublisher.toJson(event);
+        String json = AuditEventPublisherImpl.toJson(event);
 
         assertTrue(json.contains("\"resultado\":\"FALLO\""));
         assertTrue(json.contains("\"detalle\":\"AUTOMODIFICACION_DE_ROLES\""));
-        assertTrue(json.contains("\"recurso_afectado\":\"users/" + ADMIN_ID + "\""));
-        assertFalse(json.contains("correlation_id"));
+        assertTrue(json.contains("\"recurso_afectado\":\"usuario:" + ADMIN_ID + "\""));
     }
 
     /**
-     * El constructor de siete argumentos que usa el login deja recursoAfectado en null.
-     */
-    @Test
-    void constructor_withoutResource_leavesItNull() {
-        AuditEvent event = new AuditEvent(AuditAction.LOGIN, AuditResult.FALLO, null, "x@escuelaing.edu.co",
-                "CREDENCIALES_INCORRECTAS", "corr-3", NOW);
-
-        assertNull(event.recursoAfectado());
-        assertEquals("CREDENCIALES_INCORRECTAS", event.detalle());
-    }
-
-    /**
-     * Los campos obligatorios siguen siendo obligatorios en el constructor completo.
+     * Los campos obligatorios siguen siendo obligatorios en el constructor
      */
     @Test
     void constructor_requiresActionResultAndDate() {

@@ -21,7 +21,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 /**
  * RF-MS01-05 / RN-MS01-14: la matriz Rol-Permiso definida en el codigo (enums UserRole y Permission)
  * coincide fila por fila con 3_matriz-roles-permisos.md, y los permisos de un usuario con varios roles
- * son la union de los de cada rol, sin herencia (MR-01).
+ * son la union de los de cada rol, sin herencia (MR-01)
  */
 class PermissionMatrixTest {
 
@@ -34,7 +34,7 @@ class PermissionMatrixTest {
     private static final Pattern CODE_FORMAT = Pattern.compile("^ms0[1-8]:[a-z_]+:[a-z_]+$");
 
     /**
-     * Matriz esperada, transcrita de 3_matriz-roles-permisos.md: codigo del permiso y roles que lo tienen.
+     * Matriz esperada, transcrita de 3_matriz-roles-permisos.md: codigo del permiso y roles que lo tienen
      */
     private static final String[][] EXPECTED_MATRIX = {
             {"ms01:profile:read", EVERY_ROLE},
@@ -87,7 +87,7 @@ class PermissionMatrixTest {
     };
 
     /**
-     * Convierte una lista de nombres de rol separados por coma en un conjunto de roles.
+     * Convierte una lista de nombres de rol separados por coma en un conjunto de roles
      *
      * @param names nombres de rol separados por coma
      * @return conjunto de roles con esos nombres
@@ -101,7 +101,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * Calcula los roles que tienen un permiso segun el codigo.
+     * Calcula los roles que tienen un permiso segun el codigo
      *
      * @param permission permiso consultado
      * @return conjunto de roles cuyo conjunto de permisos incluye el permiso
@@ -117,7 +117,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * Busca el permiso del enum que tiene un codigo.
+     * Busca el permiso del enum que tiene un codigo
      *
      * @param code codigo con el formato ms:recurso:accion
      * @return el permiso, o null si ninguno tiene ese codigo
@@ -132,7 +132,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * El catalogo de roles tiene exactamente los ocho roles de RN-MS01-14.
+     * El catalogo de roles tiene exactamente los ocho roles de RN-MS01-14
      */
     @Test
     void catalog_hasTheEightRolesOfRnMs0114() {
@@ -146,7 +146,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * El enum Permission tiene tantos permisos como filas la matriz y cada fila esperada existe.
+     * El enum Permission tiene tantos permisos como filas la matriz y cada fila esperada existe
      */
     @Test
     void permissions_matchTheRowsOfTheMatrix() {
@@ -157,7 +157,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * Los codigos de permiso son unicos y respetan el formato ms:recurso:accion.
+     * Los codigos de permiso son unicos y respetan el formato ms:recurso:accion
      */
     @Test
     void permissionCodes_areUniqueAndWellFormed() {
@@ -172,7 +172,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * Cada fila de la matriz la tienen exactamente los roles indicados, ni uno mas ni uno menos.
+     * Cada fila de la matriz la tienen exactamente los roles indicados, ni uno mas ni uno menos
      */
     @Test
     void everyRowOfTheMatrix_isGrantedToExactlyTheExpectedRoles() {
@@ -184,7 +184,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * Solo el ADMIN gestiona roles, estados y el catalogo completo de roles.
+     * Solo el ADMIN gestiona roles, estados y el catalogo completo de roles
      */
     @Test
     void roleAdministrationPermissions_belongOnlyToAdmin() {
@@ -194,7 +194,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * El AUDITOR consulta usuarios pero no cambia roles ni ve el catalogo completo de roles.
+     * El AUDITOR consulta usuarios pero no cambia roles ni ve el catalogo completo de roles
      */
     @Test
     void auditor_readsUsersButCannotManageRoles() {
@@ -204,7 +204,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * Todos los roles pueden consultar sus propios roles y permisos (ms01:role:read_own).
+     * Todos los roles pueden consultar sus propios roles y permisos (ms01:role:read_own)
      */
     @Test
     void everyRole_canReadItsOwnRoles() {
@@ -215,7 +215,7 @@ class PermissionMatrixTest {
 
     /**
      * El conjunto de permisos de un rol no se puede modificar desde fuera (RN-MS01-14: no se edita en
-     * tiempo de ejecucion).
+     * tiempo de ejecucion)
      */
     @Test
     void rolePermissions_areImmutable() {
@@ -227,7 +227,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * getPermissionCodes entrega un codigo por permiso, en el mismo orden del conjunto de permisos.
+     * getPermissionCodes entrega un codigo por permiso, en el mismo orden del conjunto de permisos
      */
     @Test
     void permissionCodes_listsOneCodePerPermission() {
@@ -241,7 +241,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * MR-01: un usuario con varios roles tiene la union de los permisos de cada uno.
+     * MR-01: un usuario con varios roles tiene la union de los permisos de cada uno
      */
     @Test
     void permissionsOf_severalRoles_isTheUnion() {
@@ -256,7 +256,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * MR-01: ningun rol hereda de otro; ADMIN no recibe los permisos operativos de los demas roles.
+     * MR-01: ningun rol hereda de otro; ADMIN no recibe los permisos operativos de los demas roles
      */
     @Test
     void permissionsOf_adminDoesNotInheritOperationalPermissions() {
@@ -268,7 +268,7 @@ class PermissionMatrixTest {
     }
 
     /**
-     * Sin roles no hay permisos (denegado por defecto).
+     * Sin roles no hay permisos (denegado por defecto)
      */
     @Test
     void permissionsOf_noRoles_isEmpty() {
@@ -277,7 +277,7 @@ class PermissionMatrixTest {
 
     /**
      * Los permisos comunes a todos los roles son los de perfil, sesion, consulta de roles y contenido
-     * publico del campus.
+     * publico del campus
      */
     @Test
     void grantedToEveryRole_hasTheEightCommonPermissions() {

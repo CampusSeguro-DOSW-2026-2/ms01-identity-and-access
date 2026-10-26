@@ -1,9 +1,9 @@
 package edu.eci.dosw.campusseguro.identity.identity_service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -38,12 +38,13 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExcep
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFoundException;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
+import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentityArgumentResolver;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleService;
 
 /**
  * GET /api/v1/roles y PATCH /api/v1/users/roles (RF-MS01-05, formulario F-09): contrato HTTP segun el
  * OpenAPI, lectura de la identidad desde las cabeceras del Gateway y traduccion de errores 400, 401, 403 y 404
- * al formato ErrorResponse.
+ * al formato ErrorResponse
  */
 @ExtendWith(MockitoExtension.class)
 class RoleControllerTest {
@@ -62,17 +63,18 @@ class RoleControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * Arma MockMvc con el controlador y el manejador global de errores.
+     * Arma MockMvc con el controlador y el manejador global de errores
      */
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(roleController)
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(new RequesterIdentityArgumentResolver())
                 .build();
     }
 
     /**
-     * Cuerpo valido de PATCH /users/roles.
+     * Cuerpo valido de PATCH /users/roles
      *
      * @return JSON con un usuario, un rol a agregar y uno a retirar
      */
@@ -90,7 +92,7 @@ class RoleControllerTest {
 
     /**
      * 200: el servicio recibe la identidad armada con las cabeceras y la lista se serializa con rol y
-     * permisos.
+     * permisos
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -118,24 +120,24 @@ class RoleControllerTest {
     }
 
     /**
-     * 401: sin cabeceras de identidad no se llama al servicio y el cuerpo sigue el formato ErrorResponse.
+     * 401: sin cabeceras de identidad no se llama al servicio y el cuerpo sigue el formato ErrorResponse
      *
      * @throws Exception si falla la peticion simulada
      */
     @Test
     void getRoles_withoutIdentityHeaders_returns401() throws Exception {
-        mockMvc.perform(get(ROLES_URL).header("X-Correlation-ID", "corr-7"))
+        mockMvc.perform(get(ROLES_URL).header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"))
                 .andExpect(jsonPath("$.mensaje").value("Faltan las cabeceras de identidad (X-User-Id / X-User-Role)."))
-                .andExpect(jsonPath("$.correlation_id").value("corr-7"));
+                .andExpect(jsonPath("$.correlation_id").value("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
 
         verifyNoInteractions(roleService);
     }
 
     /**
-     * 401: un rol fuera del catalogo en X-User-Role no establece una identidad.
+     * 401: un rol fuera del catalogo en X-User-Role no establece una identidad
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -151,7 +153,7 @@ class RoleControllerTest {
     }
 
     /**
-     * 401: un X-User-Id que no es un UUID no establece una identidad.
+     * 401: un X-User-Id que no es un UUID no establece una identidad
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -169,13 +171,14 @@ class RoleControllerTest {
 
     /**
      * 200: el servicio recibe el cuerpo, la identidad y el correlation id, y la respuesta lleva los roles
-     * resultantes por usuario.
+     * resultantes por usuario
      *
      * @throws Exception si falla la peticion simulada
      */
     @Test
     void changeRoles_validRequest_returns200WithTheResultingRoles() throws Exception {
-        when(roleService.changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class), eq("corr-9")))
+        when(roleService.changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class),
+                eq("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")))
                 .thenReturn(new ChangeRolesResponse(List.of(
                         new ChangeRolesResponse.UserRoles(TARGET_ID, List.of(UserRole.PROFESOR)))));
 
@@ -183,7 +186,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
-                .header("X-Correlation-ID", "corr-9")
+                .header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")
                 .content(validBody()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultados.length()").value(1))
@@ -192,7 +195,7 @@ class RoleControllerTest {
 
         ArgumentCaptor<RequesterIdentity> identity = ArgumentCaptor.forClass(RequesterIdentity.class);
         ArgumentCaptor<ChangeRolesRequest> body = ArgumentCaptor.forClass(ChangeRolesRequest.class);
-        verify(roleService).changeRoles(identity.capture(), body.capture(), eq("corr-9"));
+        verify(roleService).changeRoles(identity.capture(), body.capture(), eq("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
         assertEquals(UUID.fromString(ADMIN_ID), identity.getValue().userId());
         assertEquals(EnumSet.of(UserRole.ADMIN), identity.getValue().roles());
         assertEquals(List.of(TARGET_ID), body.getValue().getIds());
@@ -201,13 +204,13 @@ class RoleControllerTest {
     }
 
     /**
-     * Sin X-Correlation-ID el controlador pasa null al servicio, que genera uno.
+     * Sin X-Correlation-ID el controlador pasa al servicio un UUID v4 generado
      *
      * @throws Exception si falla la peticion simulada
      */
     @Test
-    void changeRoles_withoutCorrelationId_passesNull() throws Exception {
-        when(roleService.changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class), isNull()))
+    void changeRoles_withoutCorrelationId_passesAGeneratedUuid() throws Exception {
+        when(roleService.changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class), any()))
                 .thenReturn(new ChangeRolesResponse(List.of()));
 
         mockMvc.perform(patch(CHANGE_URL)
@@ -216,10 +219,15 @@ class RoleControllerTest {
                 .header("X-User-Role", "ADMIN")
                 .content(validBody()))
                 .andExpect(status().isOk());
+
+        ArgumentCaptor<String> correlation = ArgumentCaptor.forClass(String.class);
+        verify(roleService).changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class),
+                correlation.capture());
+        assertEquals(4, UUID.fromString(correlation.getValue()).version());
     }
 
     /**
-     * 401: sin cabeceras de identidad no se llama al servicio.
+     * 401: sin cabeceras de identidad no se llama al servicio
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -235,13 +243,15 @@ class RoleControllerTest {
     }
 
     /**
-     * 400 (RG-04): un campo que no esta en el contrato se rechaza, por ejemplo intentar enviar quien
-     * solicita en el cuerpo.
+     * RG-04: un campo que no está en el contrato llega al servicio registrado como desconocido para que lo
+     * rechace con un error por campo, por ejemplo intentar enviar quien solicita en el cuerpo
      *
      * @throws Exception si falla la peticion simulada
      */
     @Test
-    void changeRoles_unknownField_returns400() throws Exception {
+    void changeRoles_unknownField_isCapturedForTheServiceToReject() throws Exception {
+        when(roleService.changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class), any()))
+                .thenReturn(new ChangeRolesResponse(List.of()));
         String body = """
                 {
                   "ids": ["%s"],
@@ -255,15 +265,15 @@ class RoleControllerTest {
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
                 .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.codigo").value("VALIDACION"))
-                .andExpect(jsonPath("$.mensaje").value("Datos inválidos."));
+                .andExpect(status().isOk());
 
-        verifyNoInteractions(roleService);
+        ArgumentCaptor<ChangeRolesRequest> captured = ArgumentCaptor.forClass(ChangeRolesRequest.class);
+        verify(roleService).changeRoles(any(RequesterIdentity.class), captured.capture(), any());
+        assertTrue(captured.getValue().unknownFieldNames().contains("solicitante"));
     }
 
     /**
-     * 400: un cuerpo que no es JSON valido o no es un objeto se rechaza.
+     * 400: un cuerpo que no es JSON valido o no es un objeto se rechaza
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -281,7 +291,7 @@ class RoleControllerTest {
     }
 
     /**
-     * 400: sin cuerpo la peticion se rechaza.
+     * 400: sin cuerpo la peticion se rechaza
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -297,7 +307,7 @@ class RoleControllerTest {
     }
 
     /**
-     * 400: las validaciones de F-09 se devuelven con su mensaje y el detalle por campo.
+     * 400: las validaciones de F-09 se devuelven con su mensaje y el detalle por campo
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -311,7 +321,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
-                .header("X-Correlation-ID", "corr-3")
+                .header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")
                 .content(validBody()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -319,11 +329,11 @@ class RoleControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("Datos inválidos."))
                 .andExpect(jsonPath("$.errores[0].campo").value("agregar"))
                 .andExpect(jsonPath("$.errores[0].mensaje").value("Seleccione roles válidos."))
-                .andExpect(jsonPath("$.correlation_id").value("corr-3"));
+                .andExpect(jsonPath("$.correlation_id").value("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
     }
 
     /**
-     * 400: un mensaje de regla sin campo (usuario sin roles) llega como mensaje con errores vacios.
+     * 400: un mensaje de regla sin campo (usuario sin roles) llega como mensaje con errores vacios
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -344,7 +354,7 @@ class RoleControllerTest {
     }
 
     /**
-     * 403: no ser administrador o modificar los propios roles responde PROHIBIDO.
+     * 403: no ser administrador o modificar los propios roles responde PROHIBIDO
      *
      * @throws Exception si falla la peticion simulada
      */
@@ -357,17 +367,17 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
-                .header("X-Correlation-ID", "c19b-472d-a12b")
+                .header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")
                 .content(validBody()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.codigo").value("PROHIBIDO"))
                 .andExpect(jsonPath("$.mensaje").value("No puede modificar sus propios roles."))
-                .andExpect(jsonPath("$.correlation_id").value("c19b-472d-a12b"));
+                .andExpect(jsonPath("$.correlation_id").value("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
     }
 
     /**
-     * 404: un usuario inexistente responde NO_ENCONTRADO con el mensaje del formulario F-09.
+     * 404: un usuario inexistente responde NO_ENCONTRADO con el mensaje del formulario F-09
      *
      * @throws Exception si falla la peticion simulada
      */

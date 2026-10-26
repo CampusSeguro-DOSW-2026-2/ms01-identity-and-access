@@ -1,17 +1,11 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.security;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
-import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
-import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -21,7 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public class UnauthenticatedEntryPoint implements AuthenticationEntryPoint {
 
-    public static final String CODE = "NO_AUTENTICADO";
+    public static final String CODE = ErrorCode.UNAUTHENTICATED.getCode();
 
     /**
      * Escribe la respuesta 401 con codigo NO_AUTENTICADO y el correlation id de la peticion
@@ -39,17 +33,6 @@ public class UnauthenticatedEntryPoint implements AuthenticationEntryPoint {
         if (reason instanceof String text) {
             message = text;
         }
-
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-        body.put("codigo", CODE);
-        body.put("mensaje", message);
-        body.put("errores", List.of());
-        body.put("correlation_id", CorrelationIds.resolve(request.getHeader(CorrelationIds.HEADER)));
-
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write(MiniJson.write(body));
+        ErrorResponseWriter.write(request, response, ErrorCode.UNAUTHENTICATED, message);
     }
 }

@@ -1,40 +1,41 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.dto;
 
 import java.util.List;
+
 import org.springframework.data.domain.Page;
 
-public class PageResponse<T> {
-    private final List<T> contenido;
-    private final int pagina;
-    private final int tamano;
-    private final long totalElementos;
-    private final int totalPaginas;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-    public PageResponse(List<T> contenido, int pagina, int tamano, long totalElementos, int totalPaginas) {
-        this.contenido = contenido;
-        this.pagina = pagina;
-        this.tamano = tamano;
-        this.totalElementos = totalElementos;
-        this.totalPaginas = totalPaginas;
-    }
+/**
+ * Página de resultados de una colección (Estándares de Integración, sección 9)
+ *
+ * @param contenido elementos de la página
+ * @param page número de la página, desde 0
+ * @param size tamaño de página solicitado
+ * @param totalElementos cantidad total de elementos que cumplen la consulta
+ * @param totalPaginas cantidad total de páginas
+ * @param <T> tipo de los elementos de la página
+ */
+public record PageResponse<T>(
+        List<T> contenido,
+        int page,
+        int size,
+        @JsonProperty("total_elementos") long totalElementos,
+        @JsonProperty("total_paginas") int totalPaginas) {
 
-    public static <T> PageResponse<T> from(Page<T> p) {
+    /**
+     * Construye la respuesta a partir de una página de Spring Data
+     *
+     * @param page página de Spring Data
+     * @param <T> tipo de los elementos de la página
+     * @return la respuesta con los nombres de campo del contrato
+     */
+    public static <T> PageResponse<T> from(Page<T> page) {
         return new PageResponse<>(
-            p.getContent(), 
-            p.getNumber(), 
-            p.getSize(), 
-            p.getTotalElements(), 
-            p.getTotalPages()
-        );
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages());
     }
-
-    public List<T> getContenido() { return contenido; }
-
-    public int getPagina() { return pagina; }
-
-    public int getTamano() { return tamano; }
-
-    public long getTotalElementos() { return totalElementos; }
-
-    public int getTotalPaginas() { return totalPaginas; }
 }
