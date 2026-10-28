@@ -9,41 +9,32 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
-public class UserResponse {
-    private UUID id;
- 
-    @JsonProperty("correo")
-    private String email;
- 
-    @JsonProperty("roles")
-    private List<UserRole> roles;
- 
-    @JsonProperty("estado")
-    private UserState state;
+/**
+ * Respuesta de POST /api/v1/auth/register (esquema RegisterResponse del contrato), nunca incluye la
+ * contraseña ni su hash (RF-MS01-01)
+ *
+ * @param id id del usuario creado
+ * @param email correo institucional
+ * @param roles roles del usuario, en orden alfabético
+ * @param state estado de la cuenta
+ */
+public record UserResponse(
+        UUID id,
+        @JsonProperty("correo") String email,
+        List<UserRole> roles,
+        @JsonProperty("estado") UserState state) {
 
     /**
-     * 
-     * @param entity
-     * @return
+     * Construye la respuesta a partir del usuario guardado
+     *
+     * @param entity usuario guardado
+     * @return la respuesta con el id, el correo, los roles ordenados y el estado
      */
-    public static UserResponse fromEntity(UserEntity entity){
-        UserResponse response = new UserResponse();
-        response.setId(entity.getId());
-        response.setEmail(entity.getEmail());
-        response.setRoles(entity.getRoles());
-        response.setState(entity.getState());
-        return response;
+    public static UserResponse fromEntity(UserEntity entity) {
+        return new UserResponse(
+                entity.getId(),
+                entity.getEmail(),
+                UserRole.sortedByName(entity.getRoles()),
+                entity.getState());
     }
-        
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
- 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
- 
-    public List<UserRole> getRoles() { return roles; }
-    public void setRoles(List<UserRole> roles) { this.roles = roles; }
- 
-    public UserState getState() { return state; }
-    public void setState(UserState state) { this.state = state; }
 }

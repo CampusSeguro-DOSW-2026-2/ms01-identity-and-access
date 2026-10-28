@@ -1,71 +1,55 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.dto;
 
 import java.util.List;
+import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
-public class UserProfileResponse {
-
-    @JsonProperty("primer_nombre")
-    private String firstName;
-
-    @JsonProperty("segundo_nombre")
-    private String secondName;
-
-    @JsonProperty("primer_apellido")
-    private String firstLastName;
-
-    @JsonProperty("segundo_apellido")
-    private String secondLastName;
-
-    @JsonProperty("correo")
-    private String email;
- 
-    @JsonProperty("roles")
-    private List<UserRole> roles;
- 
-    @JsonProperty("estado")
-    private UserState state;
+/**
+ * Datos de un usuario (esquema User del contrato), se usa en la consulta y actualización del perfil, en
+ * la consulta por id y en los elementos del listado, el segundo nombre y el segundo apellido se omiten
+ * cuando están vacíos
+ *
+ * @param id id del usuario
+ * @param firstName primer nombre
+ * @param secondName segundo nombre, omitido si no tiene
+ * @param firstLastName primer apellido
+ * @param secondLastName segundo apellido, omitido si no tiene
+ * @param email correo institucional
+ * @param roles roles del usuario, en orden alfabético
+ * @param state estado de la cuenta
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record UserProfileResponse(
+        UUID id,
+        @JsonProperty("primer_nombre") String firstName,
+        @JsonProperty("segundo_nombre") String secondName,
+        @JsonProperty("primer_apellido") String firstLastName,
+        @JsonProperty("segundo_apellido") String secondLastName,
+        @JsonProperty("correo") String email,
+        List<UserRole> roles,
+        @JsonProperty("estado") UserState state) {
 
     /**
-     * 
-     * @param entity
-     * @return
+     * Construye la respuesta a partir del usuario guardado
+     *
+     * @param entity usuario guardado
+     * @return la respuesta con todos los datos del usuario y sus roles ordenados
      */
-    public static UserProfileResponse fromEntity(UserEntity entity){
-        UserProfileResponse response = new UserProfileResponse();
-        response.setFirstName(entity.getFirstName());
-        response.setSecondName(entity.getSecondName());
-        response.setFirstLastName(entity.getFirstLastName());
-        response.setSecondLastName(entity.getSecondLastName());
-        response.setEmail(entity.getEmail());
-        response.setRoles(entity.getRoles());
-        response.setState(entity.getState());
-        return response;
+    public static UserProfileResponse fromEntity(UserEntity entity) {
+        return new UserProfileResponse(
+                entity.getId(),
+                entity.getFirstName(),
+                entity.getSecondName(),
+                entity.getFirstLastName(),
+                entity.getSecondLastName(),
+                entity.getEmail(),
+                UserRole.sortedByName(entity.getRoles()),
+                entity.getState());
     }
-
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-
-    public String getSecondName() { return secondName; }
-    public void setSecondName(String secondName) { this.secondName = secondName; }
-
-    public String getFirstLastName() { return firstLastName; }
-    public void setFirstLastName(String firstLastName) { this.firstLastName = firstLastName; }
-
-    public String getSecondLastName() { return secondLastName; }
-    public void setSecondLastName(String secondLastName) { this.secondLastName = secondLastName; }
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-
-    public List<UserRole> getRoles() { return roles; }
-    public void setRoles(List<UserRole> roles) { this.roles = roles; }
-
-    public UserState getState() { return state; }
-    public void setState(UserState state) { this.state = state; }
 }
