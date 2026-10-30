@@ -12,6 +12,13 @@ services:
       - campus-postgres-data:/var/lib/postgresql/data
       - ./database:/docker-entrypoint-initdb.d:ro
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: campus-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   campus-postgres-data:
     external: true

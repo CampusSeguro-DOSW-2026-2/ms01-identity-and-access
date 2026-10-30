@@ -68,6 +68,20 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * RF-MS01-08 A1: código de recuperación incorrecto, vencido o ya usado, el sistema responde 400 con
+     * código CODIGO_INVALIDO y un mensaje genérico que no revela la causa
+     *
+     * @param ex excepción con el mensaje del formulario F-05
+     * @param request petición, de la que se toma el correlation id
+     * @return 400 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(InvalidResetCodeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidResetCode(InvalidResetCodeException ex,
+            HttpServletRequest request) {
+        return build(ErrorCode.INVALID_CODE, ex.getMessage(), List.of(), request);
+    }
+
+    /**
      * RN-MS01-23: no se pudo establecer la identidad de quien llama (faltan las cabeceras X-User-Id /
      * X-User-Role o su valor no es válido), el sistema responde 401 con código NO_AUTENTICADO
      *
