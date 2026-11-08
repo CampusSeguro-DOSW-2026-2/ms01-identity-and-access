@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
@@ -306,6 +308,62 @@ public class UserServiceImpl implements UserService {
         log.info("Estado actualizado por el administrador {}: {} usuario(s) procesado(s)", requester.userId(),
                 results.size());
         return ChangeStatusResponse.fromEntity(results);
+    }
+
+    /**
+     * Consulta interna de varios usuarios por id (RF-MS01-09), la autoriza la cadena de seguridad interna
+     * por el servicio que llama y no se audita
+     *
+     * @param request ids de los usuarios, de 1 a 100
+     * @return los usuarios encontrados en el orden pedido, sin repetidos, y los ids que no existen
+     * @throws InvalidRequestException si la lista falta, tiene más de 100 ids o algún id no es UUID
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public BatchUsersResponse findUsersByIds(BatchUsersRequest request) {
+        requestValidator.validate(request);
+        Set<UUID> ids = request.toUserIds();
+
+        Map<UUID, UserEntity> byId = new HashMap<>();
+        for (UserEntity user : userRepository.findAllById(ids)) {
+            byId.put(user.getId(), user);
+        }
+        List<UserProfileResponse> found = new ArrayList<>();
+        List<UUID> missing = new ArrayList<>();
+        for (UUID id : ids) {
+            UserEntity user = byId.get(id);
+            if (user == null) {
+                missing.add(id);
+            } else {
+                found.add(UserProfileResponse.fromEntity(user));
+            }
+        }
+        return new BatchUsersResponse(found, missing);
+    }
+
+    /**
+     * Consulta interna de los usuarios que tienen un rol (RF-MS01-09), ordenados por id, la autoriza la
+     * cadena de seguridad interna por el servicio que llama y no se audita
+     *
+     * @param rol rol obligatorio
+     * @param creadoAntes instante de corte en ISO 8601, puede ser null
+     * @param page número de página recibido como texto, null equivale a 0
+     * @param size tamaño de página recibido como texto, null equivale a 20
+     * @return la página de usuarios con ese rol, activos e inactivos
+     * @throws InvalidRequestException si algún parámetro no es válido
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserProfileResponse> searchByRole(String rol, String creadoAntes, String page,
+            String size) {
+        RoleSearchCriteria criteria = UserSearchValidator.validateByRole(rol, creadoAntes, page, size);
+
+        Pageable pageable = PageRequest.of(criteria.page(), criteria.size(), Sort.by(Sort.Order.asc("id")));
+        Page<UserEntity> result = criteria.createdBefore() == null
+                ? userRepository.findByRole(criteria.role(), pageable)
+                : userRepository.findByRoleCreatedUpTo(criteria.role(), criteria.createdBefore(), pageable);
+
+        return PageResponse.from(result.map(UserProfileResponse::fromEntity));
     }
 
     /**

@@ -1,5 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -29,12 +31,14 @@ public final class UserSearchValidator {
     public static final String FIELD_ROLE = "rol";
     public static final String FIELD_PAGE = "page";
     public static final String FIELD_SIZE = "size";
+    public static final String FIELD_CREATED_BEFORE = "creado_antes";
 
     public static final String INVALID_SEARCH_MESSAGE = "Búsqueda no válida.";
     public static final String INVALID_STATE_MESSAGE = "Estado no válido.";
     public static final String INVALID_ROLE_MESSAGE = "Rol no válido.";
     public static final String INVALID_PAGE_MESSAGE = "Página no válida.";
     public static final String INVALID_SIZE_MESSAGE = "Tamaño de página no válido (1 a 100).";
+    public static final String INVALID_CREATED_BEFORE_MESSAGE = "Fecha de corte no válida.";
 
     public static final int DEFAULT_PAGE = 0;
     public static final int DEFAULT_SIZE = 20;
@@ -74,6 +78,69 @@ public final class UserSearchValidator {
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
         }
         return new UserSearchCriteria(text, stateFilter, roleFilter, pageNumber, pageSize);
+    }
+
+    /**
+     * Valida los parámetros de la consulta interna por rol (RF-MS01-09) y los convierte en criterios, la
+     * paginación sigue las mismas reglas del formulario F-07
+     *
+     * @param role rol obligatorio, solo valores del catálogo
+     * @param createdBefore instante de corte en ISO 8601, puede ser null o vacío
+     * @param page número de página recibido como texto, null equivale a 0
+     * @param size tamaño de página recibido como texto, null equivale a 20
+     * @return los criterios validados
+     * @throws InvalidRequestException si algún parámetro no es válido, con un error por parámetro
+     */
+    public static RoleSearchCriteria validateByRole(String role, String createdBefore, String page, String size) {
+        List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
+        UserRole roleValue = parseRequiredRole(role, errors);
+        Instant cutoff = parseInstant(createdBefore, errors);
+        int pageNumber = parseNumber(page, DEFAULT_PAGE, 0, Integer.MAX_VALUE, FIELD_PAGE, INVALID_PAGE_MESSAGE,
+                errors);
+        int pageSize = parseNumber(size, DEFAULT_SIZE, 1, MAX_SIZE, FIELD_SIZE, INVALID_SIZE_MESSAGE, errors);
+
+        if (!errors.isEmpty()) {
+            throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
+        }
+        return new RoleSearchCriteria(roleValue, cutoff, pageNumber, pageSize);
+    }
+
+    /**
+     * Valida un rol obligatorio, a diferencia del filtro del listado no admite Todos
+     *
+     * @param role valor recibido
+     * @param errors lista donde se agrega el error si el rol falta o no es del catálogo
+     * @return el rol del catálogo, o null si no es válido
+     */
+    private static UserRole parseRequiredRole(String role, List<ErrorResponse.ErrorDetail> errors) {
+        if (role != null && !role.isBlank()) {
+            try {
+                return UserRole.valueOf(role.trim());
+            } catch (IllegalArgumentException e) {
+                // se reporta abajo
+            }
+        }
+        errors.add(new ErrorResponse.ErrorDetail(FIELD_ROLE, INVALID_ROLE_MESSAGE));
+        return null;
+    }
+
+    /**
+     * Valida el instante de corte opcional
+     *
+     * @param value valor recibido en ISO 8601, por ejemplo 2026-11-07T15:04:05Z
+     * @param errors lista donde se agrega el error si el valor no es un instante válido
+     * @return el instante, o null si se omitió o no es válido
+     */
+    private static Instant parseInstant(String value, List<ErrorResponse.ErrorDetail> errors) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            errors.add(new ErrorResponse.ErrorDetail(FIELD_CREATED_BEFORE, INVALID_CREATED_BEFORE_MESSAGE));
+            return null;
+        }
     }
 
     /**
