@@ -37,3 +37,8 @@ build/
 ### Entorno local ###
 .env
 .opencode
+### Secretos del despliegue (llaves, certificados) ###
+*.pem
+*.key
+*.crt
+certs/
