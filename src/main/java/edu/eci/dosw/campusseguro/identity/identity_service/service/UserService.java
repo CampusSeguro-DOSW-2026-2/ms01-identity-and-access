@@ -2,6 +2,8 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.util.UUID;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
@@ -97,4 +99,27 @@ public interface UserService {
      */
     ChangeStatusResponse changeUserStatus(RequesterIdentity requester, ChangeStatusRequest request,
             String correlationId);
+
+    /**
+     * Consulta interna de varios usuarios por id (RF-MS01-09), la autoriza la cadena de seguridad interna
+     * por el servicio que llama y no se audita
+     *
+     * @param request ids de los usuarios, de 1 a 100
+     * @return los usuarios encontrados en el orden pedido, sin repetidos, y los ids que no existen
+     * @throws InvalidRequestException si la lista falta, tiene más de 100 ids o algún id no es UUID
+     */
+    BatchUsersResponse findUsersByIds(BatchUsersRequest request);
+
+    /**
+     * Consulta interna de los usuarios que tienen un rol (RF-MS01-09), ordenados por id, la autoriza la
+     * cadena de seguridad interna por el servicio que llama y no se audita
+     *
+     * @param rol rol obligatorio
+     * @param creadoAntes instante de corte en ISO 8601, puede ser null
+     * @param page número de página recibido como texto, null equivale a 0
+     * @param size tamaño de página recibido como texto, null equivale a 20
+     * @return la página de usuarios con ese rol, activos e inactivos
+     * @throws InvalidRequestException si algún parámetro no es válido
+     */
+    PageResponse<UserProfileResponse> searchByRole(String rol, String creadoAntes, String page, String size);
 }

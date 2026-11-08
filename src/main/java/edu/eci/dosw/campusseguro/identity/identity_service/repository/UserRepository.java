@@ -1,5 +1,6 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +51,29 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
             + "(:rol IS NULL OR :rol MEMBER OF u.roles)")
     Page<UserEntity> searchUsers(@Param("correo") String correo, @Param("estado") UserState estado,
             @Param("rol") UserRole rol, Pageable pageable);
+
+    /**
+     * Consulta interna de los usuarios que tienen un rol (RF-MS01-09), sin importar su estado
+     *
+     * @param rol rol que el usuario debe tener entre los suyos
+     * @param pageable página, tamaño y orden solicitados
+     * @return la página de usuarios con ese rol
+     */
+    @Query("SELECT u FROM UserEntity u WHERE :rol MEMBER OF u.roles")
+    Page<UserEntity> findByRole(@Param("rol") UserRole rol, Pageable pageable);
+
+    /**
+     * Consulta interna de los usuarios que tienen un rol y se registraron hasta un instante (RF-MS01-09),
+     * el corte permite recorrer todas las páginas sobre el mismo conjunto aunque se registren usuarios nuevos
+     *
+     * @param rol rol que el usuario debe tener entre los suyos
+     * @param creadoAntes instante de corte, incluido
+     * @param pageable página, tamaño y orden solicitados
+     * @return la página de usuarios con ese rol creados hasta el corte
+     */
+    @Query("SELECT u FROM UserEntity u WHERE :rol MEMBER OF u.roles AND u.createdAt <= :creadoAntes")
+    Page<UserEntity> findByRoleCreatedUpTo(@Param("rol") UserRole rol, @Param("creadoAntes") Instant creadoAntes,
+            Pageable pageable);
 
     /**
      * Consulta de autenticación (RF-MS01-02), devuelve el usuario por correo junto con sus roles en una

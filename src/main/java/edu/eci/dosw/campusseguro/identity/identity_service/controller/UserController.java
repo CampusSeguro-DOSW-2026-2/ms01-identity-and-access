@@ -6,12 +6,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
@@ -129,5 +132,42 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserProfileResponse> getUserById(RequesterIdentity requester, @PathVariable UUID id) {
         return ResponseEntity.ok(userService.getUserById(requester, id));
+    }
+
+    /**
+     * POST /api/v1/users/batch: consulta interna de varios usuarios por id (RF-MS01-09), solo para los
+     * servicios autorizados, que se identifican con X-Service-Name
+     *
+     * 200 usuarios encontrados y ids no encontrados, 400 lista inválida, 401 servicio no identificado, 403
+     * servicio no autorizado
+     *
+     * @param request ids de los usuarios
+     * @return los usuarios encontrados y los ids que no existen
+     */
+    @PostMapping("/batch")
+    public ResponseEntity<BatchUsersResponse> findUsersByIds(@RequestBody BatchUsersRequest request) {
+        return ResponseEntity.ok(userService.findUsersByIds(request));
+    }
+
+    /**
+     * GET /api/v1/users/by-role: consulta interna de los usuarios que tienen un rol (RF-MS01-09), solo para
+     * los servicios autorizados, la ruta literal tiene prioridad sobre /{id}
+     *
+     * 200 página de usuarios, 400 parámetros inválidos, 401 servicio no identificado, 403 servicio no
+     * autorizado
+     *
+     * @param rol rol obligatorio
+     * @param creadoAntes instante de corte en ISO 8601, opcional
+     * @param page número de página, se recibe como texto para validarlo con el mensaje del contrato
+     * @param size tamaño de página, se recibe como texto para validarlo con el mensaje del contrato
+     * @return la página de usuarios con ese rol
+     */
+    @GetMapping("/by-role")
+    public ResponseEntity<PageResponse<UserProfileResponse>> searchByRole(
+            @RequestParam(required = false) String rol,
+            @RequestParam(name = "creado_antes", required = false) String creadoAntes,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String size) {
+        return ResponseEntity.ok(userService.searchByRole(rol, creadoAntes, page, size));
     }
 }

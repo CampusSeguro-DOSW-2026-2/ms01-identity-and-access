@@ -62,6 +62,9 @@ gateway:
   url: ${GATEWAY_URL:}
   service-key: ${GATEWAY_SERVICE_KEY:}
 
+internal:
+  allowed-services: ${INTERNAL_ALLOWED_SERVICES:ms03,ms05}
+
 identity:
   institutional-domains: ${INSTITUTIONAL_EMAIL_DOMAINS:escuelaing.edu.co,mail.escuelaing.edu.co}
 
