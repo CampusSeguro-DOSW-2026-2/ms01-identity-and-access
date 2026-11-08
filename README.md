@@ -97,8 +97,8 @@ Por un canal privado. Detalle en la guía [Conexión al API Gateway](https://git
 1. Plantillas del GW *(VM)*:
    ```bash
    mkdir -p ~/campusseguro/edge && cd ~/campusseguro/edge
-   curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/api-gateway/main/infra/caddy/Caddyfile.microservicio
-   curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/api-gateway/main/infra/caddy/docker-compose.microservicio.yml
+   curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/api-gateway/develop/infra/caddy/Caddyfile.microservicio
+   curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/api-gateway/develop/infra/caddy/docker-compose.microservicio.yml
    printf 'UPSTREAM_PROD=ms01-prod:8081\nUPSTREAM_TEST=ms01-test:8081\n' > .env
    ```
 2. Certificados: en su PC, ponga los archivos recibidos en esta estructura y cópiela a la VM. `scp` funciona igual en Linux y en Windows (PowerShell):
@@ -126,6 +126,7 @@ Por un canal privado. Detalle en la guía [Conexión al API Gateway](https://git
    sudo ./svc.sh start
    ```
    El runner corre con su usuario, que ya está en el grupo `docker`.
+3. El repositorio es público: en **Settings › Actions › General › Fork pull request workflows from outside collaborators**, elija **Require approval for all external contributors**. Así un PR externo no puede ejecutarse en la VM.
 
 ### 5. Llaves del JWT (una por entorno)
 En su PC. En Windows, use Git Bash:
@@ -140,9 +141,9 @@ openssl pkey -in jwt-prod.pem -pubout -out jwt-prod.pub.pem
 * Guarde los archivos fuera del repositorio. `.gitignore` ya ignora `*.pem`.
 
 ### 6. Environments de GitHub
-Cree `ms01-test` y `ms01-prod` en **Settings › Environments**. En `ms01-prod`:
-* active **Required reviewers**;
-* en **Deployment branches** permita solo `main`.
+Cree `ms01-test` y `ms01-prod` en **Settings › Environments**:
+* `ms01-test`: en **Deployment branches**, permita solo `develop`.
+* `ms01-prod`: active **Required reviewers** y, en **Deployment branches**, permita solo `main`.
 
 | En `ms01-test` y `ms01-prod` | Tipo | Valor |
 |---|---|---|
