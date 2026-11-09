@@ -1,0 +1,70 @@
+# Stack de MS01 en la nube: uno por entorno en la misma VM (ms01-prod y ms01-test), cada uno con su BD.
+# No publica puertos: solo el Caddy de borde de la VM (red campus-edge) llega a MS01, con el alias ms01-<entorno>,
+# y la BD solo es visible dentro del stack. Lo usa infra/deploy.sh con el .env que escribe en DEPLOY_DIR/<entorno>;
+# no se ejecuta a mano.
+name: ms01-${ENTORNO:?ENTORNO es obligatoria (test o prod)}
+
+services:
+  db:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: campus_db
+      POSTGRES_USER: campus_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD es obligatoria}
+    volumes:
+      - datos:/var/lib/postgresql/data
+      # Esquema inicial (database/*.sql): Postgres solo lo ejecuta la primera vez, con el volumen vacío.
+      - ./database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campus_user -d campus_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - interna
+
+  ms01:
+    image: ${IMAGE:?IMAGE es obligatoria}:${TAG:?TAG es obligatoria (sha-xxxxxxx)}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/campus_db
+      DB_USERNAME: campus_user
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD es obligatoria}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY es obligatoria}
+      JWT_KEY_ID: ${JWT_KEY_ID:-ms01-2026-01}
+      GATEWAY_URL: ${GATEWAY_URL:?GATEWAY_URL es obligatoria (https://<dominio del GW> o :8443)}
+      GATEWAY_SERVICE_KEY: ${GATEWAY_SERVICE_KEY:?GATEWAY_SERVICE_KEY es obligatoria}
+      MAIL_HOST: ${MAIL_HOST:?MAIL_HOST es obligatoria}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: "true"
+      MAIL_FROM: ${MAIL_FROM:-no-reply@campusseguro.local}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      SWAGGER_ENABLED: "false"
+      # El health refleja MS01 y su BD: una caída del SMTP externo solo afecta la recuperación de contraseña.
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+    # Variables opcionales del entorno (p. ej. INTERNAL_ALLOWED_SERVICES, RECOVERY_*), si las hay.
+    env_file:
+      - path: extra.env
+        required: false
+    networks:
+      interna:
+      edge:
+        aliases:
+          - ms01-${ENTORNO}
+
+volumes:
+  datos:
+
+networks:
+  interna:
+  edge:
+    name: campus-edge
+    external: true

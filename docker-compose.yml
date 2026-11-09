@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: campus-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-campus_db}
+      POSTGRES_USER: ${DB_USERNAME:-campus_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-campus_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - campus-postgres-data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d:ro
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: campus-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  campus-postgres-data:
+    external: true
