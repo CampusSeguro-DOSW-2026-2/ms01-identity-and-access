@@ -1,0 +1,57 @@
+name: Desplegar
+
+# Workflow reutilizable: despliega una imagen ya publicada en la VM de MS01, con el runner self-hosted de etiqueta
+# "ms01" y las variables y secretos del Environment ms01-<entorno>. Lo llaman ci.yml (test) y deploy-prod.yml.
+on:
+  workflow_call:
+    inputs:
+      entorno:
+        description: test o prod
+        type: string
+        required: true
+      ref:
+        description: Commit del que se toman los archivos de infra/ y database/
+        type: string
+        required: true
+      tag:
+        description: Imagen a desplegar (sha-xxxxxxx). Vacía = la del commit de ref.
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  desplegar:
+    runs-on: [self-hosted, ms01]
+    environment: ms01-${{ inputs.entorno }}
+    timeout-minutes: 15
+    concurrency:
+      group: desplegar-ms01-${{ inputs.entorno }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Desplegar y verificar
+        run: infra/deploy.sh
+        env:
+          ENTORNO: ${{ inputs.entorno }}
+          TAG: ${{ inputs.tag }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+          GATEWAY_URL: ${{ vars.GATEWAY_URL }}
+          MAIL_HOST: ${{ vars.MAIL_HOST }}
+          MAIL_PORT: ${{ vars.MAIL_PORT }}
+          MAIL_USERNAME: ${{ vars.MAIL_USERNAME }}
+          MAIL_FROM: ${{ vars.MAIL_FROM }}
+          BOOTSTRAP_ADMIN_EMAIL: ${{ vars.BOOTSTRAP_ADMIN_EMAIL }}
+          MS01_EXTRA_ENV: ${{ vars.MS01_EXTRA_ENV }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
+          GATEWAY_SERVICE_KEY: ${{ secrets.GATEWAY_SERVICE_KEY }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          BOOTSTRAP_ADMIN_PASSWORD: ${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}
