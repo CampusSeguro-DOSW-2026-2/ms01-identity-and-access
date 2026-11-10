@@ -148,15 +148,15 @@ Cree `ms01-test` y `ms01-prod` en **Settings › Environments**:
 | En `ms01-test` y `ms01-prod` | Tipo | Valor |
 |---|---|---|
 | `GATEWAY_URL` | Variable | Prueba: `https://<dominio del GW>:8443`. Producción: `https://<dominio del GW>`. |
-| `MAIL_HOST` | Variable | Servidor SMTP (p. ej. `smtp.office365.com`). Se usa con STARTTLS. |
-| `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_FROM` | Variable (opcional) | `587`; usuario SMTP (vacío = sin autenticación); remitente. |
+| `MAIL_HOST` | Variable (opcional) | Servidor SMTP con STARTTLS. Por defecto `smtp.gmail.com`. |
+| `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_FROM` | Variable (opcional) | Por defecto `587`, `proyectometx@gmail.com` y `CampusSeguro <proyectometx@gmail.com>`. Con Gmail el remitente debe ser la misma cuenta. |
 | `BOOTSTRAP_ADMIN_EMAIL` | Variable (opcional) | Correo del primer administrador. Solo se crea si no existe ningún ADMIN. |
 | `MS01_EXTRA_ENV` | Variable (opcional) | Líneas `CLAVE=valor` extra, p. ej. `INTERNAL_ALLOWED_SERVICES=ms03,ms05` o `RECOVERY_*`. |
 | `DEPLOY_DIR` | Variable (opcional) | `~/campusseguro/ms01` por defecto. |
 | `DB_PASSWORD` | Secreto | `openssl rand -base64 24`. Solo se aplica cuando se crea la BD (primer despliegue). |
 | `JWT_PRIVATE_KEY` | Secreto | Contenido completo de `jwt-<entorno>.pem` (paso 5). |
 | `GATEWAY_SERVICE_KEY` | Secreto | La que entregó el dueño del GW para ese entorno. |
-| `MAIL_PASSWORD` | Secreto (opcional) | Contraseña SMTP. |
+| `MAIL_PASSWORD` | Secreto | Contraseña de aplicación de Google de `proyectometx@gmail.com` (Cuenta de Google > Seguridad > Contraseñas de aplicaciones; requiere la verificación en 2 pasos). Sin ella no salen los correos de recuperación. |
 | `BOOTSTRAP_ADMIN_PASSWORD` | Secreto (opcional) | Contraseña del primer administrador. |
 
 Ningún valor puede contener comillas simples (`'`).

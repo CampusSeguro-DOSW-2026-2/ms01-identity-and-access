@@ -38,13 +38,13 @@ services:
       JWT_KEY_ID: ${JWT_KEY_ID:-ms01-2026-01}
       GATEWAY_URL: ${GATEWAY_URL:?GATEWAY_URL es obligatoria (https://<dominio del GW> o :8443)}
       GATEWAY_SERVICE_KEY: ${GATEWAY_SERVICE_KEY:?GATEWAY_SERVICE_KEY es obligatoria}
-      MAIL_HOST: ${MAIL_HOST:?MAIL_HOST es obligatoria}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-proyectometx@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD es obligatoria (contraseña de aplicación de Gmail)}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
       MAIL_SMTP_STARTTLS: "true"
-      MAIL_FROM: ${MAIL_FROM:-no-reply@campusseguro.local}
+      MAIL_FROM: ${MAIL_FROM:-CampusSeguro <proyectometx@gmail.com>}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       SWAGGER_ENABLED: "false"

@@ -6,7 +6,11 @@
 set -euo pipefail
 
 falta() { echo "::error::Falta la variable $1 (Environment ms01-${ENTORNO:-?} en GitHub)" >&2; exit 1; }
-for VAR in ENTORNO DB_PASSWORD JWT_PRIVATE_KEY GATEWAY_URL GATEWAY_SERVICE_KEY MAIL_HOST; do
+# El correo sale por Gmail con la cuenta del proyecto salvo que el Environment indique otro servidor; sin la
+# contraseña de aplicación (secreto MAIL_PASSWORD) Gmail rechaza el envío, por eso es obligatoria
+MAIL_HOST="${MAIL_HOST:-smtp.gmail.com}"
+MAIL_USERNAME="${MAIL_USERNAME:-proyectometx@gmail.com}"
+for VAR in ENTORNO DB_PASSWORD JWT_PRIVATE_KEY GATEWAY_URL GATEWAY_SERVICE_KEY MAIL_PASSWORD; do
     [ -n "${!VAR:-}" ] || falta "$VAR"
 done
 [[ "$ENTORNO" =~ ^(test|prod)$ ]] || { echo "::error::ENTORNO debe ser test o prod" >&2; exit 1; }
