@@ -48,27 +48,41 @@ class PasswordRecoveryConfigurationTest {
     }
 
     /**
-     * El servidor de correo y sus credenciales salen de variables de entorno y nunca están escritos en el
-     * archivo, la contraseña no tiene valor por defecto
+     * El correo sale por Gmail con la cuenta del proyecto: servidor, puerto, usuario y remitente tienen esos valores
+     * por defecto y se pueden sobrescribir con variables de entorno; la contraseña de aplicación solo llega por el
+     * entorno y no tiene valor por defecto
      */
     @Test
-    void mail_serverAndCredentials_comeFromEnvironmentVariables() {
-        assertEquals("${MAIL_HOST:localhost}", properties.getProperty("spring.mail.host"));
-        assertEquals("${MAIL_PORT:1025}", properties.getProperty("spring.mail.port"));
-        assertEquals("${MAIL_USERNAME:}", properties.getProperty("spring.mail.username"));
+    void mail_serverAndCredentials_defaultToGmailAndComeFromEnvironmentVariables() {
+        assertEquals("${MAIL_HOST:smtp.gmail.com}", properties.getProperty("spring.mail.host"));
+        assertEquals("${MAIL_PORT:587}", properties.getProperty("spring.mail.port"));
+        assertEquals("${MAIL_USERNAME:proyectometx@gmail.com}", properties.getProperty("spring.mail.username"));
         assertEquals("${MAIL_PASSWORD:}", properties.getProperty("spring.mail.password"));
-        assertEquals("${MAIL_FROM:no-reply@campusseguro.local}", properties.getProperty("recovery.mail-from"));
+        assertEquals("${MAIL_FROM:CampusSeguro <proyectometx@gmail.com>}",
+                properties.getProperty("recovery.mail-from"));
     }
 
     /**
-     * La autenticación y el cifrado SMTP se activan con variables de entorno y están apagados por defecto, que
-     * es lo que necesita el servidor de correo de desarrollo
+     * Gmail exige autenticación y STARTTLS: están activos por defecto, el cifrado es obligatorio (no se envía en
+     * claro si el servidor no lo ofrece) y ambos se pueden apagar por entorno para un servidor de pruebas como
+     * Mailpit
      */
     @Test
-    void mail_authenticationAndStartTls_areOffByDefaultAndConfigurable() {
-        assertEquals("${MAIL_SMTP_AUTH:false}", properties.getProperty("spring.mail.properties.mail.smtp.auth"));
-        assertEquals("${MAIL_SMTP_STARTTLS:false}",
+    void mail_authenticationAndStartTls_areOnByDefaultAndConfigurable() {
+        assertEquals("${MAIL_SMTP_AUTH:true}", properties.getProperty("spring.mail.properties.mail.smtp.auth"));
+        assertEquals("${MAIL_SMTP_STARTTLS:true}",
                 properties.getProperty("spring.mail.properties.mail.smtp.starttls.enable"));
+        assertEquals("${MAIL_SMTP_STARTTLS:true}",
+                properties.getProperty("spring.mail.properties.mail.smtp.starttls.required"));
+    }
+
+    /**
+     * El health de MS01 no depende del servidor de correo externo: si Gmail no responde solo se afecta la
+     * recuperación de contraseña
+     */
+    @Test
+    void mail_healthIndicator_isOffByDefault() {
+        assertEquals("${MANAGEMENT_HEALTH_MAIL_ENABLED:false}", properties.getProperty("management.health.mail.enabled"));
     }
 
     /**
