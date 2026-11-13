@@ -16,7 +16,6 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -41,12 +40,12 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileRespon
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoundException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserServiceImpl;
@@ -63,6 +62,7 @@ class UserServiceTest {
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
     private UserRepository userRepository;
+    private RoleRepository roleRepository;
     private PasswordEncoder passwordEncoder;
     private AuditEventPublisher auditPublisher;
     private UserServiceImpl userService;
@@ -73,6 +73,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
+        roleRepository = mock(RoleRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         auditPublisher = mock(AuditEventPublisher.class);
         userService = serviceWithDomains(DOMAINS);
@@ -89,7 +90,8 @@ class UserServiceTest {
         AuditRecorder auditRecorder = new AuditRecorder(auditPublisher, clock);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        return new UserServiceImpl(userRepository, passwordEncoder, auditRecorder, requestValidator, domains);
+        return new UserServiceImpl(userRepository, roleRepository, passwordEncoder, auditRecorder, requestValidator,
+                FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), domains);
     }
 
     /**
@@ -124,7 +126,7 @@ class UserServiceTest {
         entity.setFirstLastName("Gomez");
         entity.setEmail(email);
         entity.setPassword("$2a$10$hash");
-        entity.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        entity.setRoles(Set.of("ESTUDIANTE"));
         entity.setState(UserState.ACTIVO);
         return entity;
     }
@@ -136,8 +138,8 @@ class UserServiceTest {
      * @param roles roles del solicitante
      * @return la identidad del solicitante
      */
-    private RequesterIdentity identity(UUID id, UserRole... roles) {
-        return new RequesterIdentity(id, EnumSet.copyOf(List.of(roles)));
+    private RequesterIdentity identity(UUID id, String... roles) {
+        return TestIdentities.of(id, roles);
     }
 
     /**
@@ -176,12 +178,12 @@ class UserServiceTest {
         assertEquals("carlos.gomez@escuelaing.edu.co", saved.getEmail());
         assertEquals("$2a$10$hash", saved.getPassword());
         assertNotEquals(PASSWORD, saved.getPassword());
-        assertEquals(Set.of(UserRole.ESTUDIANTE), saved.getRoles());
+        assertEquals(Set.of("ESTUDIANTE"), saved.getRoles());
         assertEquals(UserState.ACTIVO, saved.getState());
 
         assertEquals(id, response.id());
         assertEquals("carlos.gomez@escuelaing.edu.co", response.email());
-        assertEquals(List.of(UserRole.ESTUDIANTE), response.roles());
+        assertEquals(List.of("ESTUDIANTE"), response.roles());
         assertEquals(UserState.ACTIVO, response.state());
     }
 
@@ -408,7 +410,7 @@ class UserServiceTest {
         UUID id = UUID.randomUUID();
         when(userRepository.findById(id)).thenReturn(Optional.of(entity(id, "carlos.gomez@escuelaing.edu.co")));
 
-        UserProfileResponse result = userService.getMyProfile(identity(id, UserRole.ESTUDIANTE));
+        UserProfileResponse result = userService.getMyProfile(identity(id, "ESTUDIANTE"));
 
         assertEquals("carlos.gomez@escuelaing.edu.co", result.email());
         assertEquals("Carlos", result.firstName());
@@ -423,7 +425,7 @@ class UserServiceTest {
         when(userRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(UserNotFoundException.class,
-                () -> userService.getMyProfile(identity(id, UserRole.ESTUDIANTE)));
+                () -> userService.getMyProfile(identity(id, "ESTUDIANTE")));
     }
 
     /**
@@ -440,7 +442,7 @@ class UserServiceTest {
         when(userRepository.findById(id)).thenReturn(Optional.of(existing));
         when(userRepository.saveAndFlush(any(UserEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UserProfileResponse result = userService.updateProfile(identity(id, UserRole.ESTUDIANTE), request);
+        UserProfileResponse result = userService.updateProfile(identity(id, "ESTUDIANTE"), request);
 
         assertEquals("Sebastian", result.firstName());
         assertEquals("carlos.gomez@escuelaing.edu.co", result.email());
@@ -458,7 +460,7 @@ class UserServiceTest {
         request.setFirstLastName("Gomez");
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
-                () -> userService.updateProfile(identity(id, UserRole.ESTUDIANTE), request));
+                () -> userService.updateProfile(identity(id, "ESTUDIANTE"), request));
 
         assertEquals("primer_nombre", error.getErrors().get(0).campo());
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
@@ -478,7 +480,7 @@ class UserServiceTest {
         request.registerUnknownField("estado", "INACTIVO");
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
-                () -> userService.updateProfile(identity(id, UserRole.ESTUDIANTE), request));
+                () -> userService.updateProfile(identity(id, "ESTUDIANTE"), request));
 
         assertEquals(3, error.getErrors().size());
         assertTrue(error.getErrors().contains(new ErrorResponse.ErrorDetail("correo",
@@ -500,7 +502,7 @@ class UserServiceTest {
         when(userRepository.findById(targetId))
                 .thenReturn(Optional.of(entity(targetId, "carlos.gomez@escuelaing.edu.co")));
 
-        UserProfileResponse result = userService.getUserById(identity(requesterId, UserRole.AUDITOR), targetId);
+        UserProfileResponse result = userService.getUserById(identity(requesterId, "AUDITOR"), targetId);
 
         assertEquals(targetId, result.id());
         assertEquals("carlos.gomez@escuelaing.edu.co", result.email());
@@ -515,7 +517,7 @@ class UserServiceTest {
         when(userRepository.findById(targetId)).thenReturn(Optional.empty());
 
         assertThrows(UserNotFoundException.class,
-                () -> userService.getUserById(identity(UUID.randomUUID(), UserRole.ADMIN), targetId));
+                () -> userService.getUserById(identity(UUID.randomUUID(), "ADMIN"), targetId));
     }
 
     /**
@@ -526,7 +528,7 @@ class UserServiceTest {
         UUID targetId = UUID.randomUUID();
 
         assertThrows(ForbiddenOperationException.class,
-                () -> userService.getUserById(identity(UUID.randomUUID(), UserRole.ESTUDIANTE), targetId));
+                () -> userService.getUserById(identity(UUID.randomUUID(), "ESTUDIANTE"), targetId));
 
         verify(userRepository, never()).findById(any());
     }
@@ -540,7 +542,7 @@ class UserServiceTest {
         UserEntity target = entity(targetId, "carlos.gomez@escuelaing.edu.co");
         when(userRepository.findById(targetId)).thenReturn(Optional.of(target));
 
-        UserProfileResponse result = userService.getUserById(identity(UUID.randomUUID(), UserRole.ADMIN),
+        UserProfileResponse result = userService.getUserById(identity(UUID.randomUUID(), "ADMIN"),
                 targetId);
 
         assertNull(result.secondName());

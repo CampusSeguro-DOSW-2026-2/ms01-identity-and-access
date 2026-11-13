@@ -5,9 +5,7 @@ import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.interfaces.RSAKey;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
 
@@ -26,7 +24,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
  * La firma usa unicamente el proveedor estandar del JDK
  *
  * Header:  {"alg":"RS256","typ":"JWT","kid":"..."}
- * Payload: iss, aud, sub, email, roles (ordenados alfabeticamente), iat, exp (= iat + vigencia), jti
+ * Payload: iss, aud, sub, email, roles y permissions (ordenados alfabeticamente), iat, exp (= iat + vigencia), jti
  */
 public class JwtServiceImpl implements JwtService {
 
@@ -36,7 +34,7 @@ public class JwtServiceImpl implements JwtService {
 
     private final PrivateKey privateKey;
     private final String keyId;
-    private final Clock clock;
+    private final DatabaseTimeService timeService;
 
     /**
      * Crea el emisor de tokens y valida la llave según la especificación del JWT, el emisor, la audiencia y
@@ -44,14 +42,14 @@ public class JwtServiceImpl implements JwtService {
      *
      * @param privateKey llave privada RSA con la que se firman los tokens
      * @param keyId valor del campo kid del header
-     * @param clock reloj con el que se calculan iat y exp
+     * @param timeService reloj único de la base de datos con el que se calculan iat y exp
      * @throws IllegalArgumentException si el identificador de la llave está vacío o la llave no es RSA de al
      *         menos 2048 bits
      */
-    public JwtServiceImpl(PrivateKey privateKey, String keyId, Clock clock) {
+    public JwtServiceImpl(PrivateKey privateKey, String keyId, DatabaseTimeService timeService) {
         this.privateKey = Objects.requireNonNull(privateKey, "privateKey");
         this.keyId = requireText(keyId, "keyId");
-        this.clock = Objects.requireNonNull(clock, "clock");
+        this.timeService = Objects.requireNonNull(timeService, "timeService");
         if (!(privateKey instanceof RSAKey rsaKey) || !"RSA".equals(privateKey.getAlgorithm())) {
             throw new IllegalArgumentException("La llave de firma del JWT debe ser RSA.");
         }
@@ -61,24 +59,29 @@ public class JwtServiceImpl implements JwtService {
     }
 
     /**
-     * Emite un JWT RS256 con los claims iss, aud, sub (userId), email, roles, iat, exp y jti, sin incluir
-     * contrasenas, hashes, nombres, estado ni permisos (RN-MS01-08)
+     * Emite un JWT RS256 con los claims iss, aud, sub (userId), email, roles, permissions, iat, exp y jti, sin
+     * incluir contrasenas, hashes, nombres ni estado (RN-MS01-08)
      *
      * @param userId id del usuario
      * @param email correo del usuario
-     * @param roles roles del usuario
+     * @param roles nombres de los roles del usuario
+     * @param permissions permisos efectivos del usuario, la union de los de todos sus roles
      * @return el token firmado junto con su fecha de expiración
-     * @throws IllegalArgumentException si el correo está vacío o el usuario no tiene ningún rol
+     * @throws IllegalArgumentException si el correo está vacío o el usuario no tiene ningún rol ni ningún
+     *         permiso
      */
     @Override
-    public IssuedToken issueToken(UUID userId, String email, List<UserRole> roles) {
+    public IssuedToken issueToken(UUID userId, String email, List<String> roles, List<String> permissions) {
         Objects.requireNonNull(userId, "userId");
         requireText(email, "email");
         if (roles == null || roles.isEmpty()) {
             throw new IllegalArgumentException("El JWT debe incluir al menos un rol.");
         }
+        if (permissions == null || permissions.isEmpty()) {
+            throw new IllegalArgumentException("El JWT debe incluir al menos un permiso.");
+        }
 
-        Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
+        Instant issuedAt = timeService.now();
         Instant expiresAt = issuedAt.plusSeconds(GlobalValues.JWT_LIFETIME_SECONDS);
 
         Map<String, Object> header = new LinkedHashMap<>();
@@ -91,7 +94,8 @@ public class JwtServiceImpl implements JwtService {
         payload.put("aud", GlobalValues.JWT_AUDIENCE);
         payload.put("sub", userId.toString());
         payload.put("email", email);
-        payload.put("roles", roles.stream().map(UserRole::name).sorted().toList());
+        payload.put("roles", roles.stream().distinct().sorted().toList());
+        payload.put("permissions", permissions.stream().distinct().sorted().toList());
         payload.put("iat", issuedAt.getEpochSecond());
         payload.put("exp", expiresAt.getEpochSecond());
         payload.put("jti", UUID.randomUUID().toString());

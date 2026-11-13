@@ -17,14 +17,13 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
@@ -32,7 +31,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEvent;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
@@ -77,8 +75,8 @@ class SessionServiceTest {
      * @param roles roles del usuario
      * @return la identidad del solicitante
      */
-    private RequesterIdentity requester(UUID id, Set<UserRole> roles) {
-        return new RequesterIdentity(id, roles);
+    private RequesterIdentity requester(UUID id, Set<String> roles) {
+        return TestIdentities.of(id, roles.toArray(new String[0]));
     }
 
     /**
@@ -100,7 +98,7 @@ class SessionServiceTest {
     void logout_validRequester_emitsOneSuccessfulLogoutEventWithUserDateAndCorrelationId() {
         UUID id = UUID.randomUUID();
 
-        sessionService.logout(requester(id, EnumSet.of(UserRole.ESTUDIANTE)), CORRELATION_ID);
+        sessionService.logout(requester(id, Set.of("ESTUDIANTE")), CORRELATION_ID);
 
         AuditEvent event = singleAuditEvent();
         assertEquals(AuditAction.LOGOUT, event.accion());
@@ -119,15 +117,15 @@ class SessionServiceTest {
      * @param role rol del solicitante
      */
     @ParameterizedTest
-    @EnumSource(UserRole.class)
-    void logout_anyRole_isAcceptedAndAudited(UserRole role) {
+    @MethodSource("edu.eci.dosw.campusseguro.identity.identity_service.SeedRoles#names")
+    void logout_anyRole_isAcceptedAndAudited(String role) {
         UUID id = UUID.randomUUID();
 
-        assertDoesNotThrow(() -> sessionService.logout(requester(id, EnumSet.of(role)), CORRELATION_ID));
+        assertDoesNotThrow(() -> sessionService.logout(requester(id, Set.of(role)), CORRELATION_ID));
 
         AuditEvent event = singleAuditEvent();
         assertEquals(AuditResult.EXITO, event.resultado());
-        assertEquals(role.name(), event.usuarioRoles());
+        assertEquals(role, event.usuarioRoles());
     }
 
     /**
@@ -136,7 +134,7 @@ class SessionServiceTest {
     @Test
     void logout_severalRoles_propagatesThemInAlphabeticalOrder() {
         RequesterIdentity identity = requester(UUID.randomUUID(),
-                EnumSet.of(UserRole.ESTUDIANTE, UserRole.BRIGADISTA));
+                Set.of("ESTUDIANTE", "BRIGADISTA"));
 
         sessionService.logout(identity, CORRELATION_ID);
 
@@ -148,7 +146,7 @@ class SessionServiceTest {
      */
     @Test
     void logout_withoutCorrelationId_generatesOneForTheEvent() {
-        sessionService.logout(requester(UUID.randomUUID(), EnumSet.of(UserRole.ADMIN)), null);
+        sessionService.logout(requester(UUID.randomUUID(), Set.of("ADMIN")), null);
 
         String generated = singleAuditEvent().correlationId();
         assertEquals(generated, UUID.fromString(generated).toString());
@@ -160,7 +158,7 @@ class SessionServiceTest {
      */
     @Test
     void logout_withInvalidCorrelationId_replacesItWithAValidOne() {
-        sessionService.logout(requester(UUID.randomUUID(), EnumSet.of(UserRole.ADMIN)), "no-es-un-uuid");
+        sessionService.logout(requester(UUID.randomUUID(), Set.of("ADMIN")), "no-es-un-uuid");
 
         String used = singleAuditEvent().correlationId();
         assertNotEquals("no-es-un-uuid", used);
@@ -176,7 +174,7 @@ class SessionServiceTest {
         doThrow(new IllegalStateException("MS08 no disponible")).when(failing).publish(any(AuditEvent.class));
         SessionServiceImpl service = serviceWith(failing);
 
-        assertDoesNotThrow(() -> service.logout(requester(UUID.randomUUID(), EnumSet.of(UserRole.ESTUDIANTE)),
+        assertDoesNotThrow(() -> service.logout(requester(UUID.randomUUID(), Set.of("ESTUDIANTE")),
                 CORRELATION_ID));
 
         verify(failing).publish(any(AuditEvent.class));
@@ -187,7 +185,7 @@ class SessionServiceTest {
      */
     @Test
     void logout_calledTwice_auditsEachCall() {
-        RequesterIdentity identity = requester(UUID.randomUUID(), EnumSet.of(UserRole.PROFESOR));
+        RequesterIdentity identity = requester(UUID.randomUUID(), Set.of("PROFESOR"));
 
         sessionService.logout(identity, CORRELATION_ID);
         sessionService.logout(identity, CORRELATION_ID);
@@ -203,7 +201,7 @@ class SessionServiceTest {
     @Test
     void logout_withoutPermission_isRejectedAndTheFailureIsAudited() {
         UUID id = UUID.randomUUID();
-        RequesterIdentity withoutPermissions = requester(id, EnumSet.noneOf(UserRole.class));
+        RequesterIdentity withoutPermissions = requester(id, Set.of());
 
         ForbiddenOperationException error = assertThrows(ForbiddenOperationException.class,
                 () -> sessionService.logout(withoutPermissions, CORRELATION_ID));
@@ -222,7 +220,7 @@ class SessionServiceTest {
      */
     @Test
     void logout_withoutPermission_neverEmitsASuccessfulEvent() {
-        RequesterIdentity withoutPermissions = requester(UUID.randomUUID(), EnumSet.noneOf(UserRole.class));
+        RequesterIdentity withoutPermissions = requester(UUID.randomUUID(), Set.of());
 
         assertThrows(ForbiddenOperationException.class,
                 () -> sessionService.logout(withoutPermissions, CORRELATION_ID));
@@ -238,7 +236,7 @@ class SessionServiceTest {
     void logout_event_containsNoSecretsOrPersonalData() {
         UUID id = UUID.randomUUID();
 
-        sessionService.logout(requester(id, EnumSet.of(UserRole.ESTUDIANTE)), CORRELATION_ID);
+        sessionService.logout(requester(id, Set.of("ESTUDIANTE")), CORRELATION_ID);
 
         AuditEvent event = singleAuditEvent();
         String content = event.toString().toLowerCase();

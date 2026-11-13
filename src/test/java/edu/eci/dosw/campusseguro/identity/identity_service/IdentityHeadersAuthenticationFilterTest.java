@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,15 +19,14 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeadersAuthenticationFilter;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import jakarta.servlet.FilterChain;
 
 /**
- * RN-MS01-23 y estandares de integracion 2.3: la identidad llega solo por las cabeceras X-User-Id y
- * X-User-Role, si faltan o no son validas la peticion queda sin autenticar
+ * RN-MS01-23 y estándares de integración 2.3: la identidad llega solo por las cabeceras X-User-Id, X-User-Role
+ * y X-User-Permission, si faltan o no son válidas la petición queda sin autenticar
  */
 class IdentityHeadersAuthenticationFilterTest {
 
@@ -78,6 +76,7 @@ class IdentityHeadersAuthenticationFilterTest {
     void doFilter_validHeaders_authenticatesWithTheIdentity() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE,BRIGADISTA");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:profile:read,ms05:panel:read_own");
 
         runFilter();
 
@@ -85,19 +84,22 @@ class IdentityHeadersAuthenticationFilterTest {
         assertTrue(authentication.isAuthenticated());
         RequesterIdentity identity = assertInstanceOf(RequesterIdentity.class, authentication.getPrincipal());
         assertEquals(UUID.fromString(USER_ID), identity.userId());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE, UserRole.BRIGADISTA), identity.roles());
+        assertEquals(Set.of("ESTUDIANTE", "BRIGADISTA"), identity.roles());
+        assertEquals(Set.of("ms01:profile:read", "ms05:panel:read_own"), identity.permissions());
         assertTrue(chainCalled.get());
     }
 
     /**
-     * Las autoridades son los codigos de los permisos que la matriz concede a sus roles
+     * Las autoridades son los códigos de X-User-Permission, sin importar el nombre de los roles
      *
      * @throws Exception si falla el filtro
      */
     @Test
-    void doFilter_validHeaders_grantsThePermissionsOfTheRoles() throws Exception {
+    void doFilter_validHeaders_grantsTheReceivedPermissions() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER,
+                String.join(",", TestIdentities.permissionsOf("ADMIN")));
 
         runFilter();
 
@@ -126,6 +128,24 @@ class IdentityHeadersAuthenticationFilterTest {
     }
 
     /**
+     * Sin X-User-Permission no se autentica aunque estén las otras dos cabeceras
+     *
+     * @throws Exception si falla el filtro
+     */
+    @Test
+    void doFilter_missingPermissionHeader_leavesTheRequestUnauthenticated() throws Exception {
+        request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
+        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+
+        runFilter();
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(IdentityHeaderParser.MISSING_MESSAGE,
+                request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
+        assertTrue(chainCalled.get());
+    }
+
+    /**
      * Un X-User-Id que no es un UUID no autentica
      *
      * @throws Exception si falla el filtro
@@ -134,6 +154,7 @@ class IdentityHeadersAuthenticationFilterTest {
     void doFilter_invalidUserId_leavesTheRequestUnauthenticated() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, "USR-1034");
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:user:roles");
 
         runFilter();
 
@@ -143,14 +164,15 @@ class IdentityHeadersAuthenticationFilterTest {
     }
 
     /**
-     * Un rol fuera del catalogo no autentica
+     * Un nombre de rol con formato inválido no autentica
      *
      * @throws Exception si falla el filtro
      */
     @Test
-    void doFilter_unknownRole_leavesTheRequestUnauthenticated() throws Exception {
+    void doFilter_invalidRoleFormat_leavesTheRequestUnauthenticated() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
-        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "SUPERUSUARIO");
+        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "SUPER-USUARIO");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:user:roles");
 
         runFilter();
 
@@ -160,7 +182,7 @@ class IdentityHeadersAuthenticationFilterTest {
     }
 
     /**
-     * Un rol en minusculas no autentica, los identificadores de rol son estrictos en mayusculas
+     * Un rol en minúsculas no autentica, los nombres de rol guardados van en mayúsculas
      *
      * @throws Exception si falla el filtro
      */
@@ -168,9 +190,28 @@ class IdentityHeadersAuthenticationFilterTest {
     void doFilter_lowercaseRole_leavesTheRequestUnauthenticated() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "admin");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:user:roles");
 
         runFilter();
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    /**
+     * Un código de permiso con formato inválido no autentica
+     *
+     * @throws Exception si falla el filtro
+     */
+    @Test
+    void doFilter_invalidPermissionFormat_leavesTheRequestUnauthenticated() throws Exception {
+        request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
+        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "MS01:USER:ROLES");
+
+        runFilter();
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(IdentityHeaderParser.INVALID_PERMISSION_MESSAGE,
+                request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 }

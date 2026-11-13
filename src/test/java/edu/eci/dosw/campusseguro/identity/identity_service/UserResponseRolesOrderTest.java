@@ -3,8 +3,8 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
 /**
@@ -33,7 +32,7 @@ class UserResponseRolesOrderTest {
         entity.setFirstLastName("Gomez");
         entity.setEmail("carlos.gomez@escuelaing.edu.co");
         entity.setState(UserState.ACTIVO);
-        entity.setRoles(EnumSet.of(UserRole.PROFESOR, UserRole.ESTUDIANTE, UserRole.ADMIN));
+        entity.setRoles(Set.of("PROFESOR", "ESTUDIANTE", "ADMIN"));
     }
 
     /**
@@ -43,7 +42,7 @@ class UserResponseRolesOrderTest {
     void userResponse_fromEntity_sortsTheRoles() {
         UserResponse response = UserResponse.fromEntity(entity);
 
-        assertEquals(List.of(UserRole.ADMIN, UserRole.ESTUDIANTE, UserRole.PROFESOR), response.roles());
+        assertEquals(List.of("ADMIN", "ESTUDIANTE", "PROFESOR"), response.roles());
     }
 
     /**
@@ -53,7 +52,7 @@ class UserResponseRolesOrderTest {
     void userProfileResponse_fromEntity_sortsTheRoles() {
         UserProfileResponse response = UserProfileResponse.fromEntity(entity);
 
-        assertEquals(List.of(UserRole.ADMIN, UserRole.ESTUDIANTE, UserRole.PROFESOR), response.roles());
+        assertEquals(List.of("ADMIN", "ESTUDIANTE", "PROFESOR"), response.roles());
     }
 
     /**

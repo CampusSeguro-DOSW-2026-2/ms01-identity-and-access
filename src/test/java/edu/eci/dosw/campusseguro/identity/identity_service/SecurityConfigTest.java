@@ -25,7 +25,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import edu.eci.dosw.campusseguro.identity.identity_service.config.SecurityConfig;
 import edu.eci.dosw.campusseguro.identity.identity_service.controller.RoleController;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.RolePermissionsResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
@@ -95,15 +94,16 @@ class SecurityConfigTest {
     }
 
     /**
-     * Un rol fuera del catalogo en X-User-Role responde 401 con el motivo
+     * Un nombre de rol con formato inválido en X-User-Role responde 401 con el motivo
      *
      * @throws Exception si falla la peticion simulada
      */
     @Test
-    void protectedRoute_withUnknownRole_returns401WithTheReason() throws Exception {
+    void protectedRoute_withInvalidRoleFormat_returns401WithTheReason() throws Exception {
         mockMvc.perform(get("/api/v1/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPERUSUARIO"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPER-USUARIO")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:role:read_own"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value(IdentityHeaderParser.INVALID_ROLE_MESSAGE));
     }
@@ -116,11 +116,12 @@ class SecurityConfigTest {
     @Test
     void protectedRoute_withIdentityHeaders_reachesTheController() throws Exception {
         when(roleService.getRoles(any())).thenReturn(List.of(
-                new RolePermissionsResponse(UserRole.ESTUDIANTE, List.of("ms01:profile:read"))));
+                new RolePermissionsResponse("ESTUDIANTE", List.of("ms01:profile:read"))));
 
         mockMvc.perform(get("/api/v1/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isOk())
                 .andExpect(header().exists(CorrelationIds.HEADER))
                 .andExpect(jsonPath("$[0].rol").value("ESTUDIANTE"));
@@ -211,7 +212,8 @@ class SecurityConfigTest {
     void unknownRoute_withIdentity_returnsTheNormalized404() throws Exception {
         mockMvc.perform(get("/api/v1/inexistente")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"))
@@ -228,7 +230,8 @@ class SecurityConfigTest {
     void wrongMethod_withIdentity_returnsTheNormalized405() throws Exception {
         mockMvc.perform(get("/api/v1/users/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(header().string("Allow", "PATCH"))
                 .andExpect(jsonPath("$.codigo").value("METODO_NO_PERMITIDO"));
@@ -281,7 +284,8 @@ class SecurityConfigTest {
         mockMvc.perform(get("/api/v1/roles")
                 .header("Origin", "http://localhost:3000")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 }

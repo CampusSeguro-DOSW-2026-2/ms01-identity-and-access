@@ -10,7 +10,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.PermissionChecker;
@@ -29,7 +28,7 @@ class PermissionCheckerTest {
      */
     @Test
     void require_withThePermission_doesNothing() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, Set.of(UserRole.ADMIN));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ADMIN");
 
         assertDoesNotThrow(() -> PermissionChecker.require(requester, Permission.MS01_USER_STATUS));
     }
@@ -39,7 +38,7 @@ class PermissionCheckerTest {
      */
     @Test
     void require_withoutThePermission_throwsForbiddenWithTheCatalogMessage() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, Set.of(UserRole.ESTUDIANTE));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ESTUDIANTE");
 
         ForbiddenOperationException exception = assertThrows(ForbiddenOperationException.class,
                 () -> PermissionChecker.require(requester, Permission.MS01_USER_STATUS));
@@ -48,12 +47,27 @@ class PermissionCheckerTest {
     }
 
     /**
+     * El permiso decide y no el nombre del rol: ADMIN sin el permiso es rechazado y un rol personalizado con el
+     * permiso pasa
+     */
+    @Test
+    void require_dependsOnThePermissionAndNotOnTheRoleName() {
+        RequesterIdentity adminWithoutPermission = TestIdentities.withPermissions(USER_ID, Set.of("ADMIN"),
+                "ms01:user:read");
+        RequesterIdentity customWithPermission = TestIdentities.withPermissions(USER_ID, Set.of("SOPORTE"),
+                "ms01:role:manage");
+
+        assertThrows(ForbiddenOperationException.class,
+                () -> PermissionChecker.require(adminWithoutPermission, Permission.MS01_ROLE_MANAGE));
+        assertDoesNotThrow(() -> PermissionChecker.require(customWithPermission, Permission.MS01_ROLE_MANAGE));
+    }
+
+    /**
      * Con varios roles basta que uno de ellos otorgue el permiso
      */
     @Test
     void require_withSeveralRoles_acceptsThePermissionOfAnyOfThem() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID,
-                Set.of(UserRole.ESTUDIANTE, UserRole.ADMIN));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ESTUDIANTE", "ADMIN");
 
         assertDoesNotThrow(() -> PermissionChecker.require(requester, Permission.MS01_USER_ROLES));
     }

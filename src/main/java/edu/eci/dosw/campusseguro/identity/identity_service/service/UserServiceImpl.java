@@ -1,7 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,7 +39,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
@@ -47,10 +46,12 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOp
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoundException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFoundException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.PermissionChecker;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.FieldRules;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestValidator;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
@@ -59,8 +60,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.Validation
  * Registro de usuarios (RF-MS01-01), perfil propio (RF-MS01-06) y administración de usuarios
  * (RF-MS01-07)
  *
- * La autorización de cada operación la decide el permiso que concede la matriz Rol-Permiso y nunca el
- * nombre de un rol, el registro y el cambio de estado se auditan en MS08 (RNF-MS01-10)
+ * La autorización de cada operación la decide el permiso que recibe el solicitante en X-User-Permission y
+ * nunca el nombre de un rol, el registro y el cambio de estado se auditan en MS08 (RNF-MS01-10), el cambio de
+ * estado también registra el corte de sesión de cada usuario (RF-MS01-11)
  */
 @Service
 public class UserServiceImpl implements UserService {
@@ -79,29 +81,36 @@ public class UserServiceImpl implements UserService {
     static final String REASON_INTERNAL = "ERROR_INTERNO";
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditRecorder auditRecorder;
     private final RequestValidator requestValidator;
+    private final DatabaseTimeService timeService;
     private final Set<String> institutionalDomains;
 
     /**
      * Crea el servicio con sus dependencias
      *
      * @param userRepository repositorio de acceso a los usuarios y sus roles
+     * @param roleRepository repositorio de acceso a los roles
      * @param passwordEncoder codificador con el que se guardan las contraseñas
      * @param auditRecorder registrador de los eventos de auditoría de MS08
      * @param requestValidator validador de los cuerpos de las peticiones
+     * @param timeService reloj único de la base de datos con el que se fijan los cortes de sesión
      * @param institutionalDomains dominios de correo institucional configurados, sin la arroba, se ignoran
      *        los espacios, las mayúsculas y los valores vacíos
      */
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
-            AuditRecorder auditRecorder, RequestValidator requestValidator,
+    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder, AuditRecorder auditRecorder, RequestValidator requestValidator,
+            DatabaseTimeService timeService,
             @Value("${identity.institutional-domains:escuelaing.edu.co,mail.escuelaing.edu.co}")
             List<String> institutionalDomains) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditRecorder = auditRecorder;
         this.requestValidator = requestValidator;
+        this.timeService = timeService;
         this.institutionalDomains = institutionalDomains.stream()
                 .map(domain -> domain.trim().toLowerCase(Locale.ROOT))
                 .filter(domain -> !domain.isEmpty())
@@ -142,7 +151,7 @@ public class UserServiceImpl implements UserService {
         entity.setSecondLastName(request.getSecondLastName());
         entity.setEmail(email);
         entity.setPassword(passwordEncoder.encode(request.getPassword()));
-        entity.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        entity.setRoles(Set.of(RoleNames.STUDENT));
         entity.setState(UserState.ACTIVO);
 
         UserEntity saved;
@@ -230,7 +239,7 @@ public class UserServiceImpl implements UserService {
      * @param size tamaño de página recibido como texto, null equivale a 20
      * @return la página de usuarios con sus roles completos
      * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws InvalidRequestException si algún parámetro incumple el formulario F-07
+     * @throws InvalidRequestException si algún parámetro incumple el formulario F-07 o el rol no existe
      */
     @Override
     @Transactional(readOnly = true)
@@ -238,6 +247,11 @@ public class UserServiceImpl implements UserService {
             String rol, String page, String size) {
         PermissionChecker.require(requester, Permission.MS01_USER_READ);
         UserSearchCriteria criteria = UserSearchValidator.validate(correo, estado, rol, page, size);
+        if (criteria.role() != null && !roleRepository.existsById(criteria.role())) {
+            throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, List.of(
+                    new ErrorResponse.ErrorDetail(UserSearchValidator.FIELD_ROLE,
+                            UserSearchValidator.INVALID_ROLE_MESSAGE)));
+        }
 
         Sort order = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"));
         Pageable pageable = PageRequest.of(criteria.page(), criteria.size(), order);
@@ -295,7 +309,8 @@ public class UserServiceImpl implements UserService {
             previousStates.put(id, usersById.get(id).getState());
         }
 
-        applyState(requester, targetIds, locked, newState, corr);
+        Instant cut = timeService.now();
+        applyState(requester, targetIds, locked, newState, cut, corr);
 
         List<IndividualChangeStateResponse> results = new ArrayList<>();
         for (UUID id : targetIds) {
@@ -350,13 +365,18 @@ public class UserServiceImpl implements UserService {
      * @param page número de página recibido como texto, null equivale a 0
      * @param size tamaño de página recibido como texto, null equivale a 20
      * @return la página de usuarios con ese rol, activos e inactivos
-     * @throws InvalidRequestException si algún parámetro no es válido
+     * @throws InvalidRequestException si algún parámetro no es válido o el rol no existe
      */
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserProfileResponse> searchByRole(String rol, String creadoAntes, String page,
             String size) {
         RoleSearchCriteria criteria = UserSearchValidator.validateByRole(rol, creadoAntes, page, size);
+        if (!roleRepository.existsById(criteria.role())) {
+            throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, List.of(
+                    new ErrorResponse.ErrorDetail(UserSearchValidator.FIELD_ROLE,
+                            UserSearchValidator.INVALID_ROLE_MESSAGE)));
+        }
 
         Pageable pageable = PageRequest.of(criteria.page(), criteria.size(), Sort.by(Sort.Order.asc("id")));
         Page<UserEntity> result = criteria.createdBefore() == null
@@ -403,12 +423,14 @@ public class UserServiceImpl implements UserService {
      * @param targetIds ids de los usuarios a modificar
      * @param users usuarios cargados con bloqueo de escritura
      * @param newState estado que se asigna a todos
+     * @param cut instante del corte de sesión de cada usuario, truncado a segundos
      * @param corr correlation id de la petición
      */
     private void applyState(RequesterIdentity requester, Set<UUID> targetIds, List<UserEntity> users,
-            UserState newState, String corr) {
+            UserState newState, Instant cut, String corr) {
         for (UserEntity user : users) {
             user.setState(newState);
+            user.setValidFrom(cut);
         }
         try {
             userRepository.saveAllAndFlush(users);

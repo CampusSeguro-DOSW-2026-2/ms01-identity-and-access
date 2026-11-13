@@ -29,7 +29,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersRequest
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.InternalServiceAuthenticationFilter;
@@ -62,7 +61,7 @@ class InternalSecurityTest {
      */
     private static UserProfileResponse profile() {
         return new UserProfileResponse(USER_ID, "María", null, "Pérez", null, "maria.perez@escuelaing.edu.co",
-                List.of(UserRole.BRIGADISTA, UserRole.ESTUDIANTE), UserState.ACTIVO);
+                List.of("BRIGADISTA", "ESTUDIANTE"), UserState.ACTIVO);
     }
 
     /**
@@ -121,6 +120,7 @@ class InternalSecurityTest {
         mockMvc.perform(post(BATCH_URL)
                 .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID.toString())
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON).content(batchBody()))
                 .andExpect(status().isUnauthorized());
 
@@ -218,7 +218,8 @@ class InternalSecurityTest {
 
         mockMvc.perform(get("/api/v1/users/" + USER_ID)
                 .header(IdentityHeaderParser.USER_ID_HEADER, UUID.randomUUID().toString())
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(USER_ID.toString()));
     }

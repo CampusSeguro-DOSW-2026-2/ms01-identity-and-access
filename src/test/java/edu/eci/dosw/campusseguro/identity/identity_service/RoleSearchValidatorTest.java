@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleSearchCriteria;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserSearchValidator;
@@ -30,7 +29,7 @@ class RoleSearchValidatorTest {
     void validateByRole_onlyRole_usesTheDefaults() {
         RoleSearchCriteria criteria = UserSearchValidator.validateByRole(" BRIGADISTA ", null, null, null);
 
-        assertEquals(UserRole.BRIGADISTA, criteria.role());
+        assertEquals("BRIGADISTA", criteria.role());
         assertNull(criteria.createdBefore());
         assertEquals(UserSearchValidator.DEFAULT_PAGE, criteria.page());
         assertEquals(UserSearchValidator.DEFAULT_SIZE, criteria.size());
@@ -50,13 +49,14 @@ class RoleSearchValidatorTest {
     }
 
     /**
-     * Un rol ausente, vacío, fuera del catálogo o Todos se rechaza, este parámetro es obligatorio
+     * Un rol ausente, vacío o sin el formato guardado se rechaza, este parámetro es obligatorio. Que el rol
+     * exista lo comprueba el servicio
      *
      * @param role rol recibido
      */
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"  ", "brigadista", "SUPERUSUARIO", "TODOS"})
+    @ValueSource(strings = {"  ", "brigadista", "SUPER-USUARIO", "1ROL", "R"})
     void validateByRole_missingOrInvalidRole_isRejected(String role) {
         InvalidRequestException e = assertThrows(InvalidRequestException.class,
                 () -> UserSearchValidator.validateByRole(role, null, null, null));

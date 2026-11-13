@@ -12,7 +12,6 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UnauthenticatedException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,9 +19,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Autentica la peticion con las cabeceras X-User-Id y X-User-Role que inyecta el API Gateway
- * (RN-MS01-23), si las cabeceras faltan o no son validas la peticion queda sin
- * autenticar y las rutas protegidas responden 401
+ * Autentica la peticion con las cabeceras X-User-Id, X-User-Role y X-User-Permission que inyecta el API
+ * Gateway (RN-MS01-23), si las cabeceras faltan o no son validas la peticion queda sin autenticar y las
+ * rutas protegidas responden 401
  */
 public class IdentityHeadersAuthenticationFilter extends OncePerRequestFilter {
 
@@ -43,7 +42,8 @@ public class IdentityHeadersAuthenticationFilter extends OncePerRequestFilter {
         try {
             RequesterIdentity identity = IdentityHeaderParser.parse(
                     request.getHeader(IdentityHeaderParser.USER_ID_HEADER),
-                    request.getHeader(IdentityHeaderParser.USER_ROLE_HEADER));
+                    request.getHeader(IdentityHeaderParser.USER_ROLE_HEADER),
+                    request.getHeader(IdentityHeaderParser.USER_PERMISSION_HEADER));
             SecurityContext context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(buildAuthentication(identity));
             SecurityContextHolder.setContext(context);
@@ -61,8 +61,8 @@ public class IdentityHeadersAuthenticationFilter extends OncePerRequestFilter {
      */
     private Authentication buildAuthentication(RequesterIdentity identity) {
         List<GrantedAuthority> authorities = new ArrayList<>();
-        for (Permission permission : identity.permissions()) {
-            authorities.add(new SimpleGrantedAuthority(permission.getCode()));
+        for (String code : identity.permissions()) {
+            authorities.add(new SimpleGrantedAuthority(code));
         }
         return UsernamePasswordAuthenticationToken.authenticated(identity, null, authorities);
     }

@@ -26,12 +26,12 @@ public class SecurityConfig {
 
     /**
      * Cadena de filtros HTTP, solo las rutas publicas exactas del estandar de integracion son
-     * publicas y el resto exige la identidad de las cabeceras X-User-Id y X-User-Role
+     * publicas y el resto exige la identidad de las cabeceras X-User-Id, X-User-Role y X-User-Permission
      * que inyecta el API Gateway (RN-MS01-23)
      *
      * Si falta se responde 401 con el cuerpo ErrorResponse
      *
-     * La autorizacion (403) la decide cada servicio con la matriz Rol-Permiso
+     * La autorizacion (403) la decide cada servicio con los permisos de X-User-Permission
      *
      * @param http constructor de la configuracion de seguridad HTTP
      * @param swaggerEnabled indica si la documentacion OpenAPI esta habilitada (solo en desarrollo local)

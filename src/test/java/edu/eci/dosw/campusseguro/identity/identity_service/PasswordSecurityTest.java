@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.controller.PasswordCo
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequest;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.PasswordService;
@@ -148,17 +147,18 @@ class PasswordSecurityTest {
     }
 
     /**
-     * Un rol fuera del catálogo responde 401 con el motivo y el servicio no se ejecuta
+     * Un nombre de rol con formato inválido responde 401 con el motivo y el servicio no se ejecuta
      *
      * @throws Exception si falla la petición simulada
      */
     @Test
-    void change_withUnknownRole_returns401WithTheReason() throws Exception {
+    void change_withInvalidRoleFormat_returns401WithTheReason() throws Exception {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(CHANGE_BODY)
                 .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPERUSUARIO"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPER-USUARIO")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:role:read_own"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value(IdentityHeaderParser.INVALID_ROLE_MESSAGE));
 
@@ -180,6 +180,7 @@ class PasswordSecurityTest {
                 .content(CHANGE_BODY)
                 .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"))
                 .header(CorrelationIds.HEADER, correlationId))
                 .andExpect(status().isOk())
                 .andExpect(header().string(CorrelationIds.HEADER, correlationId))
@@ -189,7 +190,7 @@ class PasswordSecurityTest {
         verify(passwordService).changePassword(captor.capture(), any(ChangePasswordRequest.class),
                 eq(correlationId));
         assertEquals(UUID.fromString(USER_ID), captor.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE), captor.getValue().roles());
+        assertEquals(Set.of("ESTUDIANTE"), captor.getValue().roles());
     }
 
     /**
@@ -199,12 +200,13 @@ class PasswordSecurityTest {
      */
     @Test
     void change_everyRoleInTheCatalog_isAccepted() throws Exception {
-        for (UserRole role : UserRole.values()) {
+        for (String role : SeedRoles.PERMISSIONS.keySet()) {
             mockMvc.perform(put(CHANGE_URL)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(CHANGE_BODY)
                     .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
-                    .header(IdentityHeaderParser.USER_ROLE_HEADER, role.name()))
+                    .header(IdentityHeaderParser.USER_ROLE_HEADER, role)
+                    .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader(role)))
                     .andExpect(status().isOk());
         }
     }

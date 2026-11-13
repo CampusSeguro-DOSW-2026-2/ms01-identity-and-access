@@ -36,9 +36,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserSearchValidator;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserServiceImpl;
@@ -51,6 +51,7 @@ import jakarta.validation.Validation;
 class InternalUserLookupServiceTest {
 
     private UserRepository userRepository;
+    private RoleRepository roleRepository;
     private AuditEventPublisher auditPublisher;
     private UserServiceImpl userService;
 
@@ -60,12 +61,15 @@ class InternalUserLookupServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
+        roleRepository = mock(RoleRepository.class);
+        when(roleRepository.existsById("BRIGADISTA")).thenReturn(true);
+        when(roleRepository.existsById("ESTUDIANTE")).thenReturn(true);
         auditPublisher = mock(AuditEventPublisher.class);
         Clock clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        userService = new UserServiceImpl(userRepository, mock(PasswordEncoder.class),
-                new AuditRecorder(auditPublisher, clock), requestValidator, List.of("escuelaing.edu.co"));
+        userService = new UserServiceImpl(userRepository, roleRepository, mock(PasswordEncoder.class),
+                new AuditRecorder(auditPublisher, clock), requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
     }
 
     /**
@@ -76,7 +80,7 @@ class InternalUserLookupServiceTest {
      * @param roles roles del usuario
      * @return el usuario de prueba
      */
-    private static UserEntity user(UUID id, UserState state, UserRole... roles) {
+    private static UserEntity user(UUID id, UserState state, String... roles) {
         UserEntity u = new UserEntity();
         u.setId(id);
         u.setFirstName("Laura");
@@ -123,8 +127,8 @@ class InternalUserLookupServiceTest {
         UUID missing = UUID.randomUUID();
         UUID second = UUID.randomUUID();
         when(userRepository.findAllById(anyCollection())).thenReturn(List.of(
-                user(second, UserState.ACTIVO, UserRole.ESTUDIANTE),
-                user(first, UserState.ACTIVO, UserRole.BRIGADISTA)));
+                user(second, UserState.ACTIVO, "ESTUDIANTE"),
+                user(first, UserState.ACTIVO, "BRIGADISTA")));
 
         BatchUsersResponse response = userService.findUsersByIds(batch(List.of(
                 first.toString(), missing.toString(), second.toString(), first.toString())));
@@ -158,7 +162,7 @@ class InternalUserLookupServiceTest {
     void findUsersByIds_includesInactiveUsersWithTheirState() {
         UUID id = UUID.randomUUID();
         when(userRepository.findAllById(anyCollection()))
-                .thenReturn(List.of(user(id, UserState.INACTIVO, UserRole.ESTUDIANTE)));
+                .thenReturn(List.of(user(id, UserState.INACTIVO, "ESTUDIANTE")));
 
         BatchUsersResponse response = userService.findUsersByIds(batch(List.of(id.toString())));
 
@@ -238,14 +242,14 @@ class InternalUserLookupServiceTest {
      */
     @Test
     void searchByRole_withoutCutoff_ordersByIdAscending() {
-        when(userRepository.findByRole(eq(UserRole.BRIGADISTA), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(user(UUID.randomUUID(), UserState.ACTIVO, UserRole.BRIGADISTA)),
+        when(userRepository.findByRole(eq("BRIGADISTA"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(user(UUID.randomUUID(), UserState.ACTIVO, "BRIGADISTA")),
                         PageRequest.of(2, 100), 201));
 
         PageResponse<UserProfileResponse> page = userService.searchByRole("BRIGADISTA", null, "2", "100");
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(userRepository).findByRole(eq(UserRole.BRIGADISTA), captor.capture());
+        verify(userRepository).findByRole(eq("BRIGADISTA"), captor.capture());
         assertEquals(PageRequest.of(2, 100, Sort.by(Sort.Order.asc("id"))), captor.getValue());
         assertEquals(201, page.totalElementos());
         assertEquals(3, page.totalPaginas());
@@ -258,7 +262,7 @@ class InternalUserLookupServiceTest {
     @Test
     void searchByRole_withCutoff_usesTheCutoffQuery() {
         Instant cutoff = Instant.parse("2026-11-07T15:04:05Z");
-        when(userRepository.findByRoleCreatedUpTo(eq(UserRole.ESTUDIANTE), eq(cutoff), any(Pageable.class)))
+        when(userRepository.findByRoleCreatedUpTo(eq("ESTUDIANTE"), eq(cutoff), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         PageResponse<UserProfileResponse> page = userService.searchByRole("ESTUDIANTE", "2026-11-07T15:04:05Z",
@@ -274,10 +278,10 @@ class InternalUserLookupServiceTest {
      */
     @Test
     void searchByRole_returnsEveryStateAndIsNotAudited() {
-        when(userRepository.findByRole(eq(UserRole.BRIGADISTA), any(Pageable.class)))
+        when(userRepository.findByRole(eq("BRIGADISTA"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(
-                        user(UUID.randomUUID(), UserState.ACTIVO, UserRole.BRIGADISTA),
-                        user(UUID.randomUUID(), UserState.INACTIVO, UserRole.BRIGADISTA)),
+                        user(UUID.randomUUID(), UserState.ACTIVO, "BRIGADISTA"),
+                        user(UUID.randomUUID(), UserState.INACTIVO, "BRIGADISTA")),
                         PageRequest.of(0, 20), 2));
 
         PageResponse<UserProfileResponse> page = userService.searchByRole("BRIGADISTA", null, null, null);
@@ -288,14 +292,43 @@ class InternalUserLookupServiceTest {
     }
 
     /**
-     * Un rol inválido se rechaza sin consultar la base de datos
+     * Un rol sin el formato guardado se rechaza sin consultar roles ni usuarios
      */
     @Test
-    void searchByRole_invalidRole_isRejectedWithoutQuerying() {
+    void searchByRole_roleWithoutTheStoredFormat_isRejectedWithoutQuerying() {
+        InvalidRequestException e = assertThrows(InvalidRequestException.class,
+                () -> userService.searchByRole("super-usuario", null, null, null));
+
+        assertEquals(UserSearchValidator.INVALID_ROLE_MESSAGE, e.getErrors().get(0).mensaje());
+        verify(roleRepository, never()).existsById(any());
+        verify(userRepository, never()).findByRole(any(), any());
+    }
+
+    /**
+     * Un rol con formato válido que no existe en la tabla de roles se rechaza sin buscar usuarios
+     */
+    @Test
+    void searchByRole_roleThatDoesNotExist_isRejectedWithoutQueryingUsers() {
         InvalidRequestException e = assertThrows(InvalidRequestException.class,
                 () -> userService.searchByRole("SUPERUSUARIO", null, null, null));
 
+        assertEquals("Datos inválidos.", e.getMessage());
+        assertEquals("rol", e.getErrors().get(0).campo());
         assertEquals(UserSearchValidator.INVALID_ROLE_MESSAGE, e.getErrors().get(0).mensaje());
+        verify(roleRepository).existsById("SUPERUSUARIO");
         verify(userRepository, never()).findByRole(any(), any());
+        verify(userRepository, never()).findByRoleCreatedUpTo(any(), any(), any());
+    }
+
+    /**
+     * El rol es obligatorio en la consulta interna
+     */
+    @Test
+    void searchByRole_missingRole_isRejected() {
+        InvalidRequestException e = assertThrows(InvalidRequestException.class,
+                () -> userService.searchByRole(null, null, null, null));
+
+        assertEquals(UserSearchValidator.INVALID_ROLE_MESSAGE, e.getErrors().get(0).mensaje());
+        verify(roleRepository, never()).existsById(any());
     }
 }

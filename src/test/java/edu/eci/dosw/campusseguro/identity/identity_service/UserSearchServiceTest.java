@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -33,10 +32,10 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserServiceImpl;
@@ -49,11 +48,12 @@ import jakarta.validation.Validation;
 class UserSearchServiceTest {
 
     private UserRepository userRepository;
+    private RoleRepository roleRepository;
     private UserServiceImpl userService;
 
-    private final RequesterIdentity admin = identity(UserRole.ADMIN);
-    private final RequesterIdentity auditor = identity(UserRole.AUDITOR);
-    private final RequesterIdentity student = identity(UserRole.ESTUDIANTE);
+    private final RequesterIdentity admin = identity("ADMIN");
+    private final RequesterIdentity auditor = identity("AUDITOR");
+    private final RequesterIdentity student = identity("ESTUDIANTE");
 
     /**
      * Construye la identidad de un solicitante con un rol
@@ -61,8 +61,8 @@ class UserSearchServiceTest {
      * @param role rol del solicitante
      * @return la identidad del solicitante
      */
-    private static RequesterIdentity identity(UserRole role) {
-        return new RequesterIdentity(UUID.randomUUID(), EnumSet.of(role));
+    private static RequesterIdentity identity(String role) {
+        return TestIdentities.of(UUID.randomUUID(), role);
     }
 
     /**
@@ -71,12 +71,15 @@ class UserSearchServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
+        roleRepository = mock(RoleRepository.class);
+        when(roleRepository.existsById("ESTUDIANTE")).thenReturn(true);
+        when(roleRepository.existsById("MONITOR_EVACUACION")).thenReturn(true);
         Clock clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC);
         AuditRecorder auditRecorder = new AuditRecorder(mock(AuditEventPublisher.class), clock);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        userService = new UserServiceImpl(userRepository, mock(PasswordEncoder.class), auditRecorder,
-                requestValidator, List.of("escuelaing.edu.co"));
+        userService = new UserServiceImpl(userRepository, roleRepository, mock(PasswordEncoder.class), auditRecorder,
+                requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
     }
 
     /**
@@ -87,7 +90,7 @@ class UserSearchServiceTest {
      * @param roles roles del usuario
      * @return el usuario de prueba
      */
-    private UserEntity user(String email, UserState state, UserRole... roles) {
+    private UserEntity user(String email, UserState state, String... roles) {
         UserEntity u = new UserEntity();
         u.setId(UUID.randomUUID());
         u.setFirstName("Carlos");
@@ -112,9 +115,9 @@ class UserSearchServiceTest {
      */
     @Test
     void search_asAdmin_returnsPageWithFullProfilesAndPaginationData() {
-        UserEntity a = user("ana@escuelaing.edu.co", UserState.ACTIVO, UserRole.ESTUDIANTE);
-        UserEntity b = user("beto@escuelaing.edu.co", UserState.INACTIVO, UserRole.PROFESOR,
-                UserRole.BRIGADISTA);
+        UserEntity a = user("ana@escuelaing.edu.co", UserState.ACTIVO, "ESTUDIANTE");
+        UserEntity b = user("beto@escuelaing.edu.co", UserState.INACTIVO, "PROFESOR",
+                "BRIGADISTA");
         when(userRepository.searchUsers(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(a, b), PageRequest.of(1, 2), 5));
 
@@ -127,7 +130,7 @@ class UserSearchServiceTest {
         assertEquals(1, result.page());
         assertEquals(2, result.size());
         assertEquals(UserState.INACTIVO, result.contenido().get(1).state());
-        assertEquals(List.of(UserRole.BRIGADISTA, UserRole.PROFESOR), result.contenido().get(1).roles());
+        assertEquals(List.of("BRIGADISTA", "PROFESOR"), result.contenido().get(1).roles());
         assertEquals("Carlos", result.contenido().get(0).firstName());
     }
 
@@ -141,7 +144,7 @@ class UserSearchServiceTest {
         userService.search(admin, "  Ana  ", "ACTIVO", "ESTUDIANTE", "1", "2");
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(userRepository).searchUsers(eq("ana"), eq(UserState.ACTIVO), eq(UserRole.ESTUDIANTE),
+        verify(userRepository).searchUsers(eq("ana"), eq(UserState.ACTIVO), eq("ESTUDIANTE"),
                 captor.capture());
         Pageable pageable = captor.getValue();
         assertEquals(1, pageable.getPageNumber());
@@ -194,7 +197,7 @@ class UserSearchServiceTest {
     @Test
     void search_permissionIsCheckedBeforeValidatingParameters() {
         assertThrows(ForbiddenOperationException.class,
-                () -> userService.search(student, null, "XYZ", "SUPERMAN", "-1", "1000"));
+                () -> userService.search(student, null, "XYZ", "SUPER-MAN", "-1", "1000"));
     }
 
     /**
@@ -203,7 +206,7 @@ class UserSearchServiceTest {
     @Test
     void search_invalidFilters_reportOneErrorPerFieldWithTheFormMessages() {
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
-                () -> userService.search(admin, "a<b", "XYZ", "SUPERMAN", "-1", "101"));
+                () -> userService.search(admin, "a<b", "XYZ", "SUPER-MAN", "-1", "101"));
 
         assertEquals(5, error.getErrors().size());
         assertTrue(error.getErrors().contains(new ErrorResponse.ErrorDetail("correo", "Búsqueda no válida.")));
@@ -213,6 +216,60 @@ class UserSearchServiceTest {
         assertTrue(error.getErrors().contains(new ErrorResponse.ErrorDetail("size",
                 "Tamaño de página no válido (1 a 100).")));
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
+    }
+
+    /**
+     * El rol del filtro debe llegar con el formato guardado: en minúsculas o con símbolos se rechaza sin
+     * consultar la tabla de roles
+     */
+    @Test
+    void search_roleFilterWithoutTheStoredFormat_isRejectedWithoutQueryingRoles() {
+        InvalidRequestException lowercase = assertThrows(InvalidRequestException.class,
+                () -> userService.search(admin, null, null, "estudiante", null, null));
+        InvalidRequestException symbols = assertThrows(InvalidRequestException.class,
+                () -> userService.search(admin, null, null, "ROL-1", null, null));
+
+        assertEquals("Rol no válido.", lowercase.getErrors().get(0).mensaje());
+        assertEquals("Rol no válido.", symbols.getErrors().get(0).mensaje());
+        verify(roleRepository, never()).existsById(any());
+    }
+
+    /**
+     * Un rol con formato válido que no existe en la tabla de roles se rechaza y no se buscan usuarios
+     */
+    @Test
+    void search_roleFilterThatDoesNotExist_isRejected() {
+        InvalidRequestException error = assertThrows(InvalidRequestException.class,
+                () -> userService.search(admin, null, null, "FANTASMA", null, null));
+
+        assertEquals("Datos inválidos.", error.getMessage());
+        assertEquals(new ErrorResponse.ErrorDetail("rol", "Rol no válido."), error.getErrors().get(0));
+        verify(roleRepository).existsById("FANTASMA");
+        verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
+    }
+
+    /**
+     * Un rol personalizado que existe sirve de filtro
+     */
+    @Test
+    void search_roleFilterWithACustomRole_isAccepted() {
+        stubEmptyPage();
+
+        userService.search(admin, null, null, "MONITOR_EVACUACION", null, null);
+
+        verify(userRepository).searchUsers(eq(null), eq(null), eq("MONITOR_EVACUACION"), any(Pageable.class));
+    }
+
+    /**
+     * Sin filtro de rol no se consulta la tabla de roles
+     */
+    @Test
+    void search_withoutRoleFilter_doesNotQueryTheRolesTable() {
+        stubEmptyPage();
+
+        userService.search(admin, null, null, "Todos", null, null);
+
+        verify(roleRepository, never()).existsById(any());
     }
 
     /**

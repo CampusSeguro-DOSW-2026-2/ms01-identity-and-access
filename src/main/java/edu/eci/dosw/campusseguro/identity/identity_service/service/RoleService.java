@@ -34,7 +34,8 @@ public interface RoleService {
      * @return los roles finales de cada usuario
      * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido o se incluye a sí
      *         mismo
-     * @throws InvalidRequestException si el cuerpo es inválido o algún usuario quedaría sin roles
+     * @throws InvalidRequestException si el cuerpo es inválido, algún rol no existe o algún usuario quedaría sin
+     *         roles
      * @throws UsersNotFoundException si algún usuario objetivo no existe
      */
     ChangeRolesResponse changeRoles(RequesterIdentity requester, ChangeRolesRequest request, String correlationId);

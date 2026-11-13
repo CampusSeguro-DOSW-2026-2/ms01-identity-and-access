@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.TestIdentities;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
@@ -96,7 +95,7 @@ class AuditRecorderTest {
      */
     @Test
     void recordAs_publishesTheRequesterAndItsRolesInHeaderOrder() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, Set.of(UserRole.PROFESOR, UserRole.ADMIN));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "PROFESOR", "ADMIN");
 
         recorder.recordAs(AuditAction.CAMBIO_ESTADO, AuditResult.EXITO, requester, "usuario:otro", "ACTIVO",
                 CORRELATION_ID);

@@ -29,9 +29,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
@@ -42,7 +42,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.slf4j.LoggerFactory;
@@ -70,7 +70,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordReq
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.PasswordResetCodeEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
@@ -173,7 +172,7 @@ class PasswordServiceTest {
         entity.setEmail(email);
         entity.setPassword(passwordEncoder.encode(rawPassword));
         entity.setState(state);
-        entity.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        entity.setRoles(Set.of("ESTUDIANTE"));
         return entity;
     }
 
@@ -279,7 +278,7 @@ class PasswordServiceTest {
      * @return la identidad con el rol ESTUDIANTE
      */
     private RequesterIdentity requester() {
-        return new RequesterIdentity(userId, EnumSet.of(UserRole.ESTUDIANTE));
+        return TestIdentities.of(userId, "ESTUDIANTE");
     }
 
     /**
@@ -1150,13 +1149,13 @@ class PasswordServiceTest {
      * @param role rol del solicitante
      */
     @ParameterizedTest
-    @EnumSource(UserRole.class)
-    void changePassword_anyRole_isAccepted(UserRole role) {
-        RequesterIdentity identity = new RequesterIdentity(userId, EnumSet.of(role));
+    @MethodSource("edu.eci.dosw.campusseguro.identity.identity_service.SeedRoles#names")
+    void changePassword_anyRole_isAccepted(String role) {
+        RequesterIdentity identity = TestIdentities.of(userId, role);
 
         assertDoesNotThrow(() -> service.changePassword(identity, validChange(), CORR));
 
-        assertEquals(role.name(), singleAuditEvent().usuarioRoles());
+        assertEquals(role, singleAuditEvent().usuarioRoles());
     }
 
     /**
@@ -1259,7 +1258,7 @@ class PasswordServiceTest {
      */
     @Test
     void changePassword_withoutThePermission_isForbiddenAndAudited() {
-        RequesterIdentity withoutRoles = new RequesterIdentity(userId, EnumSet.noneOf(UserRole.class));
+        RequesterIdentity withoutRoles = TestIdentities.withPermissions(userId, Set.of());
 
         assertThrows(ForbiddenOperationException.class,
                 () -> service.changePassword(withoutRoles, validChange(), CORR));

@@ -5,14 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Signature;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
@@ -22,10 +24,10 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IssuedToken;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtServiceImpl;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RsaKeyUtils;
+import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 
 /**
@@ -36,6 +38,7 @@ class JwtServiceTest {
     private static final Instant NOW = Instant.parse("2026-10-22T05:00:00.789Z");
     private static final UUID USER_ID = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
     private static final String EMAIL = "maria.perez@escuelaing.edu.co";
+    private static final List<String> PERMISSIONS = List.of("ms01:role:read_own", "ms01:profile:read");
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
 
@@ -55,7 +58,7 @@ class JwtServiceTest {
      * @return el emisor de tokens
      */
     private static JwtServiceImpl service() {
-        return new JwtServiceImpl(keyPair.getPrivate(), "ms01-test", Clock.fixed(NOW, ZoneOffset.UTC));
+        return new JwtServiceImpl(keyPair.getPrivate(), "ms01-test", FixedDatabaseTime.at(NOW));
     }
 
     /**
@@ -102,7 +105,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_producesCompactJwsWithoutPadding() {
-        String token = service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token();
+        String token = service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token();
 
         assertEquals(3, token.split("\\.").length);
         assertFalse(token.contains("="));
@@ -114,7 +117,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_headerDeclaresRs256AndKeyId() {
-        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token());
+        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token());
 
         assertEquals("{\"alg\":\"RS256\",\"typ\":\"JWT\",\"kid\":\"ms01-test\"}", decode(parts[0]));
     }
@@ -126,14 +129,27 @@ class JwtServiceTest {
     void issueToken_payloadHasExactlyTheClaimsOfTheSpec() {
         long iat = NOW.truncatedTo(ChronoUnit.SECONDS).getEpochSecond();
         String[] parts = parts(service()
-                .issueToken(USER_ID, EMAIL, List.of(UserRole.PROFESOR, UserRole.ESTUDIANTE))
+                .issueToken(USER_ID, EMAIL, List.of("PROFESOR", "ESTUDIANTE"), PERMISSIONS)
                 .token());
 
         String expected = Pattern.quote("{\"iss\":\"ms01-identity-and-access\",\"aud\":\"campusseguro\","
                 + "\"sub\":\"" + USER_ID + "\",\"email\":\"" + EMAIL + "\","
-                + "\"roles\":[\"ESTUDIANTE\",\"PROFESOR\"],\"iat\":" + iat + ",\"exp\":" + (iat + 3600)
-                + ",\"jti\":\"") + "[0-9a-f-]{36}" + Pattern.quote("\"}");
+                + "\"roles\":[\"ESTUDIANTE\",\"PROFESOR\"],"
+                + "\"permissions\":[\"ms01:profile:read\",\"ms01:role:read_own\"],\"iat\":" + iat
+                + ",\"exp\":" + (iat + 3600) + ",\"jti\":\"") + "[0-9a-f-]{36}" + Pattern.quote("\"}");
         assertTrue(Pattern.matches(expected, decode(parts[1])), decode(parts[1]));
+    }
+
+    /**
+     * Los permisos del token van en orden alfabético y sin repetidos
+     */
+    @Test
+    void issueToken_permissionsAreSortedAndDistinct() {
+        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"),
+                List.of("ms05:panel:read_own", "ms01:profile:read", "ms05:panel:read_own")).token());
+
+        assertTrue(decode(parts[1]).contains("\"permissions\":[\"ms01:profile:read\",\"ms05:panel:read_own\"]"),
+                decode(parts[1]));
     }
 
     /**
@@ -142,7 +158,7 @@ class JwtServiceTest {
     @Test
     void issueToken_rolesAreSortedAlphabetically() {
         String[] parts = parts(service()
-                .issueToken(USER_ID, EMAIL, List.of(UserRole.PROFESOR, UserRole.ADMIN, UserRole.BRIGADISTA)).token());
+                .issueToken(USER_ID, EMAIL, List.of("PROFESOR", "ADMIN", "BRIGADISTA"), PERMISSIONS).token());
 
         assertTrue(decode(parts[1]).contains("\"roles\":[\"ADMIN\",\"BRIGADISTA\",\"PROFESOR\"]"));
     }
@@ -153,8 +169,9 @@ class JwtServiceTest {
     @Test
     void issueToken_jtiIsAUuidAndDiffersBetweenTokens() {
         JwtServiceImpl service = service();
-        String first = decode(parts(service.issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token())[1]);
-        String second = decode(parts(service.issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token())[1]);
+        String first = decode(parts(service.issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token())[1]);
+        String second = decode(
+                parts(service.issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token())[1]);
 
         java.util.regex.Matcher a = Pattern.compile("\"jti\":\"([^\"]+)\"").matcher(first);
         java.util.regex.Matcher b = Pattern.compile("\"jti\":\"([^\"]+)\"").matcher(second);
@@ -171,7 +188,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_expiresExactlyOneHourAfterIssuance() {
-        IssuedToken issued = service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE));
+        IssuedToken issued = service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS);
 
         assertEquals(Instant.parse("2026-10-22T06:00:00Z"), issued.expiresAt());
         assertTrue(decode(parts(issued.token())[1]).contains("\"exp\":" + issued.expiresAt().getEpochSecond()));
@@ -182,7 +199,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_lifetimeIsTheGlobalValue() {
-        IssuedToken issued = service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE));
+        IssuedToken issued = service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS);
 
         assertEquals(NOW.truncatedTo(ChronoUnit.SECONDS).plusSeconds(GlobalValues.JWT_LIFETIME_SECONDS),
                 issued.expiresAt());
@@ -197,7 +214,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_signatureVerifiesWithThePublicKey() throws Exception {
-        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token());
+        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token());
 
         assertTrue(verifies(keyPair.getPublic(), parts));
     }
@@ -209,7 +226,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_tamperedPayloadFailsVerification() throws Exception {
-        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token());
+        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token());
         String forgedPayload = decode(parts[1]).replace("ESTUDIANTE", "ADMIN");
         parts[1] = Base64.getUrlEncoder()
                 .withoutPadding()
@@ -225,7 +242,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_signatureDoesNotVerifyWithAnotherKey() throws Exception {
-        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token());
+        String[] parts = parts(service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token());
 
         assertFalse(verifies(RsaKeyUtils.generateKeyPair().getPublic(), parts));
     }
@@ -237,9 +254,11 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_neverIncludesSensitiveOrNonSpecifiedData() {
-        String payload = decode(parts(service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token())[1]);
+        String payload = decode(
+                parts(service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token())[1]);
 
-        for (String forbidden : List.of("password", "contrasena", "hash", "nombre", "apellido", "estado", "permisos")) {
+        for (String forbidden : List.of("password", "contrasena", "hash", "nombre", "apellido", "estado", "permisos",
+                "valido_desde", "es_sistema")) {
             assertFalse(payload.toLowerCase().contains(forbidden), "El payload no debe contener " + forbidden);
         }
     }
@@ -250,7 +269,7 @@ class JwtServiceTest {
     @Test
     void issueToken_escapesSpecialCharactersSoThePayloadStaysValidJson() {
         String payload = decode(parts(service()
-                .issueToken(USER_ID, "a\"b\\c@escuelaing.edu.co", List.of(UserRole.ESTUDIANTE)).token())[1]);
+                .issueToken(USER_ID, "a\"b\\c@escuelaing.edu.co", List.of("ESTUDIANTE"), PERMISSIONS).token())[1]);
 
         assertTrue(payload.contains("\"email\":\"a\\\"b\\\\c@escuelaing.edu.co\""), payload);
     }
@@ -264,8 +283,21 @@ class JwtServiceTest {
     void issueToken_withoutRoles_isRejected() {
         JwtServiceImpl service = service();
 
-        assertThrows(IllegalArgumentException.class, () -> service.issueToken(USER_ID, EMAIL, List.of()));
-        assertThrows(IllegalArgumentException.class, () -> service.issueToken(USER_ID, EMAIL, null));
+        assertThrows(IllegalArgumentException.class, () -> service.issueToken(USER_ID, EMAIL, List.of(), PERMISSIONS));
+        assertThrows(IllegalArgumentException.class, () -> service.issueToken(USER_ID, EMAIL, null, PERMISSIONS));
+    }
+
+    /**
+     * Un usuario sin permisos se rechaza, un token sin permisos no autorizaría nada
+     */
+    @Test
+    void issueToken_withoutPermissions_isRejected() {
+        JwtServiceImpl service = service();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), List.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), null));
     }
 
     /**
@@ -276,7 +308,7 @@ class JwtServiceTest {
         JwtServiceImpl service = service();
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.issueToken(USER_ID, " ", List.of(UserRole.ESTUDIANTE)));
+                () -> service.issueToken(USER_ID, " ", List.of("ESTUDIANTE"), PERMISSIONS));
     }
 
     /**
@@ -291,7 +323,7 @@ class JwtServiceTest {
         KeyPair weak = generator.generateKeyPair();
 
         assertThrows(IllegalArgumentException.class,
-                () -> new JwtServiceImpl(weak.getPrivate(), "kid", Clock.systemUTC()));
+                () -> new JwtServiceImpl(weak.getPrivate(), "kid", FixedDatabaseTime.at(NOW)));
     }
 
     /**
@@ -306,7 +338,7 @@ class JwtServiceTest {
         KeyPair ec = generator.generateKeyPair();
 
         assertThrows(IllegalArgumentException.class,
-                () -> new JwtServiceImpl(ec.getPrivate(), "kid", Clock.systemUTC()));
+                () -> new JwtServiceImpl(ec.getPrivate(), "kid", FixedDatabaseTime.at(NOW)));
     }
 
     /**
@@ -315,11 +347,11 @@ class JwtServiceTest {
     @Test
     void constructor_rejectsABlankKeyId() {
         assertThrows(IllegalArgumentException.class,
-                () -> new JwtServiceImpl(keyPair.getPrivate(), " ", Clock.systemUTC()));
+                () -> new JwtServiceImpl(keyPair.getPrivate(), " ", FixedDatabaseTime.at(NOW)));
         assertThrows(IllegalArgumentException.class,
-                () -> new JwtServiceImpl(keyPair.getPrivate(), "", Clock.systemUTC()));
+                () -> new JwtServiceImpl(keyPair.getPrivate(), "", FixedDatabaseTime.at(NOW)));
         assertThrows(IllegalArgumentException.class,
-                () -> new JwtServiceImpl(keyPair.getPrivate(), null, Clock.systemUTC()));
+                () -> new JwtServiceImpl(keyPair.getPrivate(), null, FixedDatabaseTime.at(NOW)));
     }
 
     // ---------------------------------------------------------------- vigencia
@@ -329,7 +361,7 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_lifetimeIs3600Seconds() {
-        IssuedToken issued = service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE));
+        IssuedToken issued = service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS);
 
         assertEquals(NOW.truncatedTo(ChronoUnit.SECONDS).plusSeconds(3600), issued.expiresAt());
     }
@@ -339,9 +371,43 @@ class JwtServiceTest {
      */
     @Test
     void issueToken_issuerAndAudienceAreTheGlobalValues() {
-        String payload = decode(parts(service().issueToken(USER_ID, EMAIL, List.of(UserRole.ESTUDIANTE)).token())[1]);
+        String payload = decode(
+                parts(service().issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS).token())[1]);
 
         assertTrue(payload.contains("\"iss\":\"" + GlobalValues.JWT_ISSUER + "\""), payload);
         assertTrue(payload.contains("\"aud\":\"" + GlobalValues.JWT_AUDIENCE + "\""), payload);
+    }
+
+    /**
+     * El iat y el exp salen de la hora de la base de datos, que se consulta una sola vez por token para que los
+     * dos claims partan del mismo instante
+     */
+    @Test
+    void issueToken_iatAndExpComeFromTheDatabaseTimeQueriedOncePerToken() {
+        DatabaseTimeService databaseTime = mock(DatabaseTimeService.class);
+        Instant databaseNow = Instant.parse("2026-11-12T17:45:30Z");
+        when(databaseTime.now()).thenReturn(databaseNow);
+        JwtServiceImpl service = new JwtServiceImpl(keyPair.getPrivate(), "ms01-test", databaseTime);
+
+        IssuedToken issued = service.issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS);
+
+        String payload = decode(parts(issued.token())[1]);
+        assertTrue(payload.contains("\"iat\":" + databaseNow.getEpochSecond()), payload);
+        assertTrue(payload.contains("\"exp\":" + (databaseNow.getEpochSecond() + 3600)), payload);
+        assertEquals(databaseNow.plusSeconds(3600), issued.expiresAt());
+        verify(databaseTime, times(1)).now();
+    }
+
+    /**
+     * Si la base de datos no responde, el token no se emite y el error se propaga
+     */
+    @Test
+    void issueToken_databaseTimeFailure_isPropagated() {
+        DatabaseTimeService databaseTime = mock(DatabaseTimeService.class);
+        when(databaseTime.now()).thenThrow(new IllegalStateException("sin hora"));
+        JwtServiceImpl service = new JwtServiceImpl(keyPair.getPrivate(), "ms01-test", databaseTime);
+
+        assertThrows(IllegalStateException.class,
+                () -> service.issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), PERMISSIONS));
     }
 }

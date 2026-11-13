@@ -1,6 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,8 +14,9 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumSet;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -31,11 +33,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusReque
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFoundException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserServiceImpl;
@@ -54,7 +56,7 @@ class BulkUserStatusOperationServiceTest {
     private UserServiceImpl userService;
 
     private final UUID adminId = UUID.randomUUID();
-    private final RequesterIdentity admin = new RequesterIdentity(adminId, EnumSet.of(UserRole.ADMIN));
+    private final RequesterIdentity admin = TestIdentities.of(adminId, "ADMIN");
 
     /**
      * Prepara el servicio con sus dependencias simuladas
@@ -67,8 +69,8 @@ class BulkUserStatusOperationServiceTest {
         AuditRecorder auditRecorder = new AuditRecorder(auditPublisher, clock);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        userService = new UserServiceImpl(userRepository, mock(PasswordEncoder.class), auditRecorder,
-                requestValidator, List.of("escuelaing.edu.co"));
+        userService = new UserServiceImpl(userRepository, mock(RoleRepository.class), mock(PasswordEncoder.class),
+                auditRecorder, requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
     }
 
     /**
@@ -82,7 +84,7 @@ class BulkUserStatusOperationServiceTest {
         UserEntity user = new UserEntity();
         user.setId(id);
         user.setState(state);
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        user.setRoles(Set.of("ESTUDIANTE"));
         return user;
     }
 
@@ -95,7 +97,7 @@ class BulkUserStatusOperationServiceTest {
      */
     private ChangeStatusRequest request(String estado, UUID... ids) {
         ChangeStatusRequest request = new ChangeStatusRequest();
-        request.setIds(java.util.Arrays.stream(ids)
+        request.setIds(Arrays.stream(ids)
                 .map(UUID::toString)
                 .toList());
         request.setEstado(estado);
@@ -140,6 +142,49 @@ class BulkUserStatusOperationServiceTest {
     }
 
     /**
+     * Cada usuario procesado recibe el corte de sesión con la hora del reloj truncada a segundos (RF-MS01-11)
+     */
+    @Test
+    void changeUserStatus_setsTheSessionCutOnEveryTarget() {
+        UserEntity firstUser = user(UUID.randomUUID(), UserState.ACTIVO);
+        UserEntity secondUser = user(UUID.randomUUID(), UserState.INACTIVO);
+        when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(firstUser, secondUser));
+
+        userService.changeUserStatus(admin, request("INACTIVO", firstUser.getId(), secondUser.getId()),
+                CORRELATION_ID);
+
+        assertEquals(Instant.parse("2026-03-01T10:00:00Z"), firstUser.getValidFrom());
+        assertEquals(Instant.parse("2026-03-01T10:00:00Z"), secondUser.getValidFrom());
+    }
+
+    /**
+     * Si el usuario ya tenía el estado pedido el corte de sesión también se registra, el cambio es de cuenta
+     */
+    @Test
+    void changeUserStatus_sameStateStillSetsTheSessionCut() {
+        UserEntity target = user(UUID.randomUUID(), UserState.ACTIVO);
+        when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
+
+        userService.changeUserStatus(admin, request("ACTIVO", target.getId()), CORRELATION_ID);
+
+        assertEquals(Instant.parse("2026-03-01T10:00:00Z"), target.getValidFrom());
+    }
+
+    /**
+     * Un cambio rechazado no registra ningún corte de sesión
+     */
+    @Test
+    void changeUserStatus_rejectedChange_setsNoSessionCut() {
+        UserEntity target = user(UUID.randomUUID(), UserState.ACTIVO);
+        when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
+
+        assertThrows(UsersNotFoundException.class, () -> userService.changeUserStatus(admin,
+                request("INACTIVO", target.getId(), UUID.randomUUID()), CORRELATION_ID));
+
+        assertNull(target.getValidFrom());
+    }
+
+    /**
      * Un cambio exitoso audita a cada usuario con su estado anterior y el nuevo
      */
     @Test
@@ -164,7 +209,7 @@ class BulkUserStatusOperationServiceTest {
      */
     @Test
     void changeUserStatus_withoutPermission_isForbiddenAuditedAndDoesNotTouchTheDatabase() {
-        RequesterIdentity auditor = new RequesterIdentity(UUID.randomUUID(), EnumSet.of(UserRole.AUDITOR));
+        RequesterIdentity auditor = TestIdentities.of(UUID.randomUUID(), "AUDITOR");
 
         ForbiddenOperationException error = assertThrows(ForbiddenOperationException.class,
                 () -> userService.changeUserStatus(auditor, request("INACTIVO", UUID.randomUUID()),

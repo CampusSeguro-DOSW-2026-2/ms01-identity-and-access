@@ -18,6 +18,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 public class AuditRecorder {
 
     public static final String USER_RESOURCE_TYPE = "usuario";
+    public static final String ROLE_RESOURCE_TYPE = "rol";
 
     private static final Logger log = LoggerFactory.getLogger(AuditRecorder.class);
 
@@ -79,6 +80,19 @@ public class AuditRecorder {
             return null;
         }
         return USER_RESOURCE_TYPE + ":" + userId;
+    }
+
+    /**
+     * Construye el recurso afectado de un rol con el formato tipo:id
+     *
+     * @param roleName nombre del rol afectado, puede ser null
+     * @return el recurso con el formato rol:NOMBRE, o null si no se conoce el rol
+     */
+    public static String roleResource(String roleName) {
+        if (roleName == null) {
+            return null;
+        }
+        return ROLE_RESOURCE_TYPE + ":" + roleName;
     }
 
     /**

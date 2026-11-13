@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +31,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.controller.SessionController;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
@@ -50,6 +49,7 @@ class SessionControllerTest {
     private static final String URL = "/api/v1/auth/logout";
     private static final String ID_HEADER = "X-User-Id";
     private static final String ROLE_HEADER = "X-User-Role";
+    private static final String PERMISSION_HEADER = "X-User-Permission";
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
     @Mock
@@ -82,7 +82,8 @@ class SessionControllerTest {
 
         mockMvc.perform(post(URL)
                 .header(ID_HEADER, id.toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Sesión cerrada."));
     }
@@ -96,7 +97,8 @@ class SessionControllerTest {
     void logout_response_containsOnlyTheMessage() throws Exception {
         mockMvc.perform(post(URL)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ADMIN"))
+                .header(ROLE_HEADER, "ADMIN")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$.token").doesNotExist())
@@ -115,13 +117,14 @@ class SessionControllerTest {
         mockMvc.perform(post(URL)
                 .header(ID_HEADER, id.toString())
                 .header(ROLE_HEADER, "BRIGADISTA,ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("BRIGADISTA,ESTUDIANTE"))
                 .header(CorrelationIds.HEADER, CORRELATION_ID))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<RequesterIdentity> captor = ArgumentCaptor.forClass(RequesterIdentity.class);
         verify(sessionService).logout(captor.capture(), eq(CORRELATION_ID));
         assertEquals(id, captor.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.BRIGADISTA, UserRole.ESTUDIANTE), captor.getValue().roles());
+        assertEquals(Set.of("BRIGADISTA", "ESTUDIANTE"), captor.getValue().roles());
     }
 
     /**
@@ -133,7 +136,8 @@ class SessionControllerTest {
     void logout_withoutCorrelationId_passesAGeneratedOneToTheService() throws Exception {
         mockMvc.perform(post(URL)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "PROFESOR"))
+                .header(ROLE_HEADER, "PROFESOR")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("PROFESOR")))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
@@ -155,13 +159,14 @@ class SessionControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"id\":\"" + UUID.randomUUID() + "\",\"roles\":[\"ADMIN\"]}")
                 .header(ID_HEADER, id.toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<RequesterIdentity> captor = ArgumentCaptor.forClass(RequesterIdentity.class);
         verify(sessionService).logout(captor.capture(), any(String.class));
         assertEquals(id, captor.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE), captor.getValue().roles());
+        assertEquals(Set.of("ESTUDIANTE"), captor.getValue().roles());
     }
 
     /**
@@ -201,7 +206,8 @@ class SessionControllerTest {
             request = request.header(ID_HEADER, userId);
         }
         if (!roles.isEmpty()) {
-            request = request.header(ROLE_HEADER, roles);
+            request = request.header(ROLE_HEADER, roles)
+            .header(PERMISSION_HEADER, TestIdentities.permissionHeader(roles));
         }
 
         mockMvc.perform(request)
@@ -237,7 +243,8 @@ class SessionControllerTest {
 
         mockMvc.perform(post(URL)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.codigo").value("PROHIBIDO"))
@@ -253,7 +260,8 @@ class SessionControllerTest {
     void logout_wrongHttpMethod_returns405WithAllowHeader() throws Exception {
         mockMvc.perform(get(URL)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(header().string("Allow", "POST"))
                 .andExpect(jsonPath("$.status").value(405))

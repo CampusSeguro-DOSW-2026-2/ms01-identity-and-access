@@ -10,7 +10,6 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
 
 /**
@@ -61,7 +60,7 @@ class MiniJsonTest {
      */
     @Test
     void write_enumsUseTheirName() {
-        assertEquals("[\"ADMIN\",\"AUDITOR\"]", MiniJson.write(List.of(UserRole.ADMIN, UserRole.AUDITOR)));
+        assertEquals("[\"ADMIN\",\"AUDITOR\"]", MiniJson.write(List.of("ADMIN", "AUDITOR")));
     }
 
     /**

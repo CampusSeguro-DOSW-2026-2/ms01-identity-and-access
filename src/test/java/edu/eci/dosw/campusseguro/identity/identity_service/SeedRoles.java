@@ -1,0 +1,205 @@
+package edu.eci.dosw.campusseguro.identity.identity_service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+/**
+ * Permisos de los ocho roles que crea el script de base de datos (RN-MS01-14), sirven para armar identidades de
+ * prueba con los mismos permisos que tendrían en una base recién creada
+ */
+public final class SeedRoles {
+
+    /** Roles sembrados con los códigos de permiso que tiene cada uno, ordenados por código */
+    public static final Map<String, List<String>> PERMISSIONS = Map.of(
+            "ESTUDIANTE", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:route:read",
+                    "ms03:alert:receive",
+                    "ms04:assistance:request",
+                    "ms04:checkin:read_own",
+                    "ms04:checkin:write",
+                    "ms07:content:read",
+                    "ms07:quiz:take",
+                    "ms07:tutor:use"),
+            "PROFESOR", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:route:read",
+                    "ms03:alert:receive",
+                    "ms04:assistance:request",
+                    "ms04:checkin:read_own",
+                    "ms04:checkin:write",
+                    "ms05:incident:report",
+                    "ms07:content:read",
+                    "ms07:quiz:take",
+                    "ms07:tutor:use"),
+            "ADMINISTRATIVO", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:route:read",
+                    "ms03:alert:receive",
+                    "ms04:assistance:request",
+                    "ms04:checkin:read_own",
+                    "ms04:checkin:write",
+                    "ms07:content:read",
+                    "ms07:quiz:take",
+                    "ms07:tutor:use"),
+            "BRIGADISTA", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:route:read",
+                    "ms03:alert:receive",
+                    "ms04:assistance:request",
+                    "ms04:checkin:read_own",
+                    "ms04:checkin:write",
+                    "ms04:dashboard:read",
+                    "ms05:assistance:read",
+                    "ms05:assistance:register",
+                    "ms05:assistance:update_status",
+                    "ms05:incident:read",
+                    "ms05:incident:report",
+                    "ms05:incident:update",
+                    "ms05:panel:read_own",
+                    "ms07:content:read",
+                    "ms07:quiz:take",
+                    "ms07:tutor:use"),
+            "COORDINADOR", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:route:read",
+                    "ms02:route_status:write",
+                    "ms03:alert:manage",
+                    "ms03:alert:read_history",
+                    "ms03:alert:receive",
+                    "ms04:assistance:request",
+                    "ms04:checkin:read_own",
+                    "ms04:checkin:write",
+                    "ms04:dashboard:read",
+                    "ms04:history:read",
+                    "ms05:assistance:assign",
+                    "ms05:assistance:read",
+                    "ms05:assistance:register",
+                    "ms05:assistance:update_status",
+                    "ms05:brigadier:assign",
+                    "ms05:incident:read",
+                    "ms05:incident:report",
+                    "ms05:incident:update",
+                    "ms06:drill:compare_report",
+                    "ms06:drill:evaluate",
+                    "ms06:drill:execute",
+                    "ms06:drill:manage",
+                    "ms06:drill:read",
+                    "ms07:content:read",
+                    "ms07:quiz:take",
+                    "ms07:tutor:use",
+                    "ms08:indicators:read"),
+            "ORGANIZADOR", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:route:read",
+                    "ms03:alert:manage_drill",
+                    "ms03:alert:read_history",
+                    "ms03:alert:receive",
+                    "ms04:assistance:request",
+                    "ms04:checkin:read_own",
+                    "ms04:checkin:write",
+                    "ms04:dashboard:read",
+                    "ms04:history:read",
+                    "ms06:drill:compare_report",
+                    "ms06:drill:evaluate",
+                    "ms06:drill:execute",
+                    "ms06:drill:manage",
+                    "ms06:drill:read",
+                    "ms07:content:read",
+                    "ms07:quiz:take",
+                    "ms07:tutor:use",
+                    "ms08:indicators:read"),
+            "ADMIN", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:manage",
+                    "ms01:role:read_all",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms01:user:read",
+                    "ms01:user:roles",
+                    "ms01:user:status",
+                    "ms02:building:write",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:qr:manage",
+                    "ms02:route:read",
+                    "ms02:route:write",
+                    "ms02:route_status:write",
+                    "ms02:safe_zone:write",
+                    "ms02:space:write",
+                    "ms07:content:manage",
+                    "ms08:audit:read"),
+            "AUDITOR", List.of(
+                    "ms01:password:change",
+                    "ms01:profile:read",
+                    "ms01:profile:write",
+                    "ms01:role:read_own",
+                    "ms01:session:logout",
+                    "ms01:user:read",
+                    "ms02:campus:read",
+                    "ms02:preventive_info:read",
+                    "ms02:route:read",
+                    "ms03:alert:read_history",
+                    "ms04:dashboard:read",
+                    "ms04:history:read",
+                    "ms05:incident:read",
+                    "ms06:drill:compare_report",
+                    "ms06:drill:read",
+                    "ms08:audit:read",
+                    "ms08:indicators:read"));
+
+
+    /**
+     * Clase de utilidades, no se instancia
+     */
+    private SeedRoles() {
+    }
+
+    /**
+     * Entrega los nombres de los roles sembrados para las pruebas parametrizadas
+     *
+     * @return flujo con los nombres de los ocho roles sembrados, ordenados alfabéticamente
+     */
+    public static Stream<String> names() {
+        return PERMISSIONS.keySet().stream().sorted();
+    }
+}

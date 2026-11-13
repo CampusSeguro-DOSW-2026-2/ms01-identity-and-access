@@ -51,11 +51,10 @@ public class UserEntity {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String password;
 
-    @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "usuario_rol", joinColumns = @JoinColumn(name = "usuario_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "rol", nullable = false, length = 20)
-    private Set<UserRole> roles = new HashSet<>();
+    @Column(name = "rol", nullable = false, length = 30)
+    private Set<String> roles = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 10)
@@ -68,6 +67,9 @@ public class UserEntity {
     @UpdateTimestamp
     @Column(name = "actualizado_en", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "valido_desde")
+    private Instant validFrom;
 
     /**
      * Devuelve el identificador del usuario
@@ -196,12 +198,12 @@ public class UserEntity {
     }
 
     /**
-     * Devuelve los roles del usuario, nunca es null y no tiene un orden definido, para entregarlos
-     * ordenados se usa UserRole.sortedByName
+     * Devuelve los nombres de los roles del usuario, nunca es null y no tiene un orden definido, para
+     * entregarlos ordenados se usa RoleNames.sorted
      *
-     * @return conjunto de roles del usuario
+     * @return conjunto de nombres de rol del usuario
      */
-    public Set<UserRole> getRoles() {
+    public Set<String> getRoles() {
         return this.roles;
     }
 
@@ -211,9 +213,9 @@ public class UserEntity {
      * fecha de asignacion (5_modelo_datos, cambio de roles en lote). Asignar una coleccion nueva a un
      * usuario ya cargado haria que borre e inserte de nuevo todas sus filas
      *
-     * @param roles roles finales del usuario, null equivale a ninguno
+     * @param roles nombres de los roles finales del usuario, null equivale a ninguno
      */
-    public void setRoles(Set<UserRole> roles) {
+    public void setRoles(Set<String> roles) {
         if (roles == null) {
             this.roles.clear();
             return;
@@ -221,7 +223,7 @@ public class UserEntity {
         if (roles == this.roles) {
             return;
         }
-        Set<UserRole> finalRoles = new HashSet<>(roles);
+        Set<String> finalRoles = new HashSet<>(roles);
         this.roles.retainAll(finalRoles);
         this.roles.addAll(finalRoles);
     }
@@ -260,5 +262,23 @@ public class UserEntity {
      */
     public Instant getUpdatedAt() {
         return this.updatedAt;
+    }
+
+    /**
+     * Devuelve el corte de sesión del usuario
+     *
+     * @return el instante desde el cual son válidas las credenciales del usuario, null si no hay corte
+     */
+    public Instant getValidFrom() {
+        return this.validFrom;
+    }
+
+    /**
+     * Coloca el corte de sesión del usuario, las credenciales emitidas antes de ese instante se rechazan
+     *
+     * @param validFrom instante de corte truncado a segundos, null para quitarlo
+     */
+    public void setValidFrom(Instant validFrom) {
+        this.validFrom = validFrom;
     }
 }

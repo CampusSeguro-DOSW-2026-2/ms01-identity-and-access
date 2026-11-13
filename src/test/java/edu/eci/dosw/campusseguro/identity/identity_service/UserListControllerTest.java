@@ -26,7 +26,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.controller.UserContro
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
@@ -44,6 +43,7 @@ class UserListControllerTest {
     private static final String URL = "/api/v1/users";
     private static final String ID_HEADER = "X-User-Id";
     private static final String ROLE_HEADER = "X-User-Role";
+    private static final String PERMISSION_HEADER = "X-User-Permission";
     private static final UUID ADMIN_ID = UUID.randomUUID();
     private static final String ADMIN_ROLE = "ADMIN";
 
@@ -74,7 +74,7 @@ class UserListControllerTest {
      */
     private UserProfileResponse response(String email) {
         return new UserProfileResponse(UUID.randomUUID(), "Ana", null, "Perez", null, email,
-                List.of(UserRole.ESTUDIANTE), UserState.ACTIVO);
+                List.of("ESTUDIANTE"), UserState.ACTIVO);
     }
 
     /**
@@ -91,6 +91,7 @@ class UserListControllerTest {
         mockMvc.perform(get(URL)
                 .header(ID_HEADER, ADMIN_ID.toString())
                 .header(ROLE_HEADER, ADMIN_ROLE)
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader(ADMIN_ROLE))
                 .param("correo", "ana")
                 .param("estado", "ACTIVO")
                 .param("rol", "ESTUDIANTE"))
@@ -118,7 +119,8 @@ class UserListControllerTest {
 
         mockMvc.perform(get(URL)
                 .header(ID_HEADER, ADMIN_ID.toString())
-                .header(ROLE_HEADER, ADMIN_ROLE))
+                .header(ROLE_HEADER, ADMIN_ROLE)
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader(ADMIN_ROLE)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido.length()").value(0));
 
@@ -141,6 +143,7 @@ class UserListControllerTest {
         mockMvc.perform(get(URL)
                 .header(ID_HEADER, ADMIN_ID.toString())
                 .header(ROLE_HEADER, ADMIN_ROLE)
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader(ADMIN_ROLE))
                 .param("page", "abc")
                 .param("size", "500"))
                 .andExpect(status().isBadRequest())
@@ -163,7 +166,8 @@ class UserListControllerTest {
 
         mockMvc.perform(get(URL)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.codigo").value("PROHIBIDO"));
@@ -192,7 +196,8 @@ class UserListControllerTest {
     void list_invalidRoleHeader_returns401() throws Exception {
         mockMvc.perform(get(URL)
                 .header(ID_HEADER, ADMIN_ID.toString())
-                .header(ROLE_HEADER, "SUPERMAN"))
+                .header(ROLE_HEADER, "SUPERMAN")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("SUPERMAN")))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(userService);

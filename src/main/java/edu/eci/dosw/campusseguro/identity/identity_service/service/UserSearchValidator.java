@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Locale;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
@@ -18,7 +18,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.Validation
  *
  * correo: 1 a 100 caracteres, sin etiquetas HTML
  *
- * estado y rol: solo valores del catálogo, omitir equivale a Todos
+ * estado: solo valores del catálogo, omitir equivale a Todos
+ *
+ * rol: nombre con formato válido, omitir equivale a Todos, que el rol exista lo comprueba el servicio
  *
  * page: entero no negativo, 0 por defecto
  *
@@ -69,7 +71,7 @@ public final class UserSearchValidator {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
         String text = parseEmail(email, errors);
         UserState stateFilter = parseFilter(state, UserState.class, FIELD_STATE, INVALID_STATE_MESSAGE, errors);
-        UserRole roleFilter = parseFilter(role, UserRole.class, FIELD_ROLE, INVALID_ROLE_MESSAGE, errors);
+        String roleFilter = parseOptionalRole(role, errors);
         int pageNumber = parseNumber(page, DEFAULT_PAGE, 0, Integer.MAX_VALUE, FIELD_PAGE, INVALID_PAGE_MESSAGE,
                 errors);
         int pageSize = parseNumber(size, DEFAULT_SIZE, 1, MAX_SIZE, FIELD_SIZE, INVALID_SIZE_MESSAGE, errors);
@@ -93,7 +95,7 @@ public final class UserSearchValidator {
      */
     public static RoleSearchCriteria validateByRole(String role, String createdBefore, String page, String size) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
-        UserRole roleValue = parseRequiredRole(role, errors);
+        String roleValue = parseRequiredRole(role, errors);
         Instant cutoff = parseInstant(createdBefore, errors);
         int pageNumber = parseNumber(page, DEFAULT_PAGE, 0, Integer.MAX_VALUE, FIELD_PAGE, INVALID_PAGE_MESSAGE,
                 errors);
@@ -109,19 +111,37 @@ public final class UserSearchValidator {
      * Valida un rol obligatorio, a diferencia del filtro del listado no admite Todos
      *
      * @param role valor recibido
-     * @param errors lista donde se agrega el error si el rol falta o no es del catálogo
-     * @return el rol del catálogo, o null si no es válido
+     * @param errors lista donde se agrega el error si el rol falta o no tiene formato de rol
+     * @return el nombre del rol recortado, o null si no es válido
      */
-    private static UserRole parseRequiredRole(String role, List<ErrorResponse.ErrorDetail> errors) {
-        if (role != null && !role.isBlank()) {
-            try {
-                return UserRole.valueOf(role.trim());
-            } catch (IllegalArgumentException e) {
-                // se reporta abajo
-            }
+    private static String parseRequiredRole(String role, List<ErrorResponse.ErrorDetail> errors) {
+        if (role != null && RoleNames.hasStoredFormat(role.trim())) {
+            return role.trim();
         }
         errors.add(new ErrorResponse.ErrorDetail(FIELD_ROLE, INVALID_ROLE_MESSAGE));
         return null;
+    }
+
+    /**
+     * Valida el filtro opcional por rol, el nombre debe llegar exactamente como se guarda
+     *
+     * @param role valor recibido
+     * @param errors lista donde se agrega el error si el valor no tiene formato de rol
+     * @return el nombre del rol recortado, o null si se piden todos o el valor no es válido
+     */
+    private static String parseOptionalRole(String role, List<ErrorResponse.ErrorDetail> errors) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+        String trimmed = role.trim();
+        if (ALL_VALUE.equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        if (!RoleNames.hasStoredFormat(trimmed)) {
+            errors.add(new ErrorResponse.ErrorDetail(FIELD_ROLE, INVALID_ROLE_MESSAGE));
+            return null;
+        }
+        return trimmed;
     }
 
     /**

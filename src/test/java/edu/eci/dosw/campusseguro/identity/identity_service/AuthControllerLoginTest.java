@@ -29,7 +29,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.controller.AuthContro
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InactiveAccountException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidCredentialsException;
@@ -97,7 +96,7 @@ class AuthControllerLoginTest {
                 "header.payload.signature",
                 "Bearer",
                 "2026-10-22T06:00:00Z",
-                new LoginResponse.UsuarioResumen(id, EMAIL, List.of(UserRole.ESTUDIANTE, UserRole.PROFESOR)));
+                new LoginResponse.UsuarioResumen(id, EMAIL, List.of("ESTUDIANTE", "PROFESOR")));
     }
 
     /**

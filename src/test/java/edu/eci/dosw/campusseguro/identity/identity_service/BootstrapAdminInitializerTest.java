@@ -23,7 +23,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.config.BootstrapAdminInitializer;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 
@@ -91,7 +90,7 @@ class BootstrapAdminInitializerTest {
      */
     @Test
     void create_noAdminExists_createsTheFirstAdmin() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
@@ -100,7 +99,7 @@ class BootstrapAdminInitializerTest {
         assertTrue(created);
         UserEntity admin = savedAdmin();
         assertEquals(NORMALIZED_EMAIL, admin.getEmail());
-        assertEquals(Set.of(UserRole.ADMIN), admin.getRoles());
+        assertEquals(Set.of("ADMIN"), admin.getRoles());
         assertEquals(UserState.ACTIVO, admin.getState());
         assertEquals(HASH, admin.getPassword());
         assertNotEquals(PASSWORD, admin.getPassword());
@@ -114,7 +113,7 @@ class BootstrapAdminInitializerTest {
     @Test
     void create_withConfiguredNames_usesThem() {
         initializer = initializer(EMAIL, PASSWORD, "  Laura ", " Gomez ");
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
@@ -130,7 +129,7 @@ class BootstrapAdminInitializerTest {
      */
     @Test
     void create_adminAlreadyExists_doesNothing() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(1L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(1L);
 
         boolean created = initializer.createFirstAdminIfNeeded();
 
@@ -166,7 +165,7 @@ class BootstrapAdminInitializerTest {
      */
     @Test
     void create_emailBelongsToAnotherUser_doesNotPromoteIt() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(true);
 
         boolean created = initializer.createFirstAdminIfNeeded();
@@ -181,7 +180,7 @@ class BootstrapAdminInitializerTest {
      */
     @Test
     void run_executesTheCreation() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 

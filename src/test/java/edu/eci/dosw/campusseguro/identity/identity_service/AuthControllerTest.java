@@ -28,7 +28,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.controller.AuthContro
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
@@ -93,7 +92,7 @@ class AuthControllerTest {
      */
     private UserResponse buildResponse() {
         return new UserResponse(UUID.randomUUID(), "carlos.gomez@escuelaing.edu.co",
-                List.of(UserRole.ESTUDIANTE), UserState.ACTIVO);
+                List.of("ESTUDIANTE"), UserState.ACTIVO);
     }
 
     /**

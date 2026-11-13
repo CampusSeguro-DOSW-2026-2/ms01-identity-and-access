@@ -5,8 +5,6 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
-
 /**
  * Respuesta de POST /api/v1/auth/login
  */
@@ -25,6 +23,6 @@ public record LoginResponse(
      * @param correo correo institucional del usuario
      * @param roles roles del usuario en el momento de emitir el token
      */
-    public record UsuarioResumen(UUID id, String correo, List<UserRole> roles) {
+    public record UsuarioResumen(UUID id, String correo, List<String> roles) {
     }
 }

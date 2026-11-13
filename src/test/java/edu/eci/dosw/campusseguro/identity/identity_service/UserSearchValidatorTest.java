@@ -11,7 +11,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserSearchCriteria;
@@ -87,7 +86,7 @@ class UserSearchValidatorTest {
         UserSearchCriteria criteria = UserSearchValidator.validate(null, "INACTIVO", "BRIGADISTA", "2", "50");
 
         assertEquals(UserState.INACTIVO, criteria.state());
-        assertEquals(UserRole.BRIGADISTA, criteria.role());
+        assertEquals("BRIGADISTA", criteria.role());
         assertEquals(2, criteria.page());
         assertEquals(50, criteria.size());
     }
@@ -113,12 +112,12 @@ class UserSearchValidatorTest {
     }
 
     /**
-     * Un rol fuera del catálogo se rechaza
+     * Un rol sin el formato guardado se rechaza, que el rol exista lo comprueba el servicio
      */
     @Test
     void validate_invalidRole_isRejected() {
         assertEquals(List.of(new ErrorResponse.ErrorDetail("rol", "Rol no válido.")),
-                errorsOf(null, null, "SUPERUSUARIO", null, null));
+                errorsOf(null, null, "SUPER-USUARIO", null, null));
     }
 
     /**
@@ -188,7 +187,7 @@ class UserSearchValidatorTest {
      */
     @Test
     void validate_severalErrors_areReportedTogetherSortedByField() {
-        List<ErrorResponse.ErrorDetail> errors = errorsOf("<x>", "PENDIENTE", "NADA", "-1", "0");
+        List<ErrorResponse.ErrorDetail> errors = errorsOf("<x>", "PENDIENTE", "NADA-1", "-1", "0");
 
         assertEquals(List.of("correo", "estado", "page", "rol", "size"),
                 errors.stream().map(ErrorResponse.ErrorDetail::campo).toList());

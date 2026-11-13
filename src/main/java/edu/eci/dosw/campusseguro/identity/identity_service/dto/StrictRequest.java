@@ -67,7 +67,8 @@ public abstract class StrictRequest {
             if (SAFE_FIELD_NAME.matcher(name).matches()) {
                 errors.add(new ErrorResponse.ErrorDetail(name, messageForUnknownField(name)));
             } else {
-                errors.add(new ErrorResponse.ErrorDetail(UNKNOWN_FIELD_PLACEHOLDER, UNKNOWN_FIELD_MESSAGE));
+                errors.add(new ErrorResponse.ErrorDetail(UNKNOWN_FIELD_PLACEHOLDER,
+                        messageForUnknownField(UNKNOWN_FIELD_PLACEHOLDER)));
             }
         }
         return errors;

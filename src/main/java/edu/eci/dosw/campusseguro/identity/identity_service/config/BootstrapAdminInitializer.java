@@ -1,7 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.config;
 
-import java.util.EnumSet;
 import java.util.Locale;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,9 +12,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
  * Crea el primer administrador al arrancar (RN-MS01-12)
@@ -87,7 +87,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
             return false;
         }
 
-        if (userRepository.countWithRole(UserRole.ADMIN) > 0) {
+        if (userRepository.countWithRole(RoleNames.ADMIN) > 0) {
             log.info("Ya existe un administrador: no se crea el primer administrador.");
             return false;
         }
@@ -104,7 +104,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
         admin.setFirstLastName(valueOrDefault(lastName, DEFAULT_LAST_NAME));
         admin.setEmail(normalizedEmail);
         admin.setPassword(passwordEncoder.encode(password));
-        admin.setRoles(EnumSet.of(UserRole.ADMIN));
+        admin.setRoles(Set.of(RoleNames.ADMIN));
         admin.setState(UserState.ACTIVO);
 
         userRepository.save(admin);

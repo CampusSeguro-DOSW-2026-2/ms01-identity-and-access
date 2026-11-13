@@ -35,4 +35,12 @@ class GlobalValuesTest {
     void internalClientTimeout_is2000Milliseconds() {
         assertEquals(2000, GlobalValues.INTERNAL_CLIENT_TIMEOUT_MS);
     }
+
+    /**
+     * Un usuario puede tener como máximo 50 roles
+     */
+    @Test
+    void maxRolesPerUser_is50() {
+        assertEquals(50, GlobalValues.MAX_ROLES_PER_USER);
+    }
 }

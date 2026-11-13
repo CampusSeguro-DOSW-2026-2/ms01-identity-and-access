@@ -64,7 +64,8 @@ class GlobalExceptionHandlerTest {
 
         MvcResult result = mockMvc.perform(get("/api/v1/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.codigo").value("ERROR_INTERNO"))
@@ -88,6 +89,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(get("/api/v1/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN"))
                 .header(CorrelationIds.HEADER, CORRELATION_ID))
                 .andExpect(status().isInternalServerError())
                 .andExpect(header().string(CorrelationIds.HEADER, CORRELATION_ID))
@@ -111,6 +113,7 @@ class GlobalExceptionHandlerTest {
             mockMvc.perform(get("/api/v1/roles")
                     .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
                     .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                    .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN"))
                     .header(CorrelationIds.HEADER, CORRELATION_ID))
                     .andExpect(status().isInternalServerError());
 
@@ -135,7 +138,8 @@ class GlobalExceptionHandlerTest {
 
         mockMvc.perform(get("/api/v1/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isConflict());
     }
 
@@ -149,6 +153,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(patch("/api/v1/users/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN"))
                 .contentType(MediaType.TEXT_PLAIN)
                 .content("texto"))
                 .andExpect(status().isUnsupportedMediaType())
@@ -171,6 +176,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(patch("/api/v1/users/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{ esto no es json"))
                 .andExpect(status().isBadRequest())
@@ -188,7 +194,8 @@ class GlobalExceptionHandlerTest {
     void unknownRoute_returns404WithTheNormalizedBody() throws Exception {
         mockMvc.perform(get("/api/v1/no-existe")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"))
@@ -205,7 +212,8 @@ class GlobalExceptionHandlerTest {
     void methodNotAllowed_returns405WithAllowHeader() throws Exception {
         mockMvc.perform(delete("/api/v1/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(header().exists("Allow"))
                 .andExpect(jsonPath("$.status").value(405))
@@ -222,6 +230,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(patch("/api/v1/users/roles")
                 .header(IdentityHeaderParser.USER_ID_HEADER, ADMIN_ID)
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"ids\": \"no-es-una-lista\"}"))
                 .andExpect(status().isBadRequest())

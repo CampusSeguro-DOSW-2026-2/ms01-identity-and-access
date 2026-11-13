@@ -79,7 +79,7 @@ public interface UserService {
      * @param size tamaño de página recibido como texto, null equivale a 20
      * @return la página de usuarios con sus roles completos
      * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws InvalidRequestException si algún parámetro incumple el formulario F-07
+     * @throws InvalidRequestException si algún parámetro incumple el formulario F-07 o el rol no existe
      */
     PageResponse<UserProfileResponse> search(RequesterIdentity requester, String correo, String estado, String rol,
             String page, String size);
@@ -119,7 +119,7 @@ public interface UserService {
      * @param page número de página recibido como texto, null equivale a 0
      * @param size tamaño de página recibido como texto, null equivale a 20
      * @return la página de usuarios con ese rol, activos e inactivos
-     * @throws InvalidRequestException si algún parámetro no es válido
+     * @throws InvalidRequestException si algún parámetro no es válido o el rol no existe
      */
     PageResponse<UserProfileResponse> searchByRole(String rol, String creadoAntes, String page, String size);
 }

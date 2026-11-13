@@ -7,8 +7,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
  * Datos de un usuario (esquema User del contrato), se usa en la consulta y actualización del perfil, en
@@ -32,7 +32,7 @@ public record UserProfileResponse(
         @JsonProperty("primer_apellido") String firstLastName,
         @JsonProperty("segundo_apellido") String secondLastName,
         @JsonProperty("correo") String email,
-        List<UserRole> roles,
+        List<String> roles,
         @JsonProperty("estado") UserState state) {
 
     /**
@@ -49,7 +49,7 @@ public record UserProfileResponse(
                 entity.getFirstLastName(),
                 entity.getSecondLastName(),
                 entity.getEmail(),
-                UserRole.sortedByName(entity.getRoles()),
+                RoleNames.sorted(entity.getRoles()),
                 entity.getState());
     }
 }

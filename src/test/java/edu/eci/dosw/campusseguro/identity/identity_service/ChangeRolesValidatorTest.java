@@ -5,15 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.ChangeRolesCommand;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.ChangeRolesValidator;
@@ -63,8 +62,8 @@ class ChangeRolesValidatorTest {
 
         assertEquals(List.of(UUID.fromString(ID_ONE), UUID.fromString(ID_TWO)),
                 new ArrayList<>(command.userIds()));
-        assertEquals(EnumSet.of(UserRole.PROFESOR, UserRole.BRIGADISTA), command.rolesToAdd());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE), command.rolesToRemove());
+        assertEquals(Set.of("PROFESOR", "BRIGADISTA"), command.rolesToAdd());
+        assertEquals(Set.of("ESTUDIANTE"), command.rolesToRemove());
     }
 
     /**
@@ -75,7 +74,7 @@ class ChangeRolesValidatorTest {
         ChangeRolesCommand command = ChangeRolesValidator.validate(
                 request(List.of(ID_ONE), List.of("AUDITOR"), null));
 
-        assertEquals(EnumSet.of(UserRole.AUDITOR), command.rolesToAdd());
+        assertEquals(Set.of("AUDITOR"), command.rolesToAdd());
         assertTrue(command.rolesToRemove().isEmpty());
     }
 
@@ -88,7 +87,7 @@ class ChangeRolesValidatorTest {
                 request(List.of(ID_ONE), null, List.of("AUDITOR")));
 
         assertTrue(command.rolesToAdd().isEmpty());
-        assertEquals(EnumSet.of(UserRole.AUDITOR), command.rolesToRemove());
+        assertEquals(Set.of("AUDITOR"), command.rolesToRemove());
     }
 
     /**
@@ -101,7 +100,7 @@ class ChangeRolesValidatorTest {
                 request(List.of("  " + ID_ONE.toUpperCase() + " "), List.of(" PROFESOR "), null));
 
         assertEquals(List.of(UUID.fromString(ID_ONE)), new ArrayList<>(command.userIds()));
-        assertEquals(EnumSet.of(UserRole.PROFESOR), command.rolesToAdd());
+        assertEquals(Set.of("PROFESOR"), command.rolesToAdd());
     }
 
     /**
@@ -166,11 +165,12 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Un rol fuera del catalogo: "Seleccione roles válidos." en el campo agregar
+     * Un nombre de rol sin el formato guardado: "Seleccione roles válidos." en el campo agregar, que el rol
+     * exista lo comprueba el servicio
      */
     @Test
-    void validate_unknownRoleToAdd_returnsFieldError() {
-        InvalidRequestException error = invalid(request(List.of(ID_ONE), List.of("SUPERUSUARIO"), null));
+    void validate_roleWithoutTheStoredFormatToAdd_returnsFieldError() {
+        InvalidRequestException error = invalid(request(List.of(ID_ONE), List.of("SUPER-USUARIO"), null));
 
         assertEquals(1, error.getErrors().size());
         assertEquals("agregar", error.getErrors().get(0).campo());
@@ -259,18 +259,37 @@ class ChangeRolesValidatorTest {
     }
 
     /**
-     * Los ocho roles del catalogo se pueden agregar en una sola peticion (maximo de la lista)
+     * Todos los roles del catalogo inicial se pueden agregar en una sola peticion
      */
     @Test
-    void validate_allEightRoles_areAccepted() {
+    void validate_allSeedRoles_areAccepted() {
         List<String> everyRole = new ArrayList<>();
-        for (UserRole role : UserRole.values()) {
-            everyRole.add(role.name());
+        for (String role : SeedRoles.PERMISSIONS.keySet()) {
+            everyRole.add(role);
         }
 
         ChangeRolesCommand command = ChangeRolesValidator.validate(request(List.of(ID_ONE), everyRole, null));
 
-        assertEquals(EnumSet.allOf(UserRole.class), command.rolesToAdd());
+        assertEquals(SeedRoles.PERMISSIONS.keySet(), command.rolesToAdd());
+    }
+
+    /**
+     * Las listas agregar y retirar no tienen límite de tamaño por operación: 60 roles en cada una se aceptan
+     * (el tope de 50 roles por usuario se verifica en el servicio, contra los roles que ya tiene)
+     */
+    @Test
+    void validate_listsWithManyRoles_areAccepted() {
+        List<String> toAdd = new ArrayList<>();
+        List<String> toRemove = new ArrayList<>();
+        for (int i = 1; i <= 60; i++) {
+            toAdd.add(String.format("AGREGAR_%02d", i));
+            toRemove.add(String.format("RETIRAR_%02d", i));
+        }
+
+        ChangeRolesCommand command = ChangeRolesValidator.validate(request(List.of(ID_ONE), toAdd, toRemove));
+
+        assertEquals(60, command.rolesToAdd().size());
+        assertEquals(60, command.rolesToRemove().size());
     }
 
     /**

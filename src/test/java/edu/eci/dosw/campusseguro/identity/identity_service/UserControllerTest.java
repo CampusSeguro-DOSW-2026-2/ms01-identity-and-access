@@ -12,8 +12,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +31,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.controller.UserContro
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
@@ -50,6 +49,7 @@ class UserControllerTest {
     private static final String URL = "/api/v1/users";
     private static final String ID_HEADER = "X-User-Id";
     private static final String ROLE_HEADER = "X-User-Role";
+    private static final String PERMISSION_HEADER = "X-User-Permission";
 
     @Mock
     private UserService userService;
@@ -80,7 +80,7 @@ class UserControllerTest {
      */
     private UserProfileResponse profile(UUID id, String firstName, String lastName) {
         return new UserProfileResponse(id, firstName, null, lastName, null, "carlos.gomez@escuelaing.edu.co",
-                List.of(UserRole.ESTUDIANTE), UserState.ACTIVO);
+                List.of("ESTUDIANTE"), UserState.ACTIVO);
     }
 
     /**
@@ -95,7 +95,8 @@ class UserControllerTest {
 
         mockMvc.perform(get(URL + "/me")
                 .header(ID_HEADER, id.toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id.toString()))
                 .andExpect(jsonPath("$.correo").value("carlos.gomez@escuelaing.edu.co"))
@@ -119,13 +120,14 @@ class UserControllerTest {
 
         mockMvc.perform(get(URL + "/me")
                 .header(ID_HEADER, id.toString())
-                .header(ROLE_HEADER, "PROFESOR,BRIGADISTA"))
+                .header(ROLE_HEADER, "PROFESOR,BRIGADISTA")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("PROFESOR,BRIGADISTA")))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<RequesterIdentity> captor = ArgumentCaptor.forClass(RequesterIdentity.class);
         verify(userService).getMyProfile(captor.capture());
         assertEquals(id, captor.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.PROFESOR, UserRole.BRIGADISTA), captor.getValue().roles());
+        assertEquals(Set.of("PROFESOR", "BRIGADISTA"), captor.getValue().roles());
     }
 
     /**
@@ -157,7 +159,8 @@ class UserControllerTest {
 
         mockMvc.perform(get(URL + "/me")
                 .header(ID_HEADER, id.toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"))
                 .andExpect(jsonPath("$.mensaje").value("Usuario no encontrado."));
@@ -179,6 +182,7 @@ class UserControllerTest {
         mockMvc.perform(put(URL + "/me")
                 .header(ID_HEADER, id.toString())
                 .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonBody))
                 .andExpect(status().isOk())
@@ -209,6 +213,7 @@ class UserControllerTest {
         mockMvc.perform(put(URL + "/me")
                 .header(ID_HEADER, id.toString())
                 .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
@@ -231,6 +236,7 @@ class UserControllerTest {
         mockMvc.perform(put(URL + "/me")
                 .header(ID_HEADER, UUID.randomUUID().toString())
                 .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{ esto no es json"))
                 .andExpect(status().isBadRequest())
@@ -254,7 +260,8 @@ class UserControllerTest {
 
         mockMvc.perform(get(URL + "/" + targetId)
                 .header(ID_HEADER, requesterId.toString())
-                .header(ROLE_HEADER, "ADMIN"))
+                .header(ROLE_HEADER, "ADMIN")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(targetId.toString()));
     }
@@ -272,7 +279,8 @@ class UserControllerTest {
 
         mockMvc.perform(get(URL + "/" + targetId)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.codigo").value("PROHIBIDO"))
                 .andExpect(jsonPath("$.mensaje").value("No tiene permisos para realizar esta operación."));
@@ -287,7 +295,8 @@ class UserControllerTest {
     void getUserById_idWithInvalidFormat_returns400() throws Exception {
         mockMvc.perform(get(URL + "/no-es-un-uuid")
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ADMIN"))
+                .header(ROLE_HEADER, "ADMIN")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"));
 

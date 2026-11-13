@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtServiceImpl;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RsaKeyUtils;
+import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeService;
 
 /**
  * Configuracion del emisor de JWT (RF-MS01-03, 3_jwt-spec.md). Los secretos llegan por variables de
@@ -47,14 +48,14 @@ public class JwtConfig {
      *
      * @param privateKeyPem la cadena de texto con la llave privada en formato PEM PKCS#8
      * @param keyId el identificador único de la llave criptográfica (Key ID)
-     * @param clock el reloj UTC inyectado para el control temporal de expiración
+     * @param timeService el reloj único de la base de datos con el que se calculan el iat y la expiración
      * @return una instancia configurada de JwtServiceImpl como un bean gestionado por Spring
      */
     @Bean
     public JwtService jwtService(
             @Value("${jwt.private-key:}") String privateKeyPem,
             @Value("${jwt.key-id:ms01-2026-01}") String keyId,
-            Clock clock) {
+            DatabaseTimeService timeService) {
 
         PrivateKey privateKey;
         if (privateKeyPem == null || privateKeyPem.isBlank()) {
@@ -65,6 +66,6 @@ public class JwtConfig {
         } else {
             privateKey = RsaKeyUtils.parsePrivateKey(privateKeyPem);
         }
-        return new JwtServiceImpl(privateKey, keyId, clock);
+        return new JwtServiceImpl(privateKey, keyId, timeService);
     }
 }

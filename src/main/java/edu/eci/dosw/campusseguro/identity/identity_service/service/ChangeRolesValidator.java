@@ -1,7 +1,6 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -10,9 +9,9 @@ import java.util.regex.Pattern;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
@@ -21,7 +20,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.Validation
  *
  * ids: al menos un usuario y todos con formato de identificador valido
  *
- * agregar / retirar: solo roles del catalogo y sin repetir (0 a 8 por lista)
+ * agregar / retirar: nombres de rol con formato valido y sin repetir, que existan lo comprueba el servicio
+ * contra la tabla roles
  *
  * Ambas listas vacias: "Indique roles a agregar o retirar."
  *
@@ -59,8 +59,8 @@ public final class ChangeRolesValidator {
     public static ChangeRolesCommand validate(ChangeRolesRequest request) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(request.unknownFieldErrors());
         Set<UUID> userIds = parseUserIds(request.getIds(), errors);
-        Set<UserRole> rolesToAdd = parseRoles(FIELD_ADD, request.getAgregar(), errors);
-        Set<UserRole> rolesToRemove = parseRoles(FIELD_REMOVE, request.getRetirar(), errors);
+        Set<String> rolesToAdd = parseRoles(FIELD_ADD, request.getAgregar(), errors);
+        Set<String> rolesToRemove = parseRoles(FIELD_REMOVE, request.getRetirar(), errors);
 
         if (!errors.isEmpty()) {
             throw new InvalidRequestException(INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
@@ -121,26 +121,30 @@ public final class ChangeRolesValidator {
     }
 
     /**
-     * Convierte una lista de nombres de rol en un conjunto de roles
+     * Convierte una lista de nombres de rol en un conjunto de nombres, el nombre se recorta pero no se
+     * normaliza: debe llegar exactamente como se guarda
      *
      * @param field nombre del campo de la peticion, para reportar errores si es necesario
      * @param rawRoles nombres de rol recibidos
-     * @param errors lista donde se agrega el error por campo si hay roles invalidos o repetidos
-     * @return conjunto de roles validos
+     * @param errors lista donde se agrega el error por campo si hay nombres invalidos o repetidos
+     * @return conjunto de nombres de rol con formato valido, en el orden recibido
      */
-    private static Set<UserRole> parseRoles(String field, List<String> rawRoles,
+    private static Set<String> parseRoles(String field, List<String> rawRoles,
             List<ErrorResponse.ErrorDetail> errors) {
-        Set<UserRole> roles = EnumSet.noneOf(UserRole.class);
+        Set<String> roles = new LinkedHashSet<>();
         if (rawRoles == null) {
             return roles;
         }
 
         boolean anyInvalid = false;
         for (String rawRole : rawRoles) {
-            UserRole role = parseRole(rawRole);
-            if (role == null) {
+            String name = null;
+            if (rawRole != null) {
+                name = rawRole.trim();
+            }
+            if (!RoleNames.hasStoredFormat(name)) {
                 anyInvalid = true;
-            } else if (!roles.add(role)) {
+            } else if (!roles.add(name)) {
                 anyInvalid = true;
             }
         }
@@ -151,32 +155,14 @@ public final class ChangeRolesValidator {
     }
 
     /**
-     * Convierte el nombre de un rol en su enum
-     *
-     * @param rawRole nombre recibido; puede ser null
-     * @return el rol del enum, envia null si ya era null o si no pertenece al enum
-     */
-    private static UserRole parseRole(String rawRole) {
-        if (rawRole == null) {
-            return null;
-        }
-        try {
-            return UserRole.valueOf(rawRole.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    /**
      * Indica si dos conjuntos de roles comparten algun rol
      *
      * @param first primer conjunto de roles
      * @param second segundo conjunto de roles
      * @return true si existe al menos un rol presente en ambos conjuntos
      */
-    private static boolean hasCommonRole(Set<UserRole> first, Set<UserRole> second) {
-        Set<UserRole> common = EnumSet.noneOf(UserRole.class);
-        common.addAll(first);
+    private static boolean hasCommonRole(Set<String> first, Set<String> second) {
+        Set<String> common = new LinkedHashSet<>(first);
         common.retainAll(second);
         return !common.isEmpty();
     }

@@ -1,6 +1,5 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
 /**
@@ -12,5 +11,5 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
  * @param page número de página, desde 0
  * @param size tamaño de página, de 1 a 100
  */
-public record UserSearchCriteria(String email, UserState state, UserRole role, int page, int size) {
+public record UserSearchCriteria(String email, UserState state, String role, int page, int size) {
 }

@@ -6,8 +6,8 @@ import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
  * Respuesta de POST /api/v1/auth/register (esquema RegisterResponse del contrato), nunca incluye la
@@ -21,7 +21,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 public record UserResponse(
         UUID id,
         @JsonProperty("correo") String email,
-        List<UserRole> roles,
+        List<String> roles,
         @JsonProperty("estado") UserState state) {
 
     /**
@@ -34,7 +34,7 @@ public record UserResponse(
         return new UserResponse(
                 entity.getId(),
                 entity.getEmail(),
-                UserRole.sortedByName(entity.getRoles()),
+                RoleNames.sorted(entity.getRoles()),
                 entity.getState());
     }
 }

@@ -15,8 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +38,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordReq
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequest;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
@@ -63,6 +62,7 @@ class PasswordControllerTest {
     private static final String CHANGE_URL = "/api/v1/users/me/password";
     private static final String ID_HEADER = "X-User-Id";
     private static final String ROLE_HEADER = "X-User-Role";
+    private static final String PERMISSION_HEADER = "X-User-Permission";
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
     private static final String FORGOT_BODY = "{\"correo\":\"maria.perez@escuelaing.edu.co\"}";
     private static final String RESET_BODY = "{\"correo\":\"maria.perez@escuelaing.edu.co\",\"codigo\":\"482913\","
@@ -103,7 +103,8 @@ class PasswordControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body)
                 .header(ID_HEADER, id.toString())
-                .header(ROLE_HEADER, role);
+                .header(ROLE_HEADER, role)
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader(role));
     }
 
     /**
@@ -385,7 +386,7 @@ class PasswordControllerTest {
         ArgumentCaptor<ChangePasswordRequest> body = ArgumentCaptor.forClass(ChangePasswordRequest.class);
         verify(passwordService).changePassword(identity.capture(), body.capture(), eq(CORRELATION_ID));
         assertEquals(id, identity.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.BRIGADISTA, UserRole.ESTUDIANTE), identity.getValue().roles());
+        assertEquals(Set.of("BRIGADISTA", "ESTUDIANTE"), identity.getValue().roles());
         assertEquals("Campus#2026", body.getValue().getCurrentPassword());
         assertEquals("Nueva#2026x", body.getValue().getNewPassword());
         assertEquals("Nueva#2026x", body.getValue().getNewPasswordConfirmation());
@@ -452,7 +453,8 @@ class PasswordControllerTest {
             request = request.header(ID_HEADER, userId);
         }
         if (!roles.isEmpty()) {
-            request = request.header(ROLE_HEADER, roles);
+            request = request.header(ROLE_HEADER, roles)
+            .header(PERMISSION_HEADER, TestIdentities.permissionHeader(roles));
         }
 
         mockMvc.perform(request)
@@ -527,7 +529,8 @@ class PasswordControllerTest {
         MockHttpServletRequestBuilder request = put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE");
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"));
         if (!content.isEmpty()) {
             request = request.content(content);
         }
@@ -550,7 +553,8 @@ class PasswordControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(CHANGE_BODY)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(header().string("Allow", "PUT"))
                 .andExpect(jsonPath("$.codigo").value("METODO_NO_PERMITIDO"));

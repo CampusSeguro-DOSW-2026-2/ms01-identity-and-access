@@ -83,7 +83,8 @@ public class GlobalExceptionHandler {
 
     /**
      * RN-MS01-23: no se pudo establecer la identidad de quien llama (faltan las cabeceras X-User-Id /
-     * X-User-Role o su valor no es válido), el sistema responde 401 con código NO_AUTENTICADO
+     * X-User-Role / X-User-Permission o su valor no es válido), el sistema responde 401 con código
+     * NO_AUTENTICADO
      *
      * @param ex excepción con el motivo
      * @param request petición, de la que se toma el correlation id
@@ -138,15 +139,41 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Uno o más usuarios de la petición no existen, el sistema responde 404 con código NO_ENCONTRADO y no
-     * aplica ningún cambio
+     * RF-MS01-10: el nombre del rol ya existe o el rol es de sistema y no admite la operación, el sistema
+     * responde 409 con código CONFLICTO
      *
-     * @param ex excepción con el mensaje del formulario F-08 y F-09
+     * @param ex excepción con el mensaje del formulario F-10, F-11 o F-13
+     * @param request petición, de la que se toma el correlation id
+     * @return 409 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex, HttpServletRequest request) {
+        return build(ErrorCode.CONFLICT, ex.getMessage(), List.of(), request);
+    }
+
+    /**
+     * RN-MS01-30: la petición es válida pero incumple una regla de negocio, el sistema responde 422 con
+     * código REGLA_NEGOCIO
+     *
+     * @param ex excepción con el mensaje del formulario F-10 o F-12
+     * @param request petición, de la que se toma el correlation id
+     * @return 422 con el cuerpo de error normalizado
+     */
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessRule(BusinessRuleException ex, HttpServletRequest request) {
+        return build(ErrorCode.BUSINESS_RULE, ex.getMessage(), List.of(), request);
+    }
+
+    /**
+     * Uno o más usuarios o el rol de la petición no existen, el sistema responde 404 con código
+     * NO_ENCONTRADO y no aplica ningún cambio
+     *
+     * @param ex excepción con el mensaje de los formularios F-08, F-09, F-11, F-12 y F-13
      * @param request petición, de la que se toma el correlation id
      * @return 404 con el cuerpo de error normalizado
      */
-    @ExceptionHandler({ UserNotFoundException.class, UsersNotFoundException.class })
-    public ResponseEntity<ErrorResponse> handleUserNotFound(RuntimeException ex, HttpServletRequest request) {
+    @ExceptionHandler({ UserNotFoundException.class, UsersNotFoundException.class, RoleNotFoundException.class })
+    public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex, HttpServletRequest request) {
         return build(ErrorCode.NOT_FOUND, ex.getMessage(), List.of(), request);
     }
 
@@ -200,7 +227,8 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         String header = ex.getHeaderName();
         if (IdentityHeaderParser.USER_ID_HEADER.equalsIgnoreCase(header)
-                || IdentityHeaderParser.USER_ROLE_HEADER.equalsIgnoreCase(header)) {
+                || IdentityHeaderParser.USER_ROLE_HEADER.equalsIgnoreCase(header)
+                || IdentityHeaderParser.USER_PERMISSION_HEADER.equalsIgnoreCase(header)) {
             return build(ErrorCode.UNAUTHENTICATED, IdentityHeaderParser.MISSING_MESSAGE, List.of(), request);
         }
         List<ErrorResponse.ErrorDetail> errors = List.of(

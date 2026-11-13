@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -41,12 +42,13 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InactiveAccountException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidCredentialsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IssuedToken;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
@@ -74,6 +76,9 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -91,8 +96,8 @@ class AuthServiceTest {
     void setUp() {
         // El servicio calcula un hash de relleno al construirse (igualacion de tiempos).
         when(passwordEncoder.encode(anyString())).thenReturn(DUMMY_HASH);
-        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtService, recorder(),
-                requestValidator());
+        authService = new AuthServiceImpl(userRepository, roleRepository, passwordEncoder, jwtService,
+                recorder(), requestValidator());
     }
 
     /**
@@ -134,7 +139,7 @@ class AuthServiceTest {
      * @param roles roles del usuario
      * @return el usuario de prueba
      */
-    private UserEntity user(UserState state, UserRole... roles) {
+    private UserEntity user(UserState state, String... roles) {
         UserEntity entity = new UserEntity();
         entity.setId(UUID.randomUUID());
         entity.setFirstName("Maria");
@@ -143,6 +148,21 @@ class AuthServiceTest {
         entity.setPassword(STORED_HASH);
         entity.setRoles(new HashSet<>(List.of(roles)));
         entity.setState(state);
+        return entity;
+    }
+
+    /**
+     * Construye un rol guardado con los permisos indicados
+     *
+     * @param name nombre del rol
+     * @param permissions códigos de permiso del rol
+     * @return el rol de prueba
+     */
+    private RoleEntity role(String name, String... permissions) {
+        RoleEntity entity = new RoleEntity();
+        entity.setName(name);
+        entity.setDescription("Rol " + name);
+        entity.setPermissions(Arrays.asList(permissions));
         return entity;
     }
 
@@ -164,12 +184,15 @@ class AuthServiceTest {
      */
     @Test
     void login_activeUserWithCorrectPassword_returnsTokenAndAuditsSuccess() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.PROFESOR, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "PROFESOR", "ESTUDIANTE");
         IssuedToken issued = new IssuedToken(TOKEN, NOW.plusSeconds(3600));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(user.getId(), EMAIL, List.of(UserRole.ESTUDIANTE, UserRole.PROFESOR)))
-                .thenReturn(issued);
+        when(roleRepository.findAllByNameIn(List.of("ESTUDIANTE", "PROFESOR"))).thenReturn(List.of(
+                role("ESTUDIANTE", "ms01:profile:read", "ms01:role:read_own"),
+                role("PROFESOR", "ms05:incident:report", "ms01:profile:read")));
+        when(jwtService.issueToken(user.getId(), EMAIL, List.of("ESTUDIANTE", "PROFESOR"),
+                List.of("ms01:profile:read", "ms01:role:read_own", "ms05:incident:report"))).thenReturn(issued);
 
         LoginResponse response = authService.login(request(EMAIL, PASSWORD), CORR);
 
@@ -178,7 +201,7 @@ class AuthServiceTest {
         assertEquals("2026-10-22T06:00:00Z", response.expiraEn());
         assertEquals(user.getId(), response.usuario().id());
         assertEquals(EMAIL, response.usuario().correo());
-        assertEquals(List.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), response.usuario().roles());
+        assertEquals(List.of("ESTUDIANTE", "PROFESOR"), response.usuario().roles());
 
         AuditEvent event = publishedEvent();
         assertEquals(AuditAction.LOGIN, event.accion());
@@ -195,11 +218,12 @@ class AuthServiceTest {
      */
     @Test
     void login_rolesAreSortedAlphabeticallyInTokenAndResponse() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.PROFESOR, UserRole.ADMIN, UserRole.BRIGADISTA);
-        List<UserRole> alphabetical = List.of(UserRole.ADMIN, UserRole.BRIGADISTA, UserRole.PROFESOR);
+        UserEntity user = user(UserState.ACTIVO, "PROFESOR", "ADMIN", "BRIGADISTA");
+        List<String> alphabetical = List.of("ADMIN", "BRIGADISTA", "PROFESOR");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(user.getId(), EMAIL, alphabetical))
+        when(roleRepository.findAllByNameIn(alphabetical)).thenReturn(List.of(role("ADMIN", "ms01:user:roles")));
+        when(jwtService.issueToken(user.getId(), EMAIL, alphabetical, List.of("ms01:user:roles")))
                 .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         LoginResponse response = authService.login(request(EMAIL, PASSWORD), CORR);
@@ -212,10 +236,11 @@ class AuthServiceTest {
      */
     @Test
     void login_emailIsNormalizedBeforeLookup() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(any(), any(), any())).thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         authService.login(request("  Maria.Perez@EscuelaIng.edu.co ", PASSWORD), CORR);
 
@@ -227,10 +252,11 @@ class AuthServiceTest {
      */
     @Test
     void login_passwordIsNeverTrimmedOrNormalized() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(" Campus#2026 ", STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(any(), any(), any())).thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         authService.login(request(EMAIL, " Campus#2026 "), CORR);
 
@@ -243,15 +269,93 @@ class AuthServiceTest {
     @Test
     void login_verifiesAgainstRealBCryptHashLikeTheOneStoredAtRegistration() {
         BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder(4);
-        AuthServiceImpl service = new AuthServiceImpl(userRepository, bcrypt, jwtService, recorder(),
+        AuthServiceImpl service = new AuthServiceImpl(userRepository, roleRepository, bcrypt, jwtService, recorder(),
                 requestValidator());
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         user.setPassword(bcrypt.encode(PASSWORD));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(jwtService.issueToken(any(), any(), any())).thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         assertEquals(TOKEN, service.login(request(EMAIL, PASSWORD), CORR).token());
         assertThrows(InvalidCredentialsException.class, () -> service.login(request(EMAIL, "Otra#2026x"), CORR_2));
+    }
+
+    /**
+     * Los permisos del token son la unión de los de todos los roles del usuario, sin repetidos y en orden
+     * alfabético
+     */
+    @Test
+    void login_tokenPermissionsAreTheUnionOfTheRolePermissions() {
+        UserEntity user = user(UserState.ACTIVO, "BRIGADISTA", "AUDITOR");
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
+        when(roleRepository.findAllByNameIn(List.of("AUDITOR", "BRIGADISTA"))).thenReturn(List.of(
+                role("BRIGADISTA", "ms05:panel:read_own", "ms01:profile:read"),
+                role("AUDITOR", "ms08:audit:read", "ms01:profile:read")));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+
+        authService.login(request(EMAIL, PASSWORD), CORR);
+
+        verify(jwtService).issueToken(user.getId(), EMAIL, List.of("AUDITOR", "BRIGADISTA"),
+                List.of("ms01:profile:read", "ms05:panel:read_own", "ms08:audit:read"));
+    }
+
+    /**
+     * Un rol personalizado entra al token igual que uno sembrado
+     */
+    @Test
+    void login_customRolePermissionsEnterTheToken() {
+        UserEntity user = user(UserState.ACTIVO, "MONITOR_EVACUACION");
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
+        when(roleRepository.findAllByNameIn(List.of("MONITOR_EVACUACION"))).thenReturn(List.of(
+                role("MONITOR_EVACUACION", "ms04:checkin:write")));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+
+        authService.login(request(EMAIL, PASSWORD), CORR);
+
+        verify(jwtService).issueToken(user.getId(), EMAIL, List.of("MONITOR_EVACUACION"),
+                List.of("ms04:checkin:write"));
+    }
+
+    /**
+     * Los códigos guardados en un rol que ya no están en el catálogo del código no entran al token
+     */
+    @Test
+    void login_permissionsOutsideTheCatalogDoNotEnterTheToken() {
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
+        when(roleRepository.findAllByNameIn(List.of("ESTUDIANTE"))).thenReturn(List.of(
+                role("ESTUDIANTE", "ms01:profile:read", "ms99:viejo:permiso")));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+
+        authService.login(request(EMAIL, PASSWORD), CORR);
+
+        verify(jwtService).issueToken(user.getId(), EMAIL, List.of("ESTUDIANTE"), List.of("ms01:profile:read"));
+    }
+
+    /**
+     * Si falla la lectura de los permisos de los roles se audita el fallo y se propaga el error
+     */
+    @Test
+    void login_rolesLookupFails_auditsFailureAndPropagatesTheError() {
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
+        IllegalStateException failure = new IllegalStateException("fallo de base de datos");
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
+        when(roleRepository.findAllByNameIn(any())).thenThrow(failure);
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> authService.login(request(EMAIL, PASSWORD), CORR));
+
+        assertSame(failure, thrown);
+        assertEquals("ERROR_INTERNO", publishedEvent().detalle());
+        verifyNoInteractions(jwtService);
     }
 
     // ---------------------------------------------------------------- A1: credenciales incorrectas
@@ -292,7 +396,7 @@ class AuthServiceTest {
      */
     @Test
     void login_wrongPassword_throwsInvalidCredentialsAndAuditsFailure() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(false);
 
@@ -310,7 +414,7 @@ class AuthServiceTest {
      */
     @Test
     void login_unknownEmailAndWrongPassword_areIndistinguishable() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail("nadie@escuelaing.edu.co")).thenReturn(Optional.empty());
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
@@ -335,7 +439,7 @@ class AuthServiceTest {
      */
     @Test
     void login_inactiveAccountWithCorrectPassword_throwsInactiveAccountAndAuditsFailure() {
-        UserEntity user = user(UserState.INACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.INACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
 
@@ -355,7 +459,7 @@ class AuthServiceTest {
      */
     @Test
     void login_inactiveAccountWithWrongPassword_doesNotRevealTheAccountState() {
-        UserEntity user = user(UserState.INACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.INACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(false);
 
@@ -369,7 +473,7 @@ class AuthServiceTest {
      */
     @Test
     void login_accountWithoutState_isTreatedAsInactive() {
-        UserEntity user = user(null, UserRole.ESTUDIANTE);
+        UserEntity user = user(null, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
 
@@ -385,11 +489,11 @@ class AuthServiceTest {
      */
     @Test
     void login_tokenIssuanceFails_auditsFailureAndPropagatesTheError() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         IllegalStateException failure = new IllegalStateException("No fue posible firmar el JWT.");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(any(), any(), any())).thenThrow(failure);
+        when(jwtService.issueToken(any(), any(), any(), any())).thenThrow(failure);
 
         IllegalStateException thrown = assertThrows(IllegalStateException.class,
                 () -> authService.login(request(EMAIL, PASSWORD), CORR));
@@ -405,10 +509,11 @@ class AuthServiceTest {
      */
     @Test
     void login_auditFailureDoesNotChangeTheResponse() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(any(), any(), any())).thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
         doThrow(new RuntimeException("MS08 caido")).when(auditPublisher).publish(any(AuditEvent.class));
 
         LoginResponse response = authService.login(request(EMAIL, PASSWORD), CORR);
@@ -432,10 +537,11 @@ class AuthServiceTest {
      */
     @Test
     void login_everyAttemptIsAuditedExactlyOnce() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(any(), any(), any())).thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         authService.login(request(EMAIL, PASSWORD), CORR);
 
@@ -447,10 +553,11 @@ class AuthServiceTest {
      */
     @Test
     void login_auditEventNeverCarriesPasswordHashOrToken() {
-        UserEntity user = user(UserState.ACTIVO, UserRole.ESTUDIANTE);
+        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(any(), any(), any())).thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         authService.login(request(EMAIL, PASSWORD), CORR);
 

@@ -15,7 +15,6 @@ import org.springframework.core.MethodParameter;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UnauthenticatedException;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentityArgumentResolver;
@@ -75,7 +74,7 @@ class RequesterIdentityArgumentResolverTest {
     }
 
     /**
-     * Con las dos cabeceras válidas se construye la identidad
+     * Con las tres cabeceras válidas se construye la identidad
      *
      * @throws Exception si no se encuentra el método de ejemplo
      */
@@ -83,12 +82,14 @@ class RequesterIdentityArgumentResolverTest {
     void resolveArgument_withValidHeaders_buildsTheIdentity() throws Exception {
         request.addHeader("X-User-Id", USER_ID);
         request.addHeader("X-User-Role", "ADMIN,PROFESOR");
+        request.addHeader("X-User-Permission", "ms01:user:roles,ms05:incident:report");
 
         Object resolved = resolver.resolveArgument(parameter(0), null, new ServletWebRequest(request), null);
 
         RequesterIdentity requester = (RequesterIdentity) resolved;
         assertEquals(UUID.fromString(USER_ID), requester.userId());
-        assertEquals(Set.of(UserRole.ADMIN, UserRole.PROFESOR), requester.roles());
+        assertEquals(Set.of("ADMIN", "PROFESOR"), requester.roles());
+        assertEquals(Set.of("ms01:user:roles", "ms05:incident:report"), requester.permissions());
     }
 
     /**

@@ -22,7 +22,7 @@ public final class PermissionChecker {
      *
      * @param requester identidad de quien solicita
      * @param permission permiso que exige la operación
-     * @throws ForbiddenOperationException si ninguno de los roles del solicitante concede el permiso
+     * @throws ForbiddenOperationException si el solicitante no tiene el permiso en X-User-Permission
      */
     public static void require(RequesterIdentity requester, Permission permission) {
         if (!requester.hasPermission(permission)) {
