@@ -187,7 +187,7 @@ class IdentityHeaderParserTest {
         RequesterIdentity identity = IdentityHeaderParser.parse(USER_ID, "PROFESOR,AUDITOR",
                 String.join(",", TestIdentities.permissionsOf("PROFESOR", "AUDITOR")));
 
-        assertTrue(identity.hasPermission(Permission.MS05_INCIDENT_REPORT));
+        assertTrue(identity.permissions().contains("ms05:incident:report"));
         assertTrue(identity.hasPermission(Permission.MS01_USER_READ));
         assertFalse(identity.hasPermission(Permission.MS01_USER_ROLES));
     }

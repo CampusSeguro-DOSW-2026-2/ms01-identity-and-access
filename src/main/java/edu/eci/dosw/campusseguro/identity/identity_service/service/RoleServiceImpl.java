@@ -3,6 +3,7 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -136,7 +137,7 @@ public class RoleServiceImpl implements RoleService {
         }
 
         ChangeRolesCommand command = ChangeRolesValidator.validate(request);
-        verifyRolesExist(command);
+        Map<String, RoleEntity> referencedRoles = verifyRolesExist(command);
 
         if (command.userIds().contains(requester.userId())) {
             publishFailure(requester, requester.userId(), REASON_SELF_MODIFICATION, corr);
@@ -153,7 +154,7 @@ public class RoleServiceImpl implements RoleService {
         verifyNobodyExceedsMaxRoles(requester, command, changes, corr);
 
         Instant cut = timeService.now();
-        List<UserEntity> modified = applyChanges(changes, cut);
+        List<UserEntity> modified = applyChanges(changes, referencedRoles, cut);
         if (!modified.isEmpty()) {
             userRepository.saveAllAndFlush(modified);
         }
@@ -174,23 +175,33 @@ public class RoleServiceImpl implements RoleService {
      * rechaza la petición con 400 sin auditar, igual que los demás errores de validación
      *
      * @param command petición validada con los roles a agregar y a retirar
+     * @return los roles nombrados en la petición, por nombre
      * @throws InvalidRequestException si algún rol no existe, con un error por lista
      */
-    private void verifyRolesExist(ChangeRolesCommand command) {
+    private Map<String, RoleEntity> verifyRolesExist(ChangeRolesCommand command) {
+        Set<String> referenced = new HashSet<>(command.rolesToAdd());
+        referenced.addAll(command.rolesToRemove());
+
+        Map<String, RoleEntity> found = new HashMap<>();
+        if (!referenced.isEmpty()) {
+            for (RoleEntity role : roleRepository.findAllByNameIn(referenced)) {
+                found.put(role.getName(), role);
+            }
+        }
+
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
-        if (!command.rolesToAdd().isEmpty()
-                && roleRepository.countByNameIn(command.rolesToAdd()) != command.rolesToAdd().size()) {
+        if (!found.keySet().containsAll(command.rolesToAdd())) {
             errors.add(new ErrorResponse.ErrorDetail(ChangeRolesValidator.FIELD_ADD,
                     ChangeRolesValidator.INVALID_ROLES_MESSAGE));
         }
-        if (!command.rolesToRemove().isEmpty()
-                && roleRepository.countByNameIn(command.rolesToRemove()) != command.rolesToRemove().size()) {
+        if (!found.keySet().containsAll(command.rolesToRemove())) {
             errors.add(new ErrorResponse.ErrorDetail(ChangeRolesValidator.FIELD_REMOVE,
                     ChangeRolesValidator.INVALID_ROLES_MESSAGE));
         }
         if (!errors.isEmpty()) {
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
         }
+        return found;
     }
 
     /**
@@ -237,10 +248,7 @@ public class RoleServiceImpl implements RoleService {
     private Map<UUID, RoleChange> planChanges(List<UserEntity> users, ChangeRolesCommand command) {
         Map<UUID, RoleChange> changes = new LinkedHashMap<>();
         for (UserEntity user : users) {
-            Set<String> before = new HashSet<>();
-            if (user.getRoles() != null) {
-                before.addAll(user.getRoles());
-            }
+            Set<String> before = new HashSet<>(user.getRoleNames());
 
             Set<String> after = new HashSet<>(before);
             after.addAll(command.rolesToAdd());
@@ -309,14 +317,24 @@ public class RoleServiceImpl implements RoleService {
      * cambios
      *
      * @param changes cambio previsto de cada usuario
+     * @param referencedRoles roles nombrados en la petición, por nombre
      * @param cut instante del corte de sesión de cada usuario modificado, truncado a segundos
      * @return los usuarios con los nuevos roles
      */
-    private List<UserEntity> applyChanges(Map<UUID, RoleChange> changes, Instant cut) {
+    private List<UserEntity> applyChanges(Map<UUID, RoleChange> changes, Map<String, RoleEntity> referencedRoles,
+            Instant cut) {
         List<UserEntity> modified = new ArrayList<>();
         for (RoleChange change : changes.values()) {
             if (!change.before().equals(change.after())) {
-                change.user().setRoles(change.after());
+                Map<String, RoleEntity> byName = new HashMap<>(referencedRoles);
+                for (RoleEntity current : change.user().getRoles()) {
+                    byName.put(current.getName(), current);
+                }
+                Set<RoleEntity> finalRoles = new HashSet<>();
+                for (String name : change.after()) {
+                    finalRoles.add(byName.get(name));
+                }
+                change.user().setRoles(finalRoles);
                 change.user().setValidFrom(cut);
                 modified.add(change.user());
             }

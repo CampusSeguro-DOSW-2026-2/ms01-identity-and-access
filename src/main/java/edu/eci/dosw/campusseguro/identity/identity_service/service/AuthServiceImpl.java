@@ -16,25 +16,22 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InactiveAccountException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidCredentialsException;
-import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IssuedToken;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.PermissionCodes;
-import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestValidator;
 
 /**
  * RF-MS01-02 Autenticar usuario (login)
  *
  * Flujo base: buscar por correo -> verificar contrasena contra el hash (BCrypt) -> verificar estado
- * ACTIVO -> leer los permisos de sus roles -> emitir JWT -> auditar LOGIN/EXITO -> responder token,
+ * ACTIVO -> leer los permisos de sus roles (rol_permiso y permisos) -> emitir JWT -> auditar LOGIN/EXITO -> responder token,
  * expiracion y datos basicos
  *
  * RN-MS01-05: Ante credenciales inválidas no se revela si falló el correo o la contraseña
@@ -52,7 +49,6 @@ public class AuthServiceImpl implements AuthService {
     static final String REASON_INTERNAL = "ERROR_INTERNO";
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuditRecorder auditRecorder;
@@ -68,18 +64,15 @@ public class AuthServiceImpl implements AuthService {
     /**
      * Crea el servicio con sus dependencias
      *
-     * @param userRepository repositorio de acceso a los usuarios y sus roles
-     * @param roleRepository repositorio de acceso a los roles y sus permisos
+     * @param userRepository repositorio de acceso a los usuarios, sus roles y los permisos de cada rol
      * @param passwordEncoder codificador con el que se verifican las contraseñas
      * @param jwtService emisor del JWT
      * @param auditRecorder registrador de los eventos de auditoría de MS08
      * @param requestValidator validador de los cuerpos de las peticiones
      */
-    public AuthServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder, JwtService jwtService, AuditRecorder auditRecorder,
-            RequestValidator requestValidator) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
+            AuditRecorder auditRecorder, RequestValidator requestValidator) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.auditRecorder = auditRecorder;
@@ -121,11 +114,10 @@ public class AuthServiceImpl implements AuthService {
             throw rejected(corr, user.getId(), REASON_INACTIVE, new InactiveAccountException());
         }
 
-        List<String> roles = RoleNames.sorted(user.getRoles());
+        List<String> roles = user.getRoleNames();
         IssuedToken token;
         try {
-            List<RoleEntity> userRoles = roleRepository.findAllByNameIn(roles);
-            List<String> permissions = PermissionCodes.effective(userRoles);
+            List<String> permissions = PermissionCodes.effective(user.getRoles());
             token = jwtService.issueToken(user.getId(), user.getEmail(), roles, permissions);
         } catch (RuntimeException e) {
             auditRecorder.recordAnonymous(AuditAction.LOGIN, AuditResult.FALLO, user.getId(),

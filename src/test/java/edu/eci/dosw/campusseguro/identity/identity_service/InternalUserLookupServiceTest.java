@@ -15,7 +15,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -62,8 +61,8 @@ class InternalUserLookupServiceTest {
     void setUp() {
         userRepository = mock(UserRepository.class);
         roleRepository = mock(RoleRepository.class);
-        when(roleRepository.existsById("BRIGADISTA")).thenReturn(true);
-        when(roleRepository.existsById("ESTUDIANTE")).thenReturn(true);
+        when(roleRepository.existsByName("BRIGADISTA")).thenReturn(true);
+        when(roleRepository.existsByName("ESTUDIANTE")).thenReturn(true);
         auditPublisher = mock(AuditEventPublisher.class);
         Clock clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC);
         RequestValidator requestValidator = new RequestValidator(
@@ -87,7 +86,7 @@ class InternalUserLookupServiceTest {
         u.setFirstLastName("Cardenas");
         u.setEmail("laura." + id.toString().substring(0, 8) + "@escuelaing.edu.co");
         u.setPassword("$2a$10$hash");
-        u.setRoles(new HashSet<>(List.of(roles)));
+        u.setRoles(TestEntities.roles(roles));
         u.setState(state);
         return u;
     }
@@ -300,7 +299,7 @@ class InternalUserLookupServiceTest {
                 () -> userService.searchByRole("super-usuario", null, null, null));
 
         assertEquals(UserSearchValidator.INVALID_ROLE_MESSAGE, e.getErrors().get(0).mensaje());
-        verify(roleRepository, never()).existsById(any());
+        verify(roleRepository, never()).existsByName(any());
         verify(userRepository, never()).findByRole(any(), any());
     }
 
@@ -315,7 +314,7 @@ class InternalUserLookupServiceTest {
         assertEquals("Datos inválidos.", e.getMessage());
         assertEquals("rol", e.getErrors().get(0).campo());
         assertEquals(UserSearchValidator.INVALID_ROLE_MESSAGE, e.getErrors().get(0).mensaje());
-        verify(roleRepository).existsById("SUPERUSUARIO");
+        verify(roleRepository).existsByName("SUPERUSUARIO");
         verify(userRepository, never()).findByRole(any(), any());
         verify(userRepository, never()).findByRoleCreatedUpTo(any(), any(), any());
     }
@@ -329,6 +328,6 @@ class InternalUserLookupServiceTest {
                 () -> userService.searchByRole(null, null, null, null));
 
         assertEquals(UserSearchValidator.INVALID_ROLE_MESSAGE, e.getErrors().get(0).mensaje());
-        verify(roleRepository, never()).existsById(any());
+        verify(roleRepository, never()).existsByName(any());
     }
 }

@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Permisos de los ocho roles que crea el script de base de datos (RN-MS01-14), sirven para armar identidades de
+ * Permisos de los ocho roles que siembra el script de base de datos según la Matriz Rol-Permiso (RN-MS01-34), sirven para armar identidades de
  * prueba con los mismos permisos que tendrían en una base recién creada
  */
 public final class SeedRoles {
@@ -25,6 +25,7 @@ public final class SeedRoles {
                     "ms04:assistance:request",
                     "ms04:checkin:read_own",
                     "ms04:checkin:write",
+                    "ms05:incident:report",
                     "ms07:content:read",
                     "ms07:quiz:take",
                     "ms07:tutor:use"),
@@ -58,6 +59,7 @@ public final class SeedRoles {
                     "ms04:assistance:request",
                     "ms04:checkin:read_own",
                     "ms04:checkin:write",
+                    "ms05:incident:report",
                     "ms07:content:read",
                     "ms07:quiz:take",
                     "ms07:tutor:use"),
@@ -137,6 +139,9 @@ public final class SeedRoles {
                     "ms04:checkin:write",
                     "ms04:dashboard:read",
                     "ms04:history:read",
+                    "ms05:brigadier:assign",
+                    "ms05:incident:read",
+                    "ms05:incident:report",
                     "ms06:drill:compare_report",
                     "ms06:drill:evaluate",
                     "ms06:drill:execute",
@@ -166,6 +171,7 @@ public final class SeedRoles {
                     "ms02:route_status:write",
                     "ms02:safe_zone:write",
                     "ms02:space:write",
+                    "ms05:incident:report",
                     "ms07:content:manage",
                     "ms08:audit:read"),
             "AUDITOR", List.of(

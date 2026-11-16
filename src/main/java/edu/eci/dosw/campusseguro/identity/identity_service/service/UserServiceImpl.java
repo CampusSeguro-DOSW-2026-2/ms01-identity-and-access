@@ -38,6 +38,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileRespon
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
@@ -151,7 +152,9 @@ public class UserServiceImpl implements UserService {
         entity.setSecondLastName(request.getSecondLastName());
         entity.setEmail(email);
         entity.setPassword(passwordEncoder.encode(request.getPassword()));
-        entity.setRoles(Set.of(RoleNames.STUDENT));
+        RoleEntity studentRole = roleRepository.findByName(RoleNames.STUDENT).orElseThrow(
+                () -> new IllegalStateException("El rol de sistema " + RoleNames.STUDENT + " no existe"));
+        entity.setRoles(Set.of(studentRole));
         entity.setState(UserState.ACTIVO);
 
         UserEntity saved;
@@ -247,7 +250,7 @@ public class UserServiceImpl implements UserService {
             String rol, String page, String size) {
         PermissionChecker.require(requester, Permission.MS01_USER_READ);
         UserSearchCriteria criteria = UserSearchValidator.validate(correo, estado, rol, page, size);
-        if (criteria.role() != null && !roleRepository.existsById(criteria.role())) {
+        if (criteria.role() != null && !roleRepository.existsByName(criteria.role())) {
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, List.of(
                     new ErrorResponse.ErrorDetail(UserSearchValidator.FIELD_ROLE,
                             UserSearchValidator.INVALID_ROLE_MESSAGE)));
@@ -372,7 +375,7 @@ public class UserServiceImpl implements UserService {
     public PageResponse<UserProfileResponse> searchByRole(String rol, String creadoAntes, String page,
             String size) {
         RoleSearchCriteria criteria = UserSearchValidator.validateByRole(rol, creadoAntes, page, size);
-        if (!roleRepository.existsById(criteria.role())) {
+        if (!roleRepository.existsByName(criteria.role())) {
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, List.of(
                     new ErrorResponse.ErrorDetail(UserSearchValidator.FIELD_ROLE,
                             UserSearchValidator.INVALID_ROLE_MESSAGE)));

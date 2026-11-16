@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,13 +25,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.Validation
 
 /**
  * Validaciones de los formularios F-10, F-11 y F-12 (RF-MS01-10) y de la ruta {rol}: nombre normalizado,
- * descripción de 3 a 200 caracteres sin etiquetas, permisos del catálogo sin repetidos, campos desconocidos
+ * descripción de 3 a 200 caracteres sin etiquetas, permisos del catálogo de la base de datos sin repetidos, campos desconocidos
  */
 class RoleRequestValidatorTest {
 
     private static final String PERM_A = "ms04:checkin:write";
     private static final String PERM_B = "ms04:checkin:read_own";
     private static final String PERM_C = "ms01:profile:read";
+    private static final Set<String> CATALOG = Set.of(PERM_A, PERM_B, PERM_C);
 
     /**
      * Cuerpo de creación
@@ -81,7 +83,7 @@ class RoleRequestValidatorTest {
      * @return la excepción lanzada
      */
     private InvalidRequestException invalidCreate(CreateRoleRequest request) {
-        return assertThrows(InvalidRequestException.class, () -> RoleRequestValidator.validateCreate(request));
+        return assertThrows(InvalidRequestException.class, () -> RoleRequestValidator.validateCreate(request, CATALOG));
     }
 
     /**
@@ -106,7 +108,7 @@ class RoleRequestValidatorTest {
     @Test
     void validateCreate_validRequest_returnsTheNormalizedCommand() {
         CreateRoleCommand command = RoleRequestValidator.validateCreate(
-                create("  monitor_evacuacion ", "  Apoya la evacuación  ", List.of(PERM_A, PERM_C, PERM_B)));
+                create("  monitor_evacuacion ", "  Apoya la evacuación  ", List.of(PERM_A, PERM_C, PERM_B)), CATALOG);
 
         assertEquals("MONITOR_EVACUACION", command.name());
         assertEquals("Apoya la evacuación", command.description());
@@ -118,9 +120,9 @@ class RoleRequestValidatorTest {
      */
     @Test
     void validateCreate_lengthLimits_areAccepted() {
-        CreateRoleCommand shortest = RoleRequestValidator.validateCreate(create("AB", "abc", List.of(PERM_A)));
+        CreateRoleCommand shortest = RoleRequestValidator.validateCreate(create("AB", "abc", List.of(PERM_A)), CATALOG);
         CreateRoleCommand longest = RoleRequestValidator.validateCreate(
-                create("A".repeat(30), "d".repeat(200), List.of(PERM_A)));
+                create("A".repeat(30), "d".repeat(200), List.of(PERM_A)), CATALOG);
 
         assertEquals("AB", shortest.name());
         assertEquals(30, longest.name().length());
@@ -164,11 +166,11 @@ class RoleRequestValidatorTest {
     @Test
     void validateCreate_namesContainingDetails_areAccepted() {
         assertEquals("DETAILS_X", RoleRequestValidator.validateCreate(
-                create("details_x", "Descripción", List.of(PERM_A))).name());
+                create("details_x", "Descripción", List.of(PERM_A)), CATALOG).name());
         assertEquals("MY_DETAILS", RoleRequestValidator.validateCreate(
-                create("my_details", "Descripción", List.of(PERM_A))).name());
+                create("my_details", "Descripción", List.of(PERM_A)), CATALOG).name());
         assertEquals("DETAIL", RoleRequestValidator.validateCreate(
-                create("detail", "Descripción", List.of(PERM_A))).name());
+                create("detail", "Descripción", List.of(PERM_A)), CATALOG).name());
     }
 
     /**
@@ -230,6 +232,18 @@ class RoleRequestValidatorTest {
     }
 
     /**
+     * El catálogo lo define la base de datos: un permiso de cualquier módulo que esté en él se acepta
+     */
+    @Test
+    void validateCreate_permissionPresentInTheCatalog_isAccepted() {
+        CreateRoleCommand command = RoleRequestValidator.validateCreate(
+                create("ROL", "Descripción", List.of("ms99:nuevo:permiso", PERM_A)),
+                Set.of(PERM_A, "ms99:nuevo:permiso"));
+
+        assertEquals(List.of(PERM_A, "ms99:nuevo:permiso"), command.permissions());
+    }
+
+    /**
      * Los códigos de permiso no se normalizan: en mayúsculas no existen en el catálogo
      */
     @Test
@@ -245,7 +259,7 @@ class RoleRequestValidatorTest {
     @Test
     void validateCreate_permissionCodeIsTrimmed() {
         CreateRoleCommand command = RoleRequestValidator.validateCreate(
-                create("ROL", "Descripción", List.of("  " + PERM_A + " ")));
+                create("ROL", "Descripción", List.of("  " + PERM_A + " ")), CATALOG);
 
         assertEquals(List.of(PERM_A), command.permissions());
     }
@@ -374,7 +388,7 @@ class RoleRequestValidatorTest {
     @Test
     void validatePermissions_validRequest_returnsTheSortedList() {
         RolePermissionsCommand command = RoleRequestValidator.validatePermissions(
-                permissions(List.of(PERM_A, PERM_C)));
+                permissions(List.of(PERM_A, PERM_C)), CATALOG);
 
         assertEquals(List.of(PERM_C, PERM_A), command.permissions());
     }
@@ -385,9 +399,9 @@ class RoleRequestValidatorTest {
     @Test
     void validatePermissions_emptyOrMissing_isRejected() {
         InvalidRequestException empty = assertThrows(InvalidRequestException.class,
-                () -> RoleRequestValidator.validatePermissions(permissions(List.of())));
+                () -> RoleRequestValidator.validatePermissions(permissions(List.of()), CATALOG));
         InvalidRequestException missing = assertThrows(InvalidRequestException.class,
-                () -> RoleRequestValidator.validatePermissions(permissions(null)));
+                () -> RoleRequestValidator.validatePermissions(permissions(null), CATALOG));
 
         assertEquals("Seleccione al menos un permiso.", empty.getErrors().get(0).mensaje());
         assertEquals("Seleccione al menos un permiso.", missing.getErrors().get(0).mensaje());
@@ -399,9 +413,9 @@ class RoleRequestValidatorTest {
     @Test
     void validatePermissions_repeatedOrUnknown_isRejected() {
         InvalidRequestException repeated = assertThrows(InvalidRequestException.class,
-                () -> RoleRequestValidator.validatePermissions(permissions(List.of(PERM_A, PERM_A))));
+                () -> RoleRequestValidator.validatePermissions(permissions(List.of(PERM_A, PERM_A)), CATALOG));
         InvalidRequestException unknown = assertThrows(InvalidRequestException.class,
-                () -> RoleRequestValidator.validatePermissions(permissions(List.of("ms01:profile:delete"))));
+                () -> RoleRequestValidator.validatePermissions(permissions(List.of("ms01:profile:delete")), CATALOG));
 
         assertEquals("Permiso repetido: " + PERM_A, repeated.getErrors().get(0).mensaje());
         assertEquals("Permiso no válido: ms01:profile:delete", unknown.getErrors().get(0).mensaje());
@@ -416,7 +430,7 @@ class RoleRequestValidatorTest {
         request.registerUnknownField("rol", "ADMIN");
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
-                () -> RoleRequestValidator.validatePermissions(request));
+                () -> RoleRequestValidator.validatePermissions(request, CATALOG));
 
         assertEquals(List.of("rol"), fields(error));
     }

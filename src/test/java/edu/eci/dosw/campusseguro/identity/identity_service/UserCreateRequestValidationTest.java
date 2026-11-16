@@ -211,18 +211,47 @@ class UserCreateRequestValidationTest {
     }
 
     /**
-     * Los nombres opcionales presentes siguen las mismas reglas
+     * Los nombres opcionales presentes con dígitos se rechazan con el mensaje de 1 a 30 letras
      */
     @Test
     void optionalNamesPresent_followTheSameRules() {
         UserCreateRequest request = valid();
-        request.setSecondName("J");
+        request.setSecondName("J9");
         request.setSecondLastName("Pérez9");
 
         Map<String, String> result = errors(request);
 
-        assertEquals("El segundo nombre debe tener entre 2 y 30 letras.", result.get("segundo_nombre"));
-        assertEquals("El segundo apellido debe tener entre 2 y 30 letras.", result.get("segundo_apellido"));
+        assertEquals("El segundo nombre debe tener entre 1 y 30 letras.", result.get("segundo_nombre"));
+        assertEquals("El segundo apellido debe tener entre 1 y 30 letras.", result.get("segundo_apellido"));
+        assertEquals(2, result.size());
+    }
+
+    /**
+     * El segundo nombre y el segundo apellido aceptan una sola letra, a diferencia del primer nombre y del
+     * primer apellido
+     */
+    @Test
+    void optionalNames_withASingleLetter_areAccepted() {
+        UserCreateRequest request = valid();
+        request.setSecondName("J");
+        request.setSecondLastName("Z");
+
+        assertTrue(errors(request).isEmpty());
+    }
+
+    /**
+     * El segundo nombre y el segundo apellido de más de 30 letras se rechazan
+     */
+    @Test
+    void optionalNames_withMoreThanThirtyLetters_areRejected() {
+        UserCreateRequest request = valid();
+        request.setSecondName("a".repeat(31));
+        request.setSecondLastName("b".repeat(31));
+
+        Map<String, String> result = errors(request);
+
+        assertEquals("El segundo nombre debe tener entre 1 y 30 letras.", result.get("segundo_nombre"));
+        assertEquals("El segundo apellido debe tener entre 1 y 30 letras.", result.get("segundo_apellido"));
         assertEquals(2, result.size());
     }
 

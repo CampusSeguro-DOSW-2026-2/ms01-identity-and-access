@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,7 @@ class UserResponseRolesOrderTest {
         entity.setFirstLastName("Gomez");
         entity.setEmail("carlos.gomez@escuelaing.edu.co");
         entity.setState(UserState.ACTIVO);
-        entity.setRoles(Set.of("PROFESOR", "ESTUDIANTE", "ADMIN"));
+        entity.setRoles(TestEntities.roles("PROFESOR", "ESTUDIANTE", "ADMIN"));
     }
 
     /**

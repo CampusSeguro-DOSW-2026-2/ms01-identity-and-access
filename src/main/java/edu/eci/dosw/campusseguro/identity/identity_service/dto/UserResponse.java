@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
-import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
  * Respuesta de POST /api/v1/auth/register (esquema RegisterResponse del contrato), nunca incluye la
@@ -34,7 +33,7 @@ public record UserResponse(
         return new UserResponse(
                 entity.getId(),
                 entity.getEmail(),
-                RoleNames.sorted(entity.getRoles()),
+                entity.getRoleNames(),
                 entity.getState());
     }
 }

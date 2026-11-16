@@ -27,10 +27,7 @@ class PermissionCodesTest {
      * @return la entidad
      */
     private RoleEntity role(String name, String... permissions) {
-        RoleEntity role = new RoleEntity();
-        role.setName(name);
-        role.setPermissions(List.of(permissions));
-        return role;
+        return TestEntities.role(name, permissions);
     }
 
     /**
@@ -76,13 +73,13 @@ class PermissionCodesTest {
     }
 
     /**
-     * Los permisos guardados que ya no están en el catálogo del código se ignoran
+     * Los permisos del rol se devuelven tal como están en la base, sin cambiar mayúsculas
      */
     @Test
-    void ofRole_ignoresCodesOutsideTheCatalog() {
-        RoleEntity role = role("VIEJO", "ms01:profile:read", "ms99:x:y", "MS01:PROFILE:WRITE");
+    void ofRole_returnsTheStoredCodesAsTheyAre() {
+        RoleEntity role = role("MIXTO", "ms01:profile:read", "ms99:x:y");
 
-        assertEquals(List.of("ms01:profile:read"), PermissionCodes.ofRole(role));
+        assertEquals(List.of("ms01:profile:read", "ms99:x:y"), PermissionCodes.ofRole(role));
     }
 
     /**
@@ -114,11 +111,13 @@ class PermissionCodesTest {
     }
 
     /**
-     * Los permisos efectivos también ignoran lo que ya no está en el catálogo
+     * Un rol repetido entre los roles del usuario no repite sus permisos
      */
     @Test
-    void effective_ignoresCodesOutsideTheCatalog() {
-        assertEquals(List.of("ms01:profile:read"),
-                PermissionCodes.effective(List.of(role("A", "ms01:profile:read", "ms99:x:y"))));
+    void effective_sameRoleTwice_doesNotRepeatPermissions() {
+        RoleEntity role = role("A", "ms01:profile:read", "ms04:checkin:write");
+
+        assertEquals(List.of("ms01:profile:read", "ms04:checkin:write"),
+                PermissionCodes.effective(List.of(role, role)));
     }
 }

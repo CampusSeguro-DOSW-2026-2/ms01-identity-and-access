@@ -16,7 +16,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +83,7 @@ class BulkUserStatusOperationServiceTest {
         UserEntity user = new UserEntity();
         user.setId(id);
         user.setState(state);
-        user.setRoles(Set.of("ESTUDIANTE"));
+        user.setRoles(TestEntities.roles("ESTUDIANTE"));
         return user;
     }
 

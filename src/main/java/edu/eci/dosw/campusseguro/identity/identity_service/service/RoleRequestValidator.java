@@ -2,6 +2,7 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
@@ -9,7 +10,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.CreateRoleRequest
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UpdateRoleRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UpdateRolePermissionsRequest;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.Texts;
@@ -24,7 +24,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.Validation
  *
  * descripcion: de 3 a 200 caracteres y sin etiquetas HTML (RG-03)
  *
- * permisos: al menos uno, sin repetidos y todos del catálogo, no se normalizan (solo se recortan los espacios)
+ * permisos: al menos uno, sin repetidos y todos del catálogo de la base de datos, no se normalizan (solo se
+ * recortan los espacios)
  *
  * cualquier campo no definido en el contrato: "Campo no permitido."
  */
@@ -58,15 +59,16 @@ public final class RoleRequestValidator {
      * Valida y normaliza el cuerpo de POST /api/v1/roles
      *
      * @param request cuerpo recibido
+     * @param catalog códigos de todos los permisos del catálogo
      * @return el comando con el nombre normalizado, la descripción y los permisos ordenados
      * @throws InvalidRequestException si algún dato incumple F-10 o llega un campo no permitido, con un
      *         error por campo
      */
-    public static CreateRoleCommand validateCreate(CreateRoleRequest request) {
+    public static CreateRoleCommand validateCreate(CreateRoleRequest request, Set<String> catalog) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(request.unknownFieldErrors());
         String name = parseName(request.getRol(), errors);
         String description = parseDescription(request.getDescripcion(), errors);
-        List<String> permissions = parsePermissions(request.getPermisos(), errors);
+        List<String> permissions = parsePermissions(request.getPermisos(), catalog, errors);
         if (!errors.isEmpty()) {
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
         }
@@ -95,13 +97,15 @@ public final class RoleRequestValidator {
      * Valida el cuerpo de PUT /api/v1/roles/{rol}/permissions
      *
      * @param request cuerpo recibido
+     * @param catalog códigos de todos los permisos del catálogo
      * @return el comando con los permisos ordenados y sin repetidos
      * @throws InvalidRequestException si algún dato incumple F-12 o llega un campo no permitido, con un
      *         error por campo
      */
-    public static RolePermissionsCommand validatePermissions(UpdateRolePermissionsRequest request) {
+    public static RolePermissionsCommand validatePermissions(UpdateRolePermissionsRequest request,
+            Set<String> catalog) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(request.unknownFieldErrors());
-        List<String> permissions = parsePermissions(request.getPermisos(), errors);
+        List<String> permissions = parsePermissions(request.getPermisos(), catalog, errors);
         if (!errors.isEmpty()) {
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
         }
@@ -169,10 +173,11 @@ public final class RoleRequestValidator {
      * Valida la lista de permisos: al menos uno, del catálogo y sin repetidos, los códigos no se normalizan
      *
      * @param rawPermissions códigos recibidos
+     * @param catalog códigos de todos los permisos del catálogo
      * @param errors lista donde se agrega el error del primer código inválido o repetido
      * @return los códigos recortados, ordenados y sin repetidos
      */
-    private static List<String> parsePermissions(List<String> rawPermissions,
+    private static List<String> parsePermissions(List<String> rawPermissions, Set<String> catalog,
             List<ErrorResponse.ErrorDetail> errors) {
         if (rawPermissions == null || rawPermissions.isEmpty()) {
             errors.add(new ErrorResponse.ErrorDetail(FIELD_PERMISSIONS, NO_PERMISSIONS_MESSAGE));
@@ -182,7 +187,7 @@ public final class RoleRequestValidator {
         TreeSet<String> codes = new TreeSet<>();
         for (String raw : rawPermissions) {
             String code = Texts.trimToNull(raw);
-            if (code == null || Permission.fromCode(code).isEmpty()) {
+            if (code == null || !catalog.contains(code)) {
                 errors.add(new ErrorResponse.ErrorDetail(FIELD_PERMISSIONS,
                         describe(INVALID_PERMISSION_MESSAGE, code)));
                 return List.of();

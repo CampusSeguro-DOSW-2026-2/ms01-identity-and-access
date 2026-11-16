@@ -22,7 +22,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -89,8 +88,16 @@ class RoleServiceTest {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         roleService = new RoleServiceImpl(userRepository, roleRepository, new AuditRecorder(auditPublisher, clock),
                 FixedDatabaseTime.at(NOW));
-        lenient().when(roleRepository.countByNameIn(any()))
-                .thenAnswer(invocation -> (long) ((Collection<?>) invocation.getArgument(0)).size());
+        lenient().when(roleRepository.findAllByNameIn(any())).thenAnswer(invocation -> {
+            Collection<String> names = invocation.getArgument(0);
+            List<RoleEntity> existing = new ArrayList<>();
+            if (names != null) {
+                for (String name : names) {
+                    existing.add(TestEntities.role(name, "ms01:profile:read"));
+                }
+            }
+            return existing;
+        });
     }
 
     /**
@@ -120,11 +127,7 @@ class RoleServiceTest {
      * @return la entidad del rol
      */
     private RoleEntity role(String name, String... permissions) {
-        RoleEntity entity = new RoleEntity();
-        entity.setName(name);
-        entity.setDescription("Rol " + name);
-        entity.setPermissions(Arrays.asList(permissions));
-        return entity;
+        return TestEntities.role(name, permissions);
     }
 
     /**
@@ -138,7 +141,7 @@ class RoleServiceTest {
         UserEntity entity = new UserEntity();
         entity.setId(id);
         entity.setEmail(id + "@mail.escuelaing.edu.co");
-        entity.setRoles(new HashSet<>(List.of(roles)));
+        entity.setRoles(TestEntities.roles(roles));
         return entity;
     }
 
@@ -225,16 +228,16 @@ class RoleServiceTest {
     }
 
     /**
-     * Los códigos guardados que ya no existen en el catálogo no se entregan
+     * Los códigos de permiso se entregan tal como están guardados en la base de datos
      */
     @Test
-    void getRoles_ignoresStoredCodesOutsideTheCatalog() {
+    void getRoles_returnsTheStoredCodesOfEachRole() {
         when(roleRepository.findAllByNameIn(any())).thenReturn(List.of(
                 role("BRIGADISTA", "ms05:panel:read_own", "ms99:viejo:permiso")));
 
         List<RolePermissionsResponse> roles = roleService.getRoles(requesterWith("BRIGADISTA"));
 
-        assertEquals(List.of("ms05:panel:read_own"), roles.get(0).permisos());
+        assertEquals(List.of("ms05:panel:read_own", "ms99:viejo:permiso"), roles.get(0).permisos());
     }
 
     /**
@@ -264,7 +267,7 @@ class RoleServiceTest {
         assertEquals(1, response.resultados().size());
         assertEquals(USER_A.toString(), response.resultados().get(0).id());
         assertEquals(List.of("ESTUDIANTE", "PROFESOR"), response.resultados().get(0).roles());
-        assertEquals(Set.of("ESTUDIANTE", "PROFESOR"), target.getRoles());
+        assertEquals(List.of("ESTUDIANTE", "PROFESOR"), target.getRoleNames());
         verify(userRepository).saveAllAndFlush(List.of(target));
 
         AuditEvent event = publishedEvents(1).get(0);
@@ -347,7 +350,7 @@ class RoleServiceTest {
                 request(List.of(USER_A.toString()), List.of("MONITOR_EVACUACION"), null), CORRELATION_ID);
 
         assertEquals(List.of("ESTUDIANTE", "MONITOR_EVACUACION"), response.resultados().get(0).roles());
-        verify(roleRepository).countByNameIn(Set.of("MONITOR_EVACUACION"));
+        verify(roleRepository).findAllByNameIn(Set.of("MONITOR_EVACUACION"));
         publishedEvents(1);
     }
 
@@ -363,7 +366,7 @@ class RoleServiceTest {
                 request(List.of(USER_A.toString()), null, List.of("PROFESOR")), CORRELATION_ID);
 
         assertEquals(List.of("ESTUDIANTE"), response.resultados().get(0).roles());
-        assertEquals(Set.of("ESTUDIANTE"), target.getRoles());
+        assertEquals(List.of("ESTUDIANTE"), target.getRoleNames());
         assertEquals("agregados=;retirados=PROFESOR", publishedEvents(1).get(0).detalle());
     }
 
@@ -630,7 +633,7 @@ class RoleServiceTest {
 
         assertEquals("Usuario no encontrado.", error.getMessage());
         assertEquals(List.of(USER_B), error.getMissingIds());
-        assertEquals(Set.of("ESTUDIANTE"), existing.getRoles());
+        assertEquals(List.of("ESTUDIANTE"), existing.getRoleNames());
         verify(userRepository, never()).saveAllAndFlush(any());
 
         AuditEvent event = publishedEvents(1).get(0);
@@ -655,7 +658,7 @@ class RoleServiceTest {
                         request(List.of(USER_A.toString()), null, List.of("ESTUDIANTE")), CORRELATION_ID));
 
         assertEquals("Cada usuario debe conservar al menos un rol.", error.getMessage());
-        assertEquals(Set.of("ESTUDIANTE"), target.getRoles());
+        assertEquals(List.of("ESTUDIANTE"), target.getRoleNames());
         verify(userRepository, never()).saveAllAndFlush(any());
 
         AuditEvent event = publishedEvents(1).get(0);
@@ -677,8 +680,8 @@ class RoleServiceTest {
                 request(List.of(USER_A.toString(), USER_B.toString()), null, List.of("ESTUDIANTE")),
                 CORRELATION_ID));
 
-        assertEquals(Set.of("ESTUDIANTE", "PROFESOR"), safe.getRoles());
-        assertEquals(Set.of("ESTUDIANTE"), risky.getRoles());
+        assertEquals(List.of("ESTUDIANTE", "PROFESOR"), safe.getRoleNames());
+        assertEquals(List.of("ESTUDIANTE"), risky.getRoleNames());
         verify(userRepository, never()).saveAllAndFlush(any());
         assertEquals("usuario:" + USER_B, publishedEvents(1).get(0).recursoAfectado());
     }
@@ -767,7 +770,7 @@ class RoleServiceTest {
         assertThrows(BusinessRuleException.class, () -> roleService.changeRoles(admin(),
                 request(List.of(USER_A.toString(), USER_B.toString()), List.of("PROFESOR"), null), CORRELATION_ID));
 
-        assertEquals(Set.of("ESTUDIANTE"), safe.getRoles());
+        assertEquals(List.of("ESTUDIANTE"), safe.getRoleNames());
         assertEquals(GlobalValues.MAX_ROLES_PER_USER, full.getRoles().size());
         assertNull(safe.getValidFrom());
         verify(userRepository, never()).saveAllAndFlush(any());
@@ -828,7 +831,7 @@ class RoleServiceTest {
      */
     @Test
     void changeRoles_roleToAddThatDoesNotExist_isRejected() {
-        when(roleRepository.countByNameIn(Set.of("SUPERUSUARIO"))).thenReturn(0L);
+        when(roleRepository.findAllByNameIn(Set.of("SUPERUSUARIO"))).thenReturn(List.of());
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
                 () -> roleService.changeRoles(admin(),
@@ -845,7 +848,7 @@ class RoleServiceTest {
      */
     @Test
     void changeRoles_roleToRemoveThatDoesNotExist_isRejected() {
-        when(roleRepository.countByNameIn(Set.of("FANTASMA"))).thenReturn(0L);
+        when(roleRepository.findAllByNameIn(Set.of("FANTASMA"))).thenReturn(List.of());
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
                 () -> roleService.changeRoles(admin(),
@@ -860,8 +863,7 @@ class RoleServiceTest {
      */
     @Test
     void changeRoles_bothListsWithUnknownRoles_reportsBothFields() {
-        when(roleRepository.countByNameIn(Set.of("NUEVO"))).thenReturn(0L);
-        when(roleRepository.countByNameIn(Set.of("VIEJO"))).thenReturn(0L);
+        when(roleRepository.findAllByNameIn(Set.of("NUEVO", "VIEJO"))).thenReturn(List.of());
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
                 () -> roleService.changeRoles(admin(),

@@ -2,15 +2,15 @@ package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,6 +19,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 /**
@@ -51,21 +53,21 @@ public class UserEntity {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String password;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "usuario_rol", joinColumns = @JoinColumn(name = "usuario_id"))
-    @Column(name = "rol", nullable = false, length = 30)
-    private Set<String> roles = new HashSet<>();
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "usuario_rol", joinColumns = @JoinColumn(name = "usuario_id"),
+            inverseJoinColumns = @JoinColumn(name = "rol_id"))
+    private Set<RoleEntity> roles = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false, length = 10)
+    @Column(name = "estado", nullable = false, length = 20)
     private UserState state;
 
     @CreationTimestamp
     @Column(name = "creado_en", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "actualizado_en", nullable = false)
+    @Generated(event = { EventType.INSERT, EventType.UPDATE })
+    @Column(name = "actualizado_en", nullable = false, insertable = false, updatable = false)
     private Instant updatedAt;
 
     @Column(name = "valido_desde")
@@ -198,24 +200,35 @@ public class UserEntity {
     }
 
     /**
-     * Devuelve los nombres de los roles del usuario, nunca es null y no tiene un orden definido, para
-     * entregarlos ordenados se usa RoleNames.sorted
+     * Devuelve los roles del usuario, nunca es null y no tiene un orden definido
      *
-     * @return conjunto de nombres de rol del usuario
+     * @return conjunto de roles del usuario
      */
-    public Set<String> getRoles() {
+    public Set<RoleEntity> getRoles() {
         return this.roles;
     }
 
     /**
-     * Deja al usuario con los roles recibidos sincronizando la coleccion en sitio, asi Hibernate solo
-     * inserta en usuario_rol los roles nuevos y borra los retirados, sin tocar los que se conservan ni su
-     * fecha de asignacion (5_modelo_datos, cambio de roles en lote). Asignar una coleccion nueva a un
-     * usuario ya cargado haria que borre e inserte de nuevo todas sus filas
+     * Devuelve los nombres de los roles del usuario tal como salen en la API y en el token
      *
-     * @param roles nombres de los roles finales del usuario, null equivale a ninguno
+     * @return los nombres de rol en orden alfabético
      */
-    public void setRoles(Set<String> roles) {
+    public List<String> getRoleNames() {
+        return this.roles.stream()
+                .map(RoleEntity::getName)
+                .sorted()
+                .toList();
+    }
+
+    /**
+     * Deja al usuario con los roles recibidos sincronizando la colección en sitio, así Hibernate solo
+     * inserta en usuario_rol los roles nuevos y borra los retirados, sin tocar los que se conservan ni su
+     * fecha de asignación (4_modelo-datos, cambio de roles en lote). Asignar una colección nueva a un
+     * usuario ya cargado haría que borre e inserte de nuevo todas sus filas
+     *
+     * @param roles roles finales del usuario, null equivale a ninguno
+     */
+    public void setRoles(Set<RoleEntity> roles) {
         if (roles == null) {
             this.roles.clear();
             return;
@@ -223,7 +236,7 @@ public class UserEntity {
         if (roles == this.roles) {
             return;
         }
-        Set<String> finalRoles = new HashSet<>(roles);
+        Set<RoleEntity> finalRoles = new HashSet<>(roles);
         this.roles.retainAll(finalRoles);
         this.roles.addAll(finalRoles);
     }

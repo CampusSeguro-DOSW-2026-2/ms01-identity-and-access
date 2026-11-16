@@ -81,7 +81,7 @@ class RoleChangeNextLoginTest {
         when(passwordEncoder.encode(anyString())).thenReturn("dummy-hash");
         AuditRecorder recorder = new AuditRecorder(auditPublisher, clock);
         roleService = new RoleServiceImpl(userRepository, roleRepository, recorder, FixedDatabaseTime.at(NOW));
-        authService = new AuthServiceImpl(userRepository, roleRepository, passwordEncoder, jwtService, recorder,
+        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtService, recorder,
                 new RequestValidator(Validation.buildDefaultValidatorFactory().getValidator()));
     }
 
@@ -95,13 +95,13 @@ class RoleChangeNextLoginTest {
         user.setEmail(EMAIL);
         user.setPassword(STORED_HASH);
         user.setState(UserState.ACTIVO);
-        user.setRoles(Set.of("ESTUDIANTE"));
+        RoleEntity student = TestEntities.role("ESTUDIANTE", "ms01:profile:read");
+        RoleEntity brigadier = TestEntities.role("BRIGADISTA", "ms05:panel:read_own");
+        user.setRoles(Set.of(student));
         when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(user));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(roleRepository.countByNameIn(any())).thenReturn(1L);
-        when(roleRepository.findAllByNameIn(List.of("BRIGADISTA", "ESTUDIANTE"))).thenReturn(List.of(
-                role("ESTUDIANTE", "ms01:profile:read"), role("BRIGADISTA", "ms05:panel:read_own")));
+        when(roleRepository.findAllByNameIn(any())).thenReturn(List.of(brigadier));
         when(jwtService.issueToken(eq(USER_ID), eq(EMAIL), any(), any()))
                 .thenReturn(new IssuedToken("header.payload.signature", NOW.plusSeconds(3600)));
 
@@ -123,20 +123,5 @@ class RoleChangeNextLoginTest {
         verify(jwtService).issueToken(eq(USER_ID), eq(EMAIL), roles.capture(), permissions.capture());
         assertEquals(List.of("BRIGADISTA", "ESTUDIANTE"), roles.getValue());
         assertEquals(List.of("ms01:profile:read", "ms05:panel:read_own"), permissions.getValue());
-    }
-
-    /**
-     * Construye un rol guardado con los permisos indicados
-     *
-     * @param name nombre del rol
-     * @param permissions códigos de permiso del rol
-     * @return el rol de prueba
-     */
-    private RoleEntity role(String name, String... permissions) {
-        RoleEntity entity = new RoleEntity();
-        entity.setName(name);
-        entity.setDescription("Rol " + name);
-        entity.setPermissions(List.of(permissions));
-        return entity;
     }
 }

@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +73,8 @@ class UserServiceTest {
     void setUp() {
         userRepository = mock(UserRepository.class);
         roleRepository = mock(RoleRepository.class);
+        when(roleRepository.findByName("ESTUDIANTE"))
+                .thenReturn(Optional.of(TestEntities.role("ESTUDIANTE", "ms01:profile:read")));
         passwordEncoder = mock(PasswordEncoder.class);
         auditPublisher = mock(AuditEventPublisher.class);
         userService = serviceWithDomains(DOMAINS);
@@ -126,7 +127,7 @@ class UserServiceTest {
         entity.setFirstLastName("Gomez");
         entity.setEmail(email);
         entity.setPassword("$2a$10$hash");
-        entity.setRoles(Set.of("ESTUDIANTE"));
+        entity.setRoles(TestEntities.roles("ESTUDIANTE"));
         entity.setState(UserState.ACTIVO);
         return entity;
     }
@@ -178,13 +179,28 @@ class UserServiceTest {
         assertEquals("carlos.gomez@escuelaing.edu.co", saved.getEmail());
         assertEquals("$2a$10$hash", saved.getPassword());
         assertNotEquals(PASSWORD, saved.getPassword());
-        assertEquals(Set.of("ESTUDIANTE"), saved.getRoles());
+        assertEquals(List.of("ESTUDIANTE"), saved.getRoleNames());
         assertEquals(UserState.ACTIVO, saved.getState());
 
         assertEquals(id, response.id());
         assertEquals("carlos.gomez@escuelaing.edu.co", response.email());
         assertEquals(List.of("ESTUDIANTE"), response.roles());
         assertEquals(UserState.ACTIVO, response.state());
+    }
+
+    /**
+     * Si el rol de sistema ESTUDIANTE no existe en la tabla roles el registro falla sin guardar nada
+     */
+    @Test
+    void create_studentRoleMissingInTheDatabase_failsWithoutSaving() {
+        when(roleRepository.findByName("ESTUDIANTE")).thenReturn(Optional.empty());
+        when(userRepository.existsByEmail("carlos.gomez@escuelaing.edu.co")).thenReturn(false);
+        when(passwordEncoder.encode(PASSWORD)).thenReturn("$2a$10$hash");
+
+        assertThrows(IllegalStateException.class,
+                () -> userService.create(registrationRequest("carlos.gomez@escuelaing.edu.co"), CORRELATION_ID));
+
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     /**

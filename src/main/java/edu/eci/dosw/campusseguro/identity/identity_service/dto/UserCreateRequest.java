@@ -28,7 +28,7 @@ public class UserCreateRequest extends StrictRequest {
     private String firstName;
 
     @JsonProperty("segundo_nombre")
-    @Size(min = FieldRules.NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
+    @Size(min = FieldRules.OPTIONAL_NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
             message = FieldRules.SECOND_NAME_MESSAGE)
     @Pattern(regexp = FieldRules.NAME_PATTERN, message = FieldRules.SECOND_NAME_MESSAGE)
     private String secondName;
@@ -41,7 +41,7 @@ public class UserCreateRequest extends StrictRequest {
     private String firstLastName;
 
     @JsonProperty("segundo_apellido")
-    @Size(min = FieldRules.NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
+    @Size(min = FieldRules.OPTIONAL_NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
             message = FieldRules.SECOND_LAST_NAME_MESSAGE)
     @Pattern(regexp = FieldRules.NAME_PATTERN, message = FieldRules.SECOND_LAST_NAME_MESSAGE)
     private String secondLastName;

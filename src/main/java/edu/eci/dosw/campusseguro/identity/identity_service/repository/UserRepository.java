@@ -48,7 +48,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     @Query("SELECT DISTINCT u FROM UserEntity u WHERE "
             + "(:correo IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', CAST(:correo AS string), '%'))) AND "
             + "(:estado IS NULL OR u.state = :estado) AND "
-            + "(:rol IS NULL OR :rol MEMBER OF u.roles)")
+            + "(:rol IS NULL OR EXISTS (SELECT r FROM u.roles r WHERE r.name = :rol))")
     Page<UserEntity> searchUsers(@Param("correo") String correo, @Param("estado") UserState estado,
             @Param("rol") String rol, Pageable pageable);
 
@@ -59,7 +59,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      * @param pageable página, tamaño y orden solicitados
      * @return la página de usuarios con ese rol
      */
-    @Query("SELECT u FROM UserEntity u WHERE :rol MEMBER OF u.roles")
+    @Query("SELECT u FROM UserEntity u WHERE EXISTS (SELECT r FROM u.roles r WHERE r.name = :rol)")
     Page<UserEntity> findByRole(@Param("rol") String rol, Pageable pageable);
 
     /**
@@ -71,19 +71,20 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      * @param pageable página, tamaño y orden solicitados
      * @return la página de usuarios con ese rol creados hasta el corte
      */
-    @Query("SELECT u FROM UserEntity u WHERE :rol MEMBER OF u.roles AND u.createdAt <= :creadoAntes")
+    @Query("SELECT u FROM UserEntity u WHERE EXISTS (SELECT r FROM u.roles r WHERE r.name = :rol) "
+            + "AND u.createdAt <= :creadoAntes")
     Page<UserEntity> findByRoleCreatedUpTo(@Param("rol") String rol, @Param("creadoAntes") Instant creadoAntes,
             Pageable pageable);
 
     /**
-     * Consulta de autenticación (RF-MS01-02), devuelve el usuario por correo junto con sus roles en una
-     * sola consulta, el correo se guarda siempre en minúsculas, por eso quien llama debe normalizarlo y la
+     * Consulta de autenticación (RF-MS01-02), devuelve el usuario por correo junto con sus roles y los
+     * permisos de cada rol en una sola consulta, el correo se guarda siempre en minúsculas, por eso quien llama debe normalizarlo y la
      * búsqueda por igualdad aprovecha el índice único del correo
      *
      * @param email correo normalizado
-     * @return el usuario con sus roles, o vacío si no existe
+     * @return el usuario con sus roles y permisos, o vacío si no existe
      */
-    @EntityGraph(attributePaths = "roles")
+    @EntityGraph(attributePaths = { "roles", "roles.permissions" })
     Optional<UserEntity> findByEmail(String email);
 
     /**
@@ -102,7 +103,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      * @param role nombre del rol que se busca
      * @return cantidad de usuarios que tienen ese rol
      */
-    @Query("select count(u) from UserEntity u join u.roles r where r = :role")
+    @Query("select count(u) from UserEntity u join u.roles r where r.name = :role")
     long countWithRole(@Param("role") String role);
 
     /**
@@ -111,9 +112,10 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      * @param role nombre del rol
      * @return cantidad de usuarios que tienen solo ese rol
      */
-    @Query(value = "SELECT count(*) FROM usuario_rol ur WHERE ur.rol = :role AND NOT EXISTS ("
-            + "SELECT 1 FROM usuario_rol other WHERE other.usuario_id = ur.usuario_id AND other.rol <> :role)",
-            nativeQuery = true)
+    @Query(value = "SELECT count(*) FROM usuario_rol ur "
+            + "WHERE ur.rol_id = (SELECT id FROM roles WHERE nombre = :role) AND NOT EXISTS ("
+            + "SELECT 1 FROM usuario_rol other WHERE other.usuario_id = ur.usuario_id "
+            + "AND other.rol_id <> ur.rol_id)", nativeQuery = true)
     long countWithOnlyRole(@Param("role") String role);
 
     /**
@@ -125,7 +127,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "UPDATE usuarios SET valido_desde = :cut WHERE id IN ("
-            + "SELECT usuario_id FROM usuario_rol WHERE rol = :role)", nativeQuery = true)
+            + "SELECT usuario_id FROM usuario_rol WHERE rol_id = (SELECT id FROM roles WHERE nombre = :role))",
+            nativeQuery = true)
     int markSessionCutByRole(@Param("role") String role, @Param("cut") Instant cut);
 
     /**
@@ -137,9 +140,10 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      * @return cantidad de asignaciones cambiadas
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(value = "UPDATE usuario_rol SET rol = :fallback WHERE rol = :role AND NOT EXISTS ("
+    @Query(value = "UPDATE usuario_rol SET rol_id = (SELECT id FROM roles WHERE nombre = :fallback) "
+            + "WHERE rol_id = (SELECT id FROM roles WHERE nombre = :role) AND NOT EXISTS ("
             + "SELECT 1 FROM usuario_rol other WHERE other.usuario_id = usuario_rol.usuario_id "
-            + "AND other.rol <> :role)", nativeQuery = true)
+            + "AND other.rol_id <> usuario_rol.rol_id)", nativeQuery = true)
     int replaceOnlyRole(@Param("role") String role, @Param("fallback") String fallback);
 
     /**
@@ -150,7 +154,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      * @return cantidad de asignaciones borradas
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(value = "DELETE FROM usuario_rol WHERE rol = :role", nativeQuery = true)
+    @Query(value = "DELETE FROM usuario_rol WHERE rol_id = (SELECT id FROM roles WHERE nombre = :role)",
+            nativeQuery = true)
     int removeRoleFromAll(@Param("role") String role);
 
     /**

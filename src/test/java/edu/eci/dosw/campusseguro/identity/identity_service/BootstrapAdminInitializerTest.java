@@ -3,6 +3,7 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,8 +24,10 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.config.BootstrapAdminInitializer;
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 
 /**
@@ -41,6 +45,9 @@ class BootstrapAdminInitializerTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private RoleRepository roleRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -69,8 +76,8 @@ class BootstrapAdminInitializerTest {
      */
     private BootstrapAdminInitializer initializer(String email, String password, String firstName,
             String lastName) {
-        return new BootstrapAdminInitializer(userRepository, passwordEncoder, email, password, firstName,
-                lastName);
+        return new BootstrapAdminInitializer(userRepository, roleRepository, passwordEncoder, email, password,
+                firstName, lastName);
     }
 
     /**
@@ -92,6 +99,8 @@ class BootstrapAdminInitializerTest {
     void create_noAdminExists_createsTheFirstAdmin() {
         when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        RoleEntity adminRole = TestEntities.role("ADMIN", "ms01:profile:read", "ms01:role:manage");
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
         boolean created = initializer.createFirstAdminIfNeeded();
@@ -99,7 +108,7 @@ class BootstrapAdminInitializerTest {
         assertTrue(created);
         UserEntity admin = savedAdmin();
         assertEquals(NORMALIZED_EMAIL, admin.getEmail());
-        assertEquals(Set.of("ADMIN"), admin.getRoles());
+        assertEquals(Set.of(adminRole), admin.getRoles());
         assertEquals(UserState.ACTIVO, admin.getState());
         assertEquals(HASH, admin.getPassword());
         assertNotEquals(PASSWORD, admin.getPassword());
@@ -115,6 +124,7 @@ class BootstrapAdminInitializerTest {
         initializer = initializer(EMAIL, PASSWORD, "  Laura ", " Gomez ");
         when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(TestEntities.role("ADMIN", "ms01:profile:read")));
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
         initializer.createFirstAdminIfNeeded();
@@ -176,12 +186,28 @@ class BootstrapAdminInitializerTest {
     }
 
     /**
+     * Si el rol de sistema ADMIN no existe en la base de datos no se crea el administrador y el arranque falla
+     */
+    @Test
+    void create_adminRoleMissingInTheDatabase_failsWithoutSavingAnything() {
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
+        when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> initializer.createFirstAdminIfNeeded());
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    /**
      * Al arrancar la aplicacion (ApplicationRunner) se ejecuta la creacion del primer administrador
      */
     @Test
     void run_executesTheCreation() {
         when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(TestEntities.role("ADMIN", "ms01:profile:read")));
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
         initializer.run(arguments);

@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -72,8 +71,8 @@ class UserSearchServiceTest {
     void setUp() {
         userRepository = mock(UserRepository.class);
         roleRepository = mock(RoleRepository.class);
-        when(roleRepository.existsById("ESTUDIANTE")).thenReturn(true);
-        when(roleRepository.existsById("MONITOR_EVACUACION")).thenReturn(true);
+        when(roleRepository.existsByName("ESTUDIANTE")).thenReturn(true);
+        when(roleRepository.existsByName("MONITOR_EVACUACION")).thenReturn(true);
         Clock clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC);
         AuditRecorder auditRecorder = new AuditRecorder(mock(AuditEventPublisher.class), clock);
         RequestValidator requestValidator = new RequestValidator(
@@ -97,7 +96,7 @@ class UserSearchServiceTest {
         u.setFirstLastName("Gomez");
         u.setEmail(email);
         u.setPassword("$2a$10$hash");
-        u.setRoles(new HashSet<>(List.of(roles)));
+        u.setRoles(TestEntities.roles(roles));
         u.setState(state);
         return u;
     }
@@ -231,7 +230,7 @@ class UserSearchServiceTest {
 
         assertEquals("Rol no válido.", lowercase.getErrors().get(0).mensaje());
         assertEquals("Rol no válido.", symbols.getErrors().get(0).mensaje());
-        verify(roleRepository, never()).existsById(any());
+        verify(roleRepository, never()).existsByName(any());
     }
 
     /**
@@ -244,7 +243,7 @@ class UserSearchServiceTest {
 
         assertEquals("Datos inválidos.", error.getMessage());
         assertEquals(new ErrorResponse.ErrorDetail("rol", "Rol no válido."), error.getErrors().get(0));
-        verify(roleRepository).existsById("FANTASMA");
+        verify(roleRepository).existsByName("FANTASMA");
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
     }
 
@@ -269,7 +268,7 @@ class UserSearchServiceTest {
 
         userService.search(admin, null, null, "Todos", null, null);
 
-        verify(roleRepository, never()).existsById(any());
+        verify(roleRepository, never()).existsByName(any());
     }
 
     /**

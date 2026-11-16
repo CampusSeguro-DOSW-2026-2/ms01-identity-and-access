@@ -3,7 +3,10 @@ package edu.eci.dosw.campusseguro.identity.identity_service.repository;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,33 +16,44 @@ import org.springframework.stereotype.Repository;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 
 /**
- * Acceso a los roles y a sus permisos (tabla roles del modelo de datos)
+ * Acceso a los roles y a sus permisos (tablas roles y rol_permiso del modelo de datos)
  */
 @Repository
-public interface RoleRepository extends JpaRepository<RoleEntity, String> {
+public interface RoleRepository extends JpaRepository<RoleEntity, UUID> {
 
     /**
-     * Devuelve todos los roles ordenados por nombre
+     * Devuelve todos los roles con sus permisos, ordenados por nombre
      *
      * @return los roles en orden alfabético
      */
+    @EntityGraph(attributePaths = "permissions")
     List<RoleEntity> findAllByOrderByNameAsc();
 
     /**
-     * Devuelve los roles con los nombres recibidos, los nombres que no existen no aparecen
+     * Busca un rol por su nombre, que lo identifica hacia afuera
+     *
+     * @param name nombre del rol, ya normalizado a mayúsculas
+     * @return el rol con sus permisos, o vacío si no existe
+     */
+    @EntityGraph(attributePaths = "permissions")
+    Optional<RoleEntity> findByName(String name);
+
+    /**
+     * Indica si existe un rol con el nombre
+     *
+     * @param name nombre del rol, ya normalizado a mayúsculas
+     * @return true si existe un rol con ese nombre
+     */
+    boolean existsByName(String name);
+
+    /**
+     * Devuelve los roles con los nombres recibidos y sus permisos, los nombres que no existen no aparecen
      *
      * @param names nombres de rol
      * @return los roles encontrados, sin un orden definido
      */
+    @EntityGraph(attributePaths = "permissions")
     List<RoleEntity> findAllByNameIn(Collection<String> names);
-
-    /**
-     * Cuenta los roles que existen entre los nombres recibidos
-     *
-     * @param names nombres de rol sin repetir
-     * @return cantidad de nombres que corresponden a un rol existente
-     */
-    long countByNameIn(Collection<String> names);
 
     /**
      * Devuelve los roles con un corte de sesión dentro de la ventana de la consulta interna (RF-MS01-11)
@@ -52,18 +66,25 @@ public interface RoleRepository extends JpaRepository<RoleEntity, String> {
     List<RoleEntity> findWithSessionCutSince(@Param("since") Instant since);
 
     /**
-     * Cambia el nombre y la descripción de un rol, la clave foránea de usuario_rol actualiza el nombre en las
-     * asignaciones, el nombre no se puede cambiar con la entidad porque es su clave
+     * Devuelve los nombres de los roles que tienen un permiso
      *
-     * @param currentName nombre actual del rol
-     * @param newName nombre nuevo del rol
-     * @param description descripción nueva del rol
-     * @param updatedAt instante de la modificación
-     * @return cantidad de roles modificados
+     * @param permission código del permiso
+     * @return los nombres de rol en orden alfabético
+     */
+    @Query("SELECT r.name FROM RoleEntity r JOIN r.permissions p WHERE p.name = :permission ORDER BY r.name")
+    List<String> findNamesByPermission(@Param("permission") String permission);
+
+    /**
+     * Escribe el corte de sesión de todos los roles que tienen un permiso (RF-MS01-11), se usa antes de
+     * retirar el permiso del catálogo
+     *
+     * @param permission código del permiso
+     * @param cut instante de corte, truncado a segundos
+     * @return cantidad de roles marcados
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(value = "UPDATE roles SET nombre = :newName, descripcion = :description, actualizado_en = :updatedAt "
-            + "WHERE nombre = :currentName", nativeQuery = true)
-    int rename(@Param("currentName") String currentName, @Param("newName") String newName,
-            @Param("description") String description, @Param("updatedAt") Instant updatedAt);
+    @Query(value = "UPDATE roles SET valido_desde = :cut WHERE id IN ("
+            + "SELECT rp.rol_id FROM rol_permiso rp JOIN permisos p ON p.id = rp.permiso_id "
+            + "WHERE p.nombre = :permission)", nativeQuery = true)
+    int markSessionCutByPermission(@Param("permission") String permission, @Param("cut") Instant cut);
 }

@@ -11,8 +11,10 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
@@ -33,6 +35,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     static final String DEFAULT_LAST_NAME = "Inicial";
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final String email;
     private final String password;
@@ -43,6 +46,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
      * Crea el inicializador con el repositorio y los datos del primer administrador
      *
      * @param userRepository repositorio de acceso a los usuarios
+     * @param roleRepository repositorio de acceso a los roles
      * @param passwordEncoder codificador con el que se guarda la contrasena
      * @param email correo del primer administrador; vacio desactiva el arranque
      * @param password contrasena del primer administrador; vacia desactiva el arranque
@@ -51,12 +55,14 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
      */
     public BootstrapAdminInitializer(
             UserRepository userRepository,
+            RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
             @Value("${bootstrap.admin.email:${BOOTSTRAP_ADMIN_EMAIL:}}") String email,
             @Value("${bootstrap.admin.password:${BOOTSTRAP_ADMIN_PASSWORD:}}") String password,
             @Value("${bootstrap.admin.first-name:${BOOTSTRAP_ADMIN_FIRST_NAME:}}") String firstName,
             @Value("${bootstrap.admin.last-name:${BOOTSTRAP_ADMIN_LAST_NAME:}}") String lastName) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.email = email;
         this.password = password;
@@ -99,12 +105,15 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
             return false;
         }
 
+        RoleEntity adminRole = roleRepository.findByName(RoleNames.ADMIN).orElseThrow(
+                () -> new IllegalStateException("El rol de sistema " + RoleNames.ADMIN + " no existe"));
+
         UserEntity admin = new UserEntity();
         admin.setFirstName(valueOrDefault(firstName, DEFAULT_FIRST_NAME));
         admin.setFirstLastName(valueOrDefault(lastName, DEFAULT_LAST_NAME));
         admin.setEmail(normalizedEmail);
         admin.setPassword(passwordEncoder.encode(password));
-        admin.setRoles(Set.of(RoleNames.ADMIN));
+        admin.setRoles(Set.of(adminRole));
         admin.setState(UserState.ACTIVO);
 
         userRepository.save(admin);

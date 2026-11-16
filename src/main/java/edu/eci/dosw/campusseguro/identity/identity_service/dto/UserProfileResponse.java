@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
-import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
  * Datos de un usuario (esquema User del contrato), se usa en la consulta y actualización del perfil, en
@@ -49,7 +48,7 @@ public record UserProfileResponse(
                 entity.getFirstLastName(),
                 entity.getSecondLastName(),
                 entity.getEmail(),
-                RoleNames.sorted(entity.getRoles()),
+                entity.getRoleNames(),
                 entity.getState());
     }
 }

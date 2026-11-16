@@ -19,10 +19,9 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +47,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InactiveAccountException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidCredentialsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
-import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IssuedToken;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
@@ -76,9 +74,6 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private RoleRepository roleRepository;
-
-    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -96,8 +91,8 @@ class AuthServiceTest {
     void setUp() {
         // El servicio calcula un hash de relleno al construirse (igualacion de tiempos).
         when(passwordEncoder.encode(anyString())).thenReturn(DUMMY_HASH);
-        authService = new AuthServiceImpl(userRepository, roleRepository, passwordEncoder, jwtService,
-                recorder(), requestValidator());
+        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtService, recorder(),
+                requestValidator());
     }
 
     /**
@@ -133,36 +128,32 @@ class AuthServiceTest {
     }
 
     /**
-     * Construye un usuario de prueba con la contraseña esperada
+     * Construye un usuario de prueba con la contraseña esperada y roles que solo tienen ms01:profile:read
      *
      * @param state estado del usuario
-     * @param roles roles del usuario
+     * @param roles nombres de los roles del usuario
      * @return el usuario de prueba
      */
     private UserEntity user(UserState state, String... roles) {
+        return user(state, TestEntities.roles(roles));
+    }
+
+    /**
+     * Construye un usuario de prueba con la contraseña esperada y los roles guardados indicados
+     *
+     * @param state estado del usuario
+     * @param roles roles del usuario con sus permisos
+     * @return el usuario de prueba
+     */
+    private UserEntity user(UserState state, Set<RoleEntity> roles) {
         UserEntity entity = new UserEntity();
         entity.setId(UUID.randomUUID());
         entity.setFirstName("Maria");
         entity.setFirstLastName("Perez");
         entity.setEmail(EMAIL);
         entity.setPassword(STORED_HASH);
-        entity.setRoles(new HashSet<>(List.of(roles)));
+        entity.setRoles(roles);
         entity.setState(state);
-        return entity;
-    }
-
-    /**
-     * Construye un rol guardado con los permisos indicados
-     *
-     * @param name nombre del rol
-     * @param permissions códigos de permiso del rol
-     * @return el rol de prueba
-     */
-    private RoleEntity role(String name, String... permissions) {
-        RoleEntity entity = new RoleEntity();
-        entity.setName(name);
-        entity.setDescription("Rol " + name);
-        entity.setPermissions(Arrays.asList(permissions));
         return entity;
     }
 
@@ -184,13 +175,12 @@ class AuthServiceTest {
      */
     @Test
     void login_activeUserWithCorrectPassword_returnsTokenAndAuditsSuccess() {
-        UserEntity user = user(UserState.ACTIVO, "PROFESOR", "ESTUDIANTE");
+        UserEntity user = user(UserState.ACTIVO, Set.of(
+                TestEntities.role("ESTUDIANTE", "ms01:profile:read", "ms01:role:read_own"),
+                TestEntities.role("PROFESOR", "ms05:incident:report", "ms01:profile:read")));
         IssuedToken issued = new IssuedToken(TOKEN, NOW.plusSeconds(3600));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(roleRepository.findAllByNameIn(List.of("ESTUDIANTE", "PROFESOR"))).thenReturn(List.of(
-                role("ESTUDIANTE", "ms01:profile:read", "ms01:role:read_own"),
-                role("PROFESOR", "ms05:incident:report", "ms01:profile:read")));
         when(jwtService.issueToken(user.getId(), EMAIL, List.of("ESTUDIANTE", "PROFESOR"),
                 List.of("ms01:profile:read", "ms01:role:read_own", "ms05:incident:report"))).thenReturn(issued);
 
@@ -218,12 +208,15 @@ class AuthServiceTest {
      */
     @Test
     void login_rolesAreSortedAlphabeticallyInTokenAndResponse() {
-        UserEntity user = user(UserState.ACTIVO, "PROFESOR", "ADMIN", "BRIGADISTA");
+        UserEntity user = user(UserState.ACTIVO, Set.of(
+                TestEntities.role("PROFESOR", "ms01:profile:read"),
+                TestEntities.role("ADMIN", "ms01:user:roles"),
+                TestEntities.role("BRIGADISTA", "ms01:profile:read")));
         List<String> alphabetical = List.of("ADMIN", "BRIGADISTA", "PROFESOR");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(roleRepository.findAllByNameIn(alphabetical)).thenReturn(List.of(role("ADMIN", "ms01:user:roles")));
-        when(jwtService.issueToken(user.getId(), EMAIL, alphabetical, List.of("ms01:user:roles")))
+        when(jwtService.issueToken(user.getId(), EMAIL, alphabetical,
+                List.of("ms01:profile:read", "ms01:user:roles")))
                 .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         LoginResponse response = authService.login(request(EMAIL, PASSWORD), CORR);
@@ -269,7 +262,7 @@ class AuthServiceTest {
     @Test
     void login_verifiesAgainstRealBCryptHashLikeTheOneStoredAtRegistration() {
         BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder(4);
-        AuthServiceImpl service = new AuthServiceImpl(userRepository, roleRepository, bcrypt, jwtService, recorder(),
+        AuthServiceImpl service = new AuthServiceImpl(userRepository, bcrypt, jwtService, recorder(),
                 requestValidator());
         UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
         user.setPassword(bcrypt.encode(PASSWORD));
@@ -287,12 +280,11 @@ class AuthServiceTest {
      */
     @Test
     void login_tokenPermissionsAreTheUnionOfTheRolePermissions() {
-        UserEntity user = user(UserState.ACTIVO, "BRIGADISTA", "AUDITOR");
+        UserEntity user = user(UserState.ACTIVO, Set.of(
+                TestEntities.role("BRIGADISTA", "ms05:panel:read_own", "ms01:profile:read"),
+                TestEntities.role("AUDITOR", "ms08:audit:read", "ms01:profile:read")));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(roleRepository.findAllByNameIn(List.of("AUDITOR", "BRIGADISTA"))).thenReturn(List.of(
-                role("BRIGADISTA", "ms05:panel:read_own", "ms01:profile:read"),
-                role("AUDITOR", "ms08:audit:read", "ms01:profile:read")));
         when(jwtService.issueToken(any(), any(), any(), any()))
                 .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
@@ -307,11 +299,9 @@ class AuthServiceTest {
      */
     @Test
     void login_customRolePermissionsEnterTheToken() {
-        UserEntity user = user(UserState.ACTIVO, "MONITOR_EVACUACION");
+        UserEntity user = user(UserState.ACTIVO, Set.of(TestEntities.role("MONITOR_EVACUACION", "ms04:checkin:write")));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(roleRepository.findAllByNameIn(List.of("MONITOR_EVACUACION"))).thenReturn(List.of(
-                role("MONITOR_EVACUACION", "ms04:checkin:write")));
         when(jwtService.issueToken(any(), any(), any(), any()))
                 .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
@@ -322,40 +312,40 @@ class AuthServiceTest {
     }
 
     /**
-     * Los códigos guardados en un rol que ya no están en el catálogo del código no entran al token
+     * Los permisos de otros módulos que están en la base entran al token tal como se guardaron
      */
     @Test
-    void login_permissionsOutsideTheCatalogDoNotEnterTheToken() {
-        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
+    void login_permissionsOfOtherModulesEnterTheTokenAsStored() {
+        UserEntity user = user(UserState.ACTIVO, Set.of(
+                TestEntities.role("ESTUDIANTE", "ms01:profile:read", "ms02:campus:read", "ms07:tutor:use")));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(roleRepository.findAllByNameIn(List.of("ESTUDIANTE"))).thenReturn(List.of(
-                role("ESTUDIANTE", "ms01:profile:read", "ms99:viejo:permiso")));
         when(jwtService.issueToken(any(), any(), any(), any()))
                 .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
         authService.login(request(EMAIL, PASSWORD), CORR);
 
-        verify(jwtService).issueToken(user.getId(), EMAIL, List.of("ESTUDIANTE"), List.of("ms01:profile:read"));
+        verify(jwtService).issueToken(user.getId(), EMAIL, List.of("ESTUDIANTE"),
+                List.of("ms01:profile:read", "ms02:campus:read", "ms07:tutor:use"));
     }
 
     /**
-     * Si falla la lectura de los permisos de los roles se audita el fallo y se propaga el error
+     * Un permiso repetido en varios roles aparece una sola vez en el token
      */
     @Test
-    void login_rolesLookupFails_auditsFailureAndPropagatesTheError() {
-        UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
-        IllegalStateException failure = new IllegalStateException("fallo de base de datos");
+    void login_permissionRepeatedInSeveralRoles_appearsOnceInTheToken() {
+        UserEntity user = user(UserState.ACTIVO, Set.of(
+                TestEntities.role("A", "ms01:profile:read", "ms04:checkin:write"),
+                TestEntities.role("B", "ms01:profile:read", "ms04:checkin:write")));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(roleRepository.findAllByNameIn(any())).thenThrow(failure);
+        when(jwtService.issueToken(any(), any(), any(), any()))
+                .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
 
-        IllegalStateException thrown = assertThrows(IllegalStateException.class,
-                () -> authService.login(request(EMAIL, PASSWORD), CORR));
+        authService.login(request(EMAIL, PASSWORD), CORR);
 
-        assertSame(failure, thrown);
-        assertEquals("ERROR_INTERNO", publishedEvent().detalle());
-        verifyNoInteractions(jwtService);
+        verify(jwtService).issueToken(user.getId(), EMAIL, List.of("A", "B"),
+                List.of("ms01:profile:read", "ms04:checkin:write"));
     }
 
     // ---------------------------------------------------------------- A1: credenciales incorrectas

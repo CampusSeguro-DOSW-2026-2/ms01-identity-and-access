@@ -1,8 +1,10 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
-import java.time.Instant;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -20,6 +22,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.RoleDetailRespons
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UpdateRolePermissionsRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UpdateRoleRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.PermissionEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.BusinessRuleException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ConflictException;
@@ -27,6 +30,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.RoleNotFoundException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.PermissionRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.PermissionChecker;
@@ -36,7 +40,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.PermissionCodes;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
- * Administración de roles y del catálogo de permisos (RF-MS01-10)
+ * Administración de roles y consulta del catálogo de permisos (RF-MS01-10), el catálogo vive en la base de datos y
+ * ninguna operación de este servicio escribe en él (RN-MS01-42)
  *
  * La autorización la decide el permiso que recibe el solicitante en X-User-Permission: ms01:role:read_all
  * para consultar y ms01:role:manage para crear, editar, cambiar permisos y borrar
@@ -55,6 +60,8 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     static final String SYSTEM_DELETE_MESSAGE = "Los roles de sistema no se pueden eliminar.";
     static final String MANAGE_EXCLUSIVE_MESSAGE = "El permiso ms01:role:manage es exclusivo del rol ADMIN.";
     static final String ADMIN_MUST_KEEP_MESSAGE = "El rol ADMIN debe conservar el permiso ms01:role:manage.";
+    static final String PROFILE_MINIMUM_MESSAGE =
+            "El rol %s debe conservar los permisos ms01:profile:read y ms01:profile:write.";
 
     static final String REASON_NOT_ALLOWED = "SIN_PERMISO";
     static final String REASON_VALIDATION = "VALIDACION";
@@ -65,6 +72,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     static final String REASON_INTERNAL = "ERROR_INTERNO";
 
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
     private final AuditRecorder auditRecorder;
     private final DatabaseTimeService timeService;
@@ -73,13 +81,15 @@ public class RoleAdminServiceImpl implements RoleAdminService {
      * Crea el servicio con sus dependencias
      *
      * @param roleRepository repositorio de acceso a los roles y sus permisos
+     * @param permissionRepository repositorio de acceso al catálogo de permisos
      * @param userRepository repositorio de acceso a los usuarios y sus roles
      * @param auditRecorder registrador de los eventos de auditoría de MS08
      * @param timeService reloj único de la base de datos con el que se fijan los cortes de sesión
      */
-    public RoleAdminServiceImpl(RoleRepository roleRepository, UserRepository userRepository,
-            AuditRecorder auditRecorder, DatabaseTimeService timeService) {
+    public RoleAdminServiceImpl(RoleRepository roleRepository, PermissionRepository permissionRepository,
+            UserRepository userRepository, AuditRecorder auditRecorder, DatabaseTimeService timeService) {
         this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
         this.userRepository = userRepository;
         this.auditRecorder = auditRecorder;
         this.timeService = timeService;
@@ -116,23 +126,25 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     public RoleDetailResponse getRole(RequesterIdentity requester, String role) {
         PermissionChecker.require(requester, Permission.MS01_ROLE_READ_ALL);
         String name = RoleRequestValidator.normalizePathRole(role);
-        RoleEntity entity = roleRepository.findById(name)
+        RoleEntity entity = roleRepository.findByName(name)
                 .orElseThrow(() -> new RoleNotFoundException(name));
         return toDetail(entity);
     }
 
     /**
-     * Lista el catálogo de permisos ordenado por código
+     * Lista el catálogo de permisos de la base de datos ordenado por código
      *
      * @param requester identidad de quien consulta
      * @return cada permiso con su descripción
      * @throws ForbiddenOperationException si el solicitante no tiene el permiso de consulta de roles
      */
     @Override
+    @Transactional(readOnly = true)
     public List<PermissionItemResponse> listPermissions(RequesterIdentity requester) {
         PermissionChecker.require(requester, Permission.MS01_ROLE_READ_ALL);
-        return Permission.sortedByCode().stream()
-                .map(permission -> new PermissionItemResponse(permission.getCode(), permission.getDescription()))
+        return permissionRepository.findAll().stream()
+                .sorted(Comparator.comparing(PermissionEntity::getName))
+                .map(permission -> new PermissionItemResponse(permission.getName(), permission.getDescription()))
                 .toList();
     }
 
@@ -144,7 +156,8 @@ public class RoleAdminServiceImpl implements RoleAdminService {
      * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
      * @return el rol creado
      * @throws ForbiddenOperationException si el solicitante no tiene el permiso de gestión de roles
-     * @throws InvalidRequestException si algún dato incumple el formulario F-10
+     * @throws InvalidRequestException si algún dato incumple el formulario F-10 o algún permiso no está en el
+     *         catálogo
      * @throws BusinessRuleException si los permisos incluyen ms01:role:manage
      * @throws ConflictException si ya existe un rol con ese nombre
      */
@@ -155,9 +168,14 @@ public class RoleAdminServiceImpl implements RoleAdminService {
         String corr = CorrelationIds.resolve(correlationId);
         requireManage(AuditAction.CREACION_ROL, requester, corr);
 
+        Map<String, PermissionEntity> catalog = new HashMap<>();
+        for (PermissionEntity permission : permissionRepository.findAll()) {
+            catalog.put(permission.getName(), permission);
+        }
+
         CreateRoleCommand command;
         try {
-            command = RoleRequestValidator.validateCreate(request);
+            command = RoleRequestValidator.validateCreate(request, catalog.keySet());
         } catch (InvalidRequestException e) {
             reject(AuditAction.CREACION_ROL, requester, RoleNames.normalize(request.getRol()), REASON_VALIDATION,
                     corr);
@@ -167,15 +185,20 @@ public class RoleAdminServiceImpl implements RoleAdminService {
             reject(AuditAction.CREACION_ROL, requester, command.name(), REASON_BUSINESS_RULE, corr);
             throw new BusinessRuleException(MANAGE_EXCLUSIVE_MESSAGE);
         }
-        if (roleRepository.existsById(command.name())) {
+        if (roleRepository.existsByName(command.name())) {
             reject(AuditAction.CREACION_ROL, requester, command.name(), REASON_CONFLICT, corr);
             throw new ConflictException(NAME_EXISTS_MESSAGE);
+        }
+
+        Set<PermissionEntity> selected = new HashSet<>();
+        for (String code : command.permissions()) {
+            selected.add(catalog.get(code));
         }
 
         RoleEntity entity = new RoleEntity();
         entity.setName(command.name());
         entity.setDescription(command.description());
-        entity.setPermissions(command.permissions());
+        entity.setPermissions(selected);
         entity.setSystem(false);
 
         RoleEntity saved;
@@ -235,7 +258,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
             reject(AuditAction.EDICION_ROL, requester, previousName, REASON_SYSTEM_ROLE, corr);
             throw new ConflictException(SYSTEM_RENAME_MESSAGE);
         }
-        if (renamed && roleRepository.existsById(command.name())) {
+        if (renamed && roleRepository.existsByName(command.name())) {
             reject(AuditAction.EDICION_ROL, requester, previousName, REASON_CONFLICT, corr);
             throw new ConflictException(NAME_EXISTS_MESSAGE);
         }
@@ -243,14 +266,12 @@ public class RoleAdminServiceImpl implements RoleAdminService {
         RoleEntity updated;
         try {
             if (renamed) {
-                Instant cut = timeService.now();
-                userRepository.markSessionCutByRole(previousName, cut);
-                roleRepository.rename(previousName, command.name(), command.description(), cut);
-                updated = roleRepository.findById(command.name()).orElseThrow();
-            } else {
-                current.setDescription(command.description());
-                updated = roleRepository.saveAndFlush(current);
+                userRepository.markSessionCutByRole(previousName, timeService.now());
+                current = roleRepository.findByName(previousName).orElseThrow();
             }
+            current.setName(command.name());
+            current.setDescription(command.description());
+            updated = roleRepository.saveAndFlush(current);
         } catch (DataIntegrityViolationException e) {
             reject(AuditAction.EDICION_ROL, requester, previousName, REASON_CONFLICT, corr);
             log.warn("Edición de rol rechazada por restricción de la base de datos: {}",
@@ -280,9 +301,11 @@ public class RoleAdminServiceImpl implements RoleAdminService {
      * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
      * @return el rol actualizado
      * @throws ForbiddenOperationException si el solicitante no tiene el permiso de gestión de roles
-     * @throws InvalidRequestException si algún dato incumple el formulario F-12
+     * @throws InvalidRequestException si algún dato incumple el formulario F-12 o algún permiso no está en el
+     *         catálogo
      * @throws RoleNotFoundException si el rol no existe
-     * @throws BusinessRuleException si ms01:role:manage queda en un rol distinto de ADMIN o ADMIN lo pierde
+     * @throws BusinessRuleException si ms01:role:manage queda en un rol distinto de ADMIN o ADMIN lo pierde, o si
+     *         ESTUDIANTE o ADMIN pierden ms01:profile:read o ms01:profile:write
      */
     @Override
     @Transactional
@@ -292,9 +315,14 @@ public class RoleAdminServiceImpl implements RoleAdminService {
         requireManage(AuditAction.CAMBIO_PERMISOS_ROL, requester, corr);
         RoleEntity entity = findRole(AuditAction.CAMBIO_PERMISOS_ROL, requester, role, corr);
 
+        Map<String, PermissionEntity> catalog = new HashMap<>();
+        for (PermissionEntity permission : permissionRepository.findAll()) {
+            catalog.put(permission.getName(), permission);
+        }
+
         RolePermissionsCommand command;
         try {
-            command = RoleRequestValidator.validatePermissions(request);
+            command = RoleRequestValidator.validatePermissions(request, catalog.keySet());
         } catch (InvalidRequestException e) {
             reject(AuditAction.CAMBIO_PERMISOS_ROL, requester, entity.getName(), REASON_VALIDATION, corr);
             throw e;
@@ -310,8 +338,14 @@ public class RoleAdminServiceImpl implements RoleAdminService {
             reject(AuditAction.CAMBIO_PERMISOS_ROL, requester, entity.getName(), REASON_BUSINESS_RULE, corr);
             throw new BusinessRuleException(ADMIN_MUST_KEEP_MESSAGE);
         }
+        boolean keepsProfile = command.permissions().contains(Permission.MS01_PROFILE_READ.getCode())
+                && command.permissions().contains(Permission.MS01_PROFILE_WRITE.getCode());
+        if ((isAdmin || RoleNames.STUDENT.equals(entity.getName())) && !keepsProfile) {
+            reject(AuditAction.CAMBIO_PERMISOS_ROL, requester, entity.getName(), REASON_BUSINESS_RULE, corr);
+            throw new BusinessRuleException(String.format(PROFILE_MINIMUM_MESSAGE, entity.getName()));
+        }
 
-        Set<String> before = new HashSet<>(entity.getPermissions());
+        Set<String> before = new HashSet<>(PermissionCodes.ofRole(entity));
         Set<String> after = new HashSet<>(command.permissions());
         Set<String> added = new HashSet<>(after);
         added.removeAll(before);
@@ -320,7 +354,11 @@ public class RoleAdminServiceImpl implements RoleAdminService {
 
         RoleEntity saved;
         try {
-            entity.setPermissions(command.permissions());
+            Set<PermissionEntity> selected = new HashSet<>();
+            for (String code : command.permissions()) {
+                selected.add(catalog.get(code));
+            }
+            entity.setPermissions(selected);
             entity.setValidFrom(timeService.now());
             saved = roleRepository.saveAndFlush(entity);
         } catch (RuntimeException e) {
@@ -371,7 +409,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
             userRepository.markSessionCutByRole(name, timeService.now());
             userRepository.replaceOnlyRole(name, RoleNames.STUDENT);
             userRepository.removeRoleFromAll(name);
-            roleRepository.deleteById(name);
+            roleRepository.delete(entity);
             roleRepository.flush();
         } catch (RuntimeException e) {
             reject(AuditAction.ELIMINACION_ROL, requester, name, REASON_INTERNAL, corr);
@@ -424,7 +462,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
             reject(action, requester, null, REASON_VALIDATION, corr);
             throw e;
         }
-        return roleRepository.findById(name).orElseThrow(() -> {
+        return roleRepository.findByName(name).orElseThrow(() -> {
             reject(action, requester, name, REASON_ROLE_NOT_FOUND, corr);
             return new RoleNotFoundException(name);
         });

@@ -172,7 +172,7 @@ class PasswordServiceTest {
         entity.setEmail(email);
         entity.setPassword(passwordEncoder.encode(rawPassword));
         entity.setState(state);
-        entity.setRoles(Set.of("ESTUDIANTE"));
+        entity.setRoles(TestEntities.roles("ESTUDIANTE"));
         return entity;
     }
 
