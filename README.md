@@ -15,7 +15,8 @@ Documentation (requirements, contracts, data model and diagrams, in Spanish): [`
 
 ## What it does
 
-* Registration and login of institutional users. Login issues an RS256 JWT with the user's roles and permissions.
+* Registration of institutional users with verification of the email: the account is only created when the person enters the 6-digit code sent to their email, so emails that do not exist are never stored as users. Only whoever made the registration can confirm it: the registration returns a token that the verification requires together with the code. Pending registrations that are never verified are deleted by a scheduled task.
+* Login of institutional users. Login issues an RS256 JWT with the user's roles and permissions.
 * Logout, change of password and password recovery with a one-time code sent by email.
 * Own profile and administration of users (list, search, activate or deactivate, add or remove roles).
 * Administration of roles and of the permissions each role has. The roles and the permission catalog live in the database.
@@ -63,10 +64,11 @@ MS01 has its own PostgreSQL database. The application never creates or changes t
 
 | Script | When | What it does |
 |---|---|---|
-| `001_create_schema.sql` | New database. Postgres runs it by itself with an empty volume | Tables (`users`, `roles`, `permissions`, `role_permissions`, `user_roles`, `password_reset_codes`), functions, triggers and the initial data: the 48-permission catalog, the eight initial roles and their permissions according to the Role-Permission Matrix. A single transaction |
+| `001_create_schema.sql` | New database. Postgres runs it by itself with an empty volume | Tables (`users`, `roles`, `permissions`, `role_permissions`, `user_roles`, `password_reset_codes`, `pending_registrations`), functions, triggers and the initial data: the 48-permission catalog, the eight initial roles and their permissions according to the Role-Permission Matrix. A single transaction |
 | `002_index_schema.sql` | New database, after `001` | Indexes, including the `pg_trgm` index of the search by email |
 | `migrations/004_migration_roles_permissions.sql` | By hand, on a database deployed with the previous model (Spanish table names and fixed roles) | Takes it to the current schema in a single transaction, keeping its data |
 | `maintenance/005_maintenance_roles_permissions.sql` | By hand, every time the Role-Permission Matrix gains permissions or assignments | Leaves the catalog and the permissions of the eight initial roles exactly as the Matrix says. The roles created through the API keep only the mandatory permissions. It cuts the sessions of all roles, so every user logs in again with the new permissions |
+| `migrations/006_migration_pending_registrations.sql` | By hand, once, on a database deployed before the verification of the email, **before** deploying that version of MS01 | Creates the table `pending_registrations` and its index. Without it MS01 does not start, because it validates the schema |
 
 Postgres only runs the scripts that are directly in `database/`; the `migrations/` and `maintenance/` subfolders are applied by hand, after taking a backup:
 
@@ -192,12 +194,12 @@ Create `ms01-test` and `ms01-prod` in **Settings › Environments**:
 | `MAIL_HOST` | Variable (optional) | SMTP server with STARTTLS. `smtp.gmail.com` by default. |
 | `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_FROM` | Variable (optional) | `587`, `proyectometx@gmail.com` and `CampusSeguro <proyectometx@gmail.com>` by default. With Gmail the sender must be the same account. |
 | `BOOTSTRAP_ADMIN_EMAIL` | Variable (optional) | Email of the first administrator. It is only created if no ADMIN exists. |
-| `MS01_EXTRA_ENV` | Variable (optional) | Extra `KEY=value` lines, e.g. `INTERNAL_ALLOWED_SERVICES=ms03,ms04,ms05` or `RECOVERY_*`. |
+| `MS01_EXTRA_ENV` | Variable (optional) | Extra `KEY=value` lines, e.g. `INTERNAL_ALLOWED_SERVICES=ms03,ms04,ms05`, `REGISTRATION_*` or `RECOVERY_*`. |
 | `DEPLOY_DIR` | Variable (optional) | `~/campusseguro/ms01` by default. |
 | `DB_PASSWORD` | Secret | `openssl rand -base64 24`. It only applies when the database is created (first deployment). |
 | `JWT_PRIVATE_KEY` | Secret | Full content of `jwt-<environment>.pem` (step 5). |
 | `GATEWAY_SERVICE_KEY` | Secret | The one the owner of the GW gave for that environment. |
-| `MAIL_PASSWORD` | Secret | Google application password of `proyectometx@gmail.com` (Google Account > Security > App passwords; it requires 2-step verification). Without it the recovery emails are not sent. |
+| `MAIL_PASSWORD` | Secret | Google application password of `proyectometx@gmail.com` (Google Account > Security > App passwords; it requires 2-step verification). Without it the verification and recovery codes are not sent, so nobody can register or recover their password. |
 | `BOOTSTRAP_ADMIN_PASSWORD` | Secret (optional) | Password of the first administrator. |
 
 No value can contain single quotes (`'`).
@@ -205,6 +207,15 @@ No value can contain single quotes (`'`).
 ### 7. Deploy
 1. **Test:** every merge or push to `develop` publishes the image and deploys it to `ms01-test`. Follow the **desplegar-test** job in the *Actions* tab.
 2. **Production:** after merging into `main`, go to **Actions › Desplegar a producción › Run workflow**, branch `main`, with the tag of the image that already works in test. It is `sha-` plus the first 7 characters of the `develop` commit that was deployed, and it appears in the log of *desplegar-test*.
+
+**Schema changes.** The deployment only creates the schema of an empty database, it never migrates an existing one. When a version brings a script in `database/migrations/` (for example `006_migration_pending_registrations.sql`), apply it on the database of each environment **before** that version is deployed there: MS01 validates the schema when it starts and does not start without it. An extra table does not affect the previous version, so it can be applied in advance *(VM)*:
+```bash
+cd ~/campusseguro
+curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/ms01-identity-and-access/develop/database/migrations/006_migration_pending_registrations.sql
+docker exec ms01-test-db-1 pg_dump -U campus_user -Fc campus_db > backup_before_006_test.dump
+docker exec -i ms01-test-db-1 psql -U campus_user -d campus_db -v ON_ERROR_STOP=1 < 006_migration_pending_registrations.sql
+# Production: the same with ms01-prod-db-1, before running "Desplegar a producción"
+```
 
 `infra/deploy.sh` verifies each deployment inside the VM:
 * `/actuator/health` answers 200 through the `campus-edge` network;

@@ -20,8 +20,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.EmailServiceImpl;
 
 /**
- * Tests of the sending of the recovery code by email (RF-MS01-08): recipient, sender, subject and content of the
- * message, and propagation of the failure of the mail server
+ * Tests of the sending of the verification code of the registration (RF-MS01-01) and of the recovery code (RF-MS01-08)
+ * by email: recipient, sender, subject and content of the message, and propagation of the failure of the mail server
  */
 class EmailServiceTest {
 
@@ -76,7 +76,7 @@ class EmailServiceTest {
         assertTrue(body.contains("007391"));
         assertTrue(body.contains("15 minutos"));
         assertTrue(body.contains("solo se puede usar una vez"));
-        assertTrue(body.contains("Si no hiciste esta solicitud"));
+        assertTrue(body.contains("Si no hizo esta solicitud"));
     }
 
         /**
@@ -97,5 +97,45 @@ class EmailServiceTest {
         doThrow(new MailSendException("SMTP down")).when(mailSender).send(any(SimpleMailMessage.class));
 
         assertThrows(MailSendException.class, () -> emailService.sendRecoveryCode(TO, "482913", 15));
+    }
+
+        /**
+     * The verification code is sent to the email that is being registered, from the configured sender and with the
+     * subject of the registration
+     */
+    @Test
+    void sendRegistrationCode_sendsOneMessageToTheEmailFromTheConfiguredSender() {
+        emailService.sendRegistrationCode(TO, "482913", 15);
+
+        SimpleMailMessage message = sentMessage();
+        assertEquals(FROM, message.getFrom());
+        assertArrayEquals(new String[] { TO }, message.getTo());
+        assertEquals("Código de verificación del registro en CampusSeguro", message.getSubject());
+    }
+
+        /**
+     * The body contains the code, its validity in minutes, that the account is only created with the code and the
+     * warning for whoever did not make the request
+     */
+    @Test
+    void sendRegistrationCode_body_containsTheCodeTheValidityAndTheIgnoreNotice() {
+        emailService.sendRegistrationCode(TO, "007391", 20);
+
+        String body = sentMessage().getText();
+        assertNotNull(body);
+        assertTrue(body.contains("007391"));
+        assertTrue(body.contains("20 minutos"));
+        assertTrue(body.contains("La cuenta solo se crea cuando ingrese este código"));
+        assertTrue(body.contains("Si no hizo esta solicitud"));
+    }
+
+        /**
+     * If the mail server fails the error of the verification code is propagated to the caller
+     */
+    @Test
+    void sendRegistrationCode_whenTheMailServerFails_propagatesTheMailException() {
+        doThrow(new MailSendException("SMTP down")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        assertThrows(MailSendException.class, () -> emailService.sendRegistrationCode(TO, "482913", 15));
     }
 }

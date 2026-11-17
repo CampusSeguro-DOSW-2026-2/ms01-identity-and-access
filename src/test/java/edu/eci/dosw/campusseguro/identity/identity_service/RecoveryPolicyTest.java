@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.config.MailConfig;
 import edu.eci.dosw.campusseguro.identity.identity_service.config.PasswordRecoveryConfig;
 import edu.eci.dosw.campusseguro.identity.identity_service.config.RecoveryPolicy;
 
@@ -98,7 +99,7 @@ class RecoveryPolicyTest {
      */
     @Test
     void mailExecutor_runsTheTasksOnItsOwnThread() throws Exception {
-        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) new PasswordRecoveryConfig().mailExecutor();
+        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) new MailConfig().mailExecutor();
         executor.initialize();
         try {
             AtomicReference<String> threadName = new AtomicReference<>();
@@ -125,7 +126,7 @@ class RecoveryPolicyTest {
      */
     @Test
     void mailExecutor_whenSaturated_rejectsInsteadOfRunningOnTheCallerThread() throws Exception {
-        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) new PasswordRecoveryConfig().mailExecutor();
+        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) new MailConfig().mailExecutor();
         executor.setMaxPoolSize(1);
         executor.setQueueCapacity(1);
         executor.initialize();

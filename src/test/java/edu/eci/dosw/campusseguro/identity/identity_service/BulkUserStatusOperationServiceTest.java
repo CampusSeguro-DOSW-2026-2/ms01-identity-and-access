@@ -68,8 +68,8 @@ class BulkUserStatusOperationServiceTest {
         AuditRecorder auditRecorder = new AuditRecorder(auditPublisher, clock);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        userService = new UserServiceImpl(userRepository, mock(RoleRepository.class), mock(PasswordEncoder.class),
-                auditRecorder, requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
+        userService = new UserServiceImpl(userRepository, mock(RoleRepository.class), auditRecorder, requestValidator,
+                FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")));
     }
 
         /**

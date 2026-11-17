@@ -67,8 +67,8 @@ class InternalUserLookupServiceTest {
         Clock clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        userService = new UserServiceImpl(userRepository, roleRepository, mock(PasswordEncoder.class),
-                new AuditRecorder(auditPublisher, clock), requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
+        userService = new UserServiceImpl(userRepository, roleRepository, new AuditRecorder(auditPublisher, clock),
+                requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")));
     }
 
         /**

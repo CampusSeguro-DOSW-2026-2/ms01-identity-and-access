@@ -257,6 +257,61 @@ CREATE TABLE password_reset_codes (
         CHECK (attempts >= 0)
 );
 
+-- Registrations that wait for the verification of their email (RF-MS01-01): the user is only created in users when
+-- the code is confirmed. The email is the key, so a new attempt overwrites the previous one (ON CONFLICT DO UPDATE)
+CREATE TABLE pending_registrations (
+
+    email VARCHAR(100) PRIMARY KEY,
+
+    first_name VARCHAR(30) NOT NULL,
+
+    second_name VARCHAR(30) DEFAULT NULL,
+
+    first_lastname VARCHAR(30) NOT NULL,
+
+    second_lastname VARCHAR(30) DEFAULT NULL,
+
+    password_hash VARCHAR(100) NOT NULL,
+
+    code_hash VARCHAR(100) NOT NULL,
+
+    request_token_hash VARCHAR(64) NOT NULL,
+
+    attempts INTEGER NOT NULL DEFAULT 0,
+
+    expires_at TIMESTAMPTZ NOT NULL,
+
+    code_sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    codes_sent INTEGER NOT NULL DEFAULT 1,
+
+    window_started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chh_pending_registrations_first_name
+        CHECK (char_length(first_name) BETWEEN 2 AND 30),
+
+    CONSTRAINT chh_pending_registrations_second_name
+        CHECK (char_length(second_name) BETWEEN 1 AND 30),
+
+    CONSTRAINT chh_pending_registrations_first_lastname
+        CHECK (char_length(first_lastname) BETWEEN 2 AND 30),
+
+    CONSTRAINT chh_pending_registrations_second_lastname
+        CHECK (char_length(second_lastname) BETWEEN 1 AND 30),
+
+    CONSTRAINT chh_pending_registrations_email
+        CHECK (email = lower(email)),
+
+    CONSTRAINT chh_pending_registrations_email_format
+        CHECK (email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+
+    CONSTRAINT chh_pending_registrations_attempts
+        CHECK (attempts >= 0),
+
+    CONSTRAINT chh_pending_registrations_codes_sent
+        CHECK (codes_sent >= 1)
+);
+
 -- Permission catalog, one row per permission of the Role-Permission Matrix (one-time seed)
 INSERT INTO permissions (name, description) VALUES
     ('ms01:password:change', 'Cambiar la propia contraseña'),

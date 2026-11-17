@@ -5,21 +5,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,15 +28,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusRespo
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.IndividualChangeStateResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
-import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
@@ -52,16 +43,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserReposi
 import edu.eci.dosw.campusseguro.identity.identity_service.security.PermissionChecker;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
-import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
-import edu.eci.dosw.campusseguro.identity.identity_service.validation.FieldRules;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestValidator;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * User registration (RF-MS01-01), own profile (RF-MS01-06) and user administration (RF-MS01-07)
+ * Own profile (RF-MS01-06) and user administration (RF-MS01-07)
  *
  * The authorization of each operation is decided by the permission that the requester receives in X-User-Permission and
- * never by the name of a role, the registration and the status change are audited in MS08 (RNF-MS01-10), the status
+ * never by the name of a role, the status change is audited in MS08 (RNF-MS01-10), the status
  * change also records the session cut of each user (RF-MS01-11)
  */
 @Service
@@ -69,12 +58,8 @@ public class UserServiceImpl implements UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
-    static final String FIELD_EMAIL = "correo";
-
     static final String SELF_STATUS_CHANGE_MESSAGE = "No puede cambiar su propio estado.";
 
-    static final String REASON_VALIDATION = "VALIDACION";
-    static final String REASON_CONFLICT = "CONFLICTO";
     static final String REASON_NOT_ALLOWED = "SIN_PERMISO";
     static final String REASON_SELF_CHANGE = "AUTOMODIFICACION_DE_ESTADO";
     static final String REASON_USER_NOT_FOUND = "USUARIO_NO_ENCONTRADO";
@@ -82,92 +67,26 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
     private final AuditRecorder auditRecorder;
     private final RequestValidator requestValidator;
     private final DatabaseTimeService timeService;
-    private final Set<String> institutionalDomains;
 
         /**
      * Creates the service with its dependencies
      *
      * @param userRepository repository to access the users and their roles
      * @param roleRepository repository to access the roles
-     * @param passwordEncoder encoder with which the passwords are stored
      * @param auditRecorder recorder of the audit events of MS08
      * @param requestValidator validator of the request bodies
      * @param timeService single database clock with which the session cuts are set
-     * @param institutionalDomains configured institutional email domains, without the at sign, spaces, uppercase and
-     *        empty values are ignored
      */
     public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder, AuditRecorder auditRecorder, RequestValidator requestValidator,
-            DatabaseTimeService timeService,
-            @Value("${identity.institutional-domains:escuelaing.edu.co,mail.escuelaing.edu.co}")
-            List<String> institutionalDomains) {
+            AuditRecorder auditRecorder, RequestValidator requestValidator, DatabaseTimeService timeService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
-        this.passwordEncoder = passwordEncoder;
         this.auditRecorder = auditRecorder;
         this.requestValidator = requestValidator;
         this.timeService = timeService;
-        this.institutionalDomains = institutionalDomains.stream()
-                .map(domain -> domain.trim().toLowerCase(Locale.ROOT))
-                .filter(domain -> !domain.isEmpty())
-                .collect(Collectors.toUnmodifiableSet());
-    }
-
-        /**
-     * Registers an institutional user (RF-MS01-01), every attempt, successful or failed, is audited in MS08
-     *
-     * @param request data of the registration form
-     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
-     * @return the created user with its id, email, roles and status
-     * @throws InvalidRequestException if the data breaks form F-01
-     * @throws EmailAlreadyExistsException if the email is already registered
-     */
-    @Override
-    @Transactional
-    public UserResponse create(UserCreateRequest request, String correlationId) {
-        String corr = CorrelationIds.resolve(correlationId);
-
-        List<ErrorResponse.ErrorDetail> errors = collectRegistrationErrors(request);
-        if (!errors.isEmpty()) {
-            auditRecorder.recordAnonymous(AuditAction.REGISTRO, AuditResult.FALLO, null, null, REASON_VALIDATION,
-                    corr);
-            log.warn("Registration rejected because of invalid data");
-            throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, errors);
-        }
-
-        String email = request.getEmail();
-        if (userRepository.existsByEmail(email)) {
-            throw emailConflict(corr);
-        }
-
-        UserEntity entity = new UserEntity();
-        entity.setFirstName(request.getFirstName());
-        entity.setSecondName(request.getSecondName());
-        entity.setFirstLastName(request.getFirstLastName());
-        entity.setSecondLastName(request.getSecondLastName());
-        entity.setEmail(email);
-        entity.setPassword(passwordEncoder.encode(request.getPassword()));
-        RoleEntity studentRole = roleRepository.findByName(RoleNames.STUDENT).orElseThrow(
-                () -> new IllegalStateException("The system role " + RoleNames.STUDENT + " does not exist"));
-        entity.setRoles(Set.of(studentRole));
-        entity.setState(UserState.ACTIVO);
-
-        UserEntity saved;
-        try {
-            saved = userRepository.saveAndFlush(entity);
-        } catch (DataIntegrityViolationException e) {
-            log.warn("Registration rejected by a uniqueness constraint: {}", e.getClass().getSimpleName());
-            throw emailConflict(corr);
-        }
-
-        auditRecorder.recordAnonymous(AuditAction.REGISTRO, AuditResult.EXITO, null,
-                AuditRecorder.userResource(saved.getId()), null, corr);
-        log.info("Usuario registrado. usuario={}", saved.getId());
-        return UserResponse.fromEntity(saved);
     }
 
         /**
@@ -468,56 +387,6 @@ public class UserServiceImpl implements UserService {
      */
     private static String stateChangeDetail(UserState previous, UserState current) {
         return "estado_anterior=" + previous + ";estado_nuevo=" + current;
-    }
-
-        /**
-     * Gathers the errors of the registration form: those of format and rules of each field, and that the email belongs
-     * to the institutional domain, without indicating whether the email failed because of the domain or the format
-     *
-     * @param request data of the registration form
-     * @return errors by field, empty if the form is valid
-     */
-    private List<ErrorResponse.ErrorDetail> collectRegistrationErrors(UserCreateRequest request) {
-        List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(requestValidator.collectErrors(request));
-        boolean emailAlreadyInvalid = false;
-        for (ErrorResponse.ErrorDetail error : errors) {
-            if (FIELD_EMAIL.equals(error.campo())) {
-                emailAlreadyInvalid = true;
-            }
-        }
-        if (!emailAlreadyInvalid && !belongsToInstitutionalDomain(request.getEmail())) {
-            errors.add(new ErrorResponse.ErrorDetail(FIELD_EMAIL, FieldRules.EMAIL_REGISTER_MESSAGE));
-        }
-        return ValidationErrors.merge(errors);
-    }
-
-        /**
-     * Tells whether the email belongs to any of the configured institutional domains
-     *
-     * @param email email already normalized to lowercase
-     * @return true if the part after the at sign is equal to any of the institutional domains
-     */
-    private boolean belongsToInstitutionalDomain(String email) {
-        if (email == null) {
-            return false;
-        }
-        int at = email.lastIndexOf('@');
-        if (at < 0) {
-            return false;
-        }
-        return institutionalDomains.contains(email.substring(at + 1));
-    }
-
-        /**
-     * Audits the rejection for a duplicated email and creates the exception that is thrown to the client
-     *
-     * @param corr correlation id of the request
-     * @return the exception of an already registered email
-     */
-    private EmailAlreadyExistsException emailConflict(String corr) {
-        auditRecorder.recordAnonymous(AuditAction.REGISTRO, AuditResult.FALLO, null, null, REASON_CONFLICT, corr);
-        log.warn("Registration rejected: email already registered");
-        return new EmailAlreadyExistsException();
     }
 
         /**

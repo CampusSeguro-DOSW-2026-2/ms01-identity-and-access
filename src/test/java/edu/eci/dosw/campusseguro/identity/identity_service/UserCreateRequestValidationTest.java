@@ -211,7 +211,7 @@ class UserCreateRequestValidationTest {
     }
 
         /**
-     * The present optional names with digits are rejected with the message of 1 to 30 letters
+     * The present optional names with digits are rejected with the message of 2 to 30 letters
      */
     @Test
     void optionalNamesPresent_followTheSameRules() {
@@ -221,20 +221,29 @@ class UserCreateRequestValidationTest {
 
         Map<String, String> result = errors(request);
 
-        assertEquals("El segundo nombre debe tener entre 1 y 30 letras.", result.get("segundo_nombre"));
-        assertEquals("El segundo apellido debe tener entre 1 y 30 letras.", result.get("segundo_apellido"));
+        assertEquals("El segundo nombre debe tener entre 2 y 30 letras.", result.get("segundo_nombre"));
+        assertEquals("El segundo apellido debe tener entre 2 y 30 letras.", result.get("segundo_apellido"));
         assertEquals(2, result.size());
     }
 
         /**
-     * The second name and the second lastname accept a single letter, unlike the first name and the first lastname
+     * The second name and the second lastname follow the same 2 to 30 letters as the first ones: a single letter is
+     * rejected and two letters are accepted
      */
     @Test
-    void optionalNames_withASingleLetter_areAccepted() {
+    void optionalNames_withASingleLetter_areRejected() {
         UserCreateRequest request = valid();
         request.setSecondName("J");
         request.setSecondLastName("Z");
 
+        Map<String, String> result = errors(request);
+
+        assertEquals("El segundo nombre debe tener entre 2 y 30 letras.", result.get("segundo_nombre"));
+        assertEquals("El segundo apellido debe tener entre 2 y 30 letras.", result.get("segundo_apellido"));
+        assertEquals(2, result.size());
+
+        request.setSecondName("Jo");
+        request.setSecondLastName("Za");
         assertTrue(errors(request).isEmpty());
     }
 
@@ -249,8 +258,8 @@ class UserCreateRequestValidationTest {
 
         Map<String, String> result = errors(request);
 
-        assertEquals("El segundo nombre debe tener entre 1 y 30 letras.", result.get("segundo_nombre"));
-        assertEquals("El segundo apellido debe tener entre 1 y 30 letras.", result.get("segundo_apellido"));
+        assertEquals("El segundo nombre debe tener entre 2 y 30 letras.", result.get("segundo_nombre"));
+        assertEquals("El segundo apellido debe tener entre 2 y 30 letras.", result.get("segundo_apellido"));
         assertEquals(2, result.size());
     }
 

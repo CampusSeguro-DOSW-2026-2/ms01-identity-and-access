@@ -54,6 +54,8 @@ public class SecurityConfig {
                 .accessDeniedHandler(new ForbiddenAccessDeniedHandler()))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll();
+                auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register/verify").permitAll();
+                auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register/resend").permitAll();
                 auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll();
                 auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/password/forgot").permitAll();
                 auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/password/reset").permitAll();
