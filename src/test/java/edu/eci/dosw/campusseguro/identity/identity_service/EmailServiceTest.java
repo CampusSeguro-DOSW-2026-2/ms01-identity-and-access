@@ -20,8 +20,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.EmailServiceImpl;
 
 /**
- * Pruebas del envío del código de recuperación por correo (RF-MS01-08): destinatario, remitente, asunto y
- * contenido del mensaje, y propagación del fallo del servidor de correo
+ * Tests of the sending of the recovery code by email (RF-MS01-08): recipient, sender, subject and content of the
+ * message, and propagation of the failure of the mail server
  */
 class EmailServiceTest {
 
@@ -31,8 +31,8 @@ class EmailServiceTest {
     private JavaMailSender mailSender;
     private EmailServiceImpl emailService;
 
-    /**
-     * Prepara el servicio con un cliente SMTP simulado
+        /**
+     * Prepares the service with a simulated SMTP client
      */
     @BeforeEach
     void setUp() {
@@ -40,10 +40,10 @@ class EmailServiceTest {
         emailService = new EmailServiceImpl(mailSender, FROM);
     }
 
-    /**
-     * Captura el mensaje que se entrega al cliente SMTP
+        /**
+     * Captures the message that is delivered to the SMTP client
      *
-     * @return el mensaje enviado
+     * @return the sent message
      */
     private SimpleMailMessage sentMessage() {
         ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
@@ -51,9 +51,8 @@ class EmailServiceTest {
         return captor.getValue();
     }
 
-    /**
-     * El mensaje se envía al correo de la cuenta, desde el remitente configurado y con el asunto de la
-     * recuperación
+        /**
+     * The message is sent to the email of the account, from the configured sender and with the subject of the recovery
      */
     @Test
     void sendRecoveryCode_sendsOneMessageToTheAccountFromTheConfiguredSender() {
@@ -65,8 +64,8 @@ class EmailServiceTest {
         assertEquals("Código de recuperación de contraseña de CampusSeguro", message.getSubject());
     }
 
-    /**
-     * El cuerpo contiene el código, su vigencia en minutos y la advertencia para quien no hizo la solicitud
+        /**
+     * The body contains the code, its validity in minutes and the warning for whoever did not make the request
      */
     @Test
     void sendRecoveryCode_body_containsTheCodeTheValidityAndTheIgnoreNotice() {
@@ -80,8 +79,8 @@ class EmailServiceTest {
         assertTrue(body.contains("Si no hiciste esta solicitud"));
     }
 
-    /**
-     * La vigencia que aparece en el mensaje es la recibida
+        /**
+     * The validity that appears in the message is the received one
      */
     @Test
     void sendRecoveryCode_customValidity_isShownInTheBody() {
@@ -90,12 +89,12 @@ class EmailServiceTest {
         assertTrue(sentMessage().getText().contains("30 minutos"));
     }
 
-    /**
-     * Si el servidor de correo falla el error se propaga a quien llama, que decide qué hacer
+        /**
+     * If the mail server fails the error is propagated to the caller, who decides what to do
      */
     @Test
     void sendRecoveryCode_whenTheMailServerFails_propagatesTheMailException() {
-        doThrow(new MailSendException("SMTP caído")).when(mailSender).send(any(SimpleMailMessage.class));
+        doThrow(new MailSendException("SMTP down")).when(mailSender).send(any(SimpleMailMessage.class));
 
         assertThrows(MailSendException.class, () -> emailService.sendRecoveryCode(TO, "482913", 15));
     }

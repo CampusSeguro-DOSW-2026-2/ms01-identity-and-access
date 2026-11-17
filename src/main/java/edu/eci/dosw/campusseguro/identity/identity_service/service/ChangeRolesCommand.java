@@ -3,15 +3,13 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 import java.util.Set;
 import java.util.UUID;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
-
 /**
- * Solicitud de cambio de roles ya validada: sin ids repetidos, sin roles fuera del catalogo,
- * sin roles repetidos y con al menos una de las dos listas con contenido
+ * Already validated role change request: without repeated ids, with role names of valid format, without repeated roles
+ * and with at least one of the two lists with content
  *
- * @param userIds usuarios
- * @param rolesToAdd roles que se agregan a cada usuario
- * @param rolesToRemove roles que se retiran a cada usuario
+ * @param userIds users
+ * @param rolesToAdd roles added to each user
+ * @param rolesToRemove roles removed from each user
  */
-public record ChangeRolesCommand(Set<UUID> userIds, Set<UserRole> rolesToAdd, Set<UserRole> rolesToRemove) {
+public record ChangeRolesCommand(Set<UUID> userIds, Set<String> rolesToAdd, Set<String> rolesToRemove) {
 }

@@ -17,14 +17,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 
 /**
- * Cuerpo estándar de error de los estándares de integración (sección 4)
+ * Standard error body of the integration standards (section 4)
  */
 class ErrorResponseTest {
 
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
-    /**
-     * La fábrica crea un error sin detalle por campo
+        /**
+     * The factory creates an error without detail by field
      */
     @Test
     void of_createsAnErrorWithoutDetails() {
@@ -37,8 +37,8 @@ class ErrorResponseTest {
         assertEquals(CORRELATION_ID, error.correlationId());
     }
 
-    /**
-     * Una lista de errores nula se convierte en una lista vacía
+        /**
+     * A null list of errors is converted into an empty list
      */
     @Test
     void nullDetails_becomeAnEmptyList() {
@@ -47,8 +47,8 @@ class ErrorResponseTest {
         assertTrue(error.errores().isEmpty());
     }
 
-    /**
-     * La lista de errores se copia y no se puede modificar
+        /**
+     * The list of errors is copied and cannot be modified
      */
     @Test
     void details_areAnUnmodifiableCopy() {
@@ -63,8 +63,8 @@ class ErrorResponseTest {
                 () -> error.errores().add(new ErrorResponse.ErrorDetail("x", "y")));
     }
 
-    /**
-     * Sin correlation id se genera uno porque el campo es obligatorio
+        /**
+     * Without a correlation id one is generated because the field is required
      */
     @Test
     void missingCorrelationId_isGenerated() {
@@ -75,10 +75,10 @@ class ErrorResponseTest {
         assertDoesNotThrow(() -> UUID.fromString(withBlank.correlationId()));
     }
 
-    /**
-     * El JSON usa los nombres del contrato y siempre incluye la lista de errores
+        /**
+     * The JSON uses the names of the contract and always includes the list of errors
      *
-     * @throws Exception si falla la serialización
+     * @throws Exception if the serialization fails
      */
     @Test
     void json_usesTheContractNames() throws Exception {

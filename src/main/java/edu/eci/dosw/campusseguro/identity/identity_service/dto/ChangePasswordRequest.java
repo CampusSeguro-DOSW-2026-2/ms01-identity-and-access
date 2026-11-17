@@ -9,8 +9,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de PUT /api/v1/users/me/password (RF-MS01-08, formulario F-06), cualquier campo fuera del
- * contrato se rechaza (RG-04)
+ * Body of PUT /api/v1/users/me/password (RF-MS01-08, form F-06), any field outside the contract is rejected (RG-04)
  */
 @FieldsMatch(field = "newPassword", matchField = "newPasswordConfirmation",
         message = FieldRules.PASSWORDS_MISMATCH_MESSAGE)
@@ -34,55 +33,55 @@ public class ChangePasswordRequest extends StrictRequest {
     @NotBlank(message = FieldRules.PASSWORDS_MISMATCH_MESSAGE)
     private String newPasswordConfirmation;
 
-    /**
-     * Devuelve la contraseña actual tal como se recibió
+        /**
+     * Returns the current password as it was received
      *
-     * @return la contraseña actual, null si no se envió
+     * @return the current password, null if it was not sent
      */
     public String getCurrentPassword() {
         return this.currentPassword;
     }
 
-    /**
-     * Coloca la contraseña actual, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the current password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param currentPassword contraseña actual recibida
+     * @param currentPassword current password received
      */
     public void setCurrentPassword(String currentPassword) {
         this.currentPassword = currentPassword;
     }
 
-    /**
-     * Devuelve la nueva contraseña tal como se recibió
+        /**
+     * Returns the new password as it was received
      *
-     * @return la nueva contraseña, null si no se envió
+     * @return the new password, null if it was not sent
      */
     public String getNewPassword() {
         return this.newPassword;
     }
 
-    /**
-     * Coloca la nueva contraseña, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the new password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param newPassword nueva contraseña recibida
+     * @param newPassword new password received
      */
     public void setNewPassword(String newPassword) {
         this.newPassword = newPassword;
     }
 
-    /**
-     * Devuelve la confirmación de la nueva contraseña tal como se recibió
+        /**
+     * Returns the confirmation of the new password as it was received
      *
-     * @return la confirmación, null si no se envió
+     * @return the confirmation, null if it was not sent
      */
     public String getNewPasswordConfirmation() {
         return this.newPasswordConfirmation;
     }
 
-    /**
-     * Coloca la confirmación de la nueva contraseña, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the confirmation of the new password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param newPasswordConfirmation confirmación recibida
+     * @param newPasswordConfirmation confirmation received
      */
     public void setNewPasswordConfirmation(String newPasswordConfirmation) {
         this.newPasswordConfirmation = newPasswordConfirmation;

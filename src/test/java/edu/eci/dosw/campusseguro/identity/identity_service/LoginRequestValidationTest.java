@@ -18,16 +18,16 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 
 /**
- * Reglas del formulario F-02 (correo: formato y maximo 100; contrasena: no vacia, maximo 64) y de
- * las reglas generales RG-01 y RG-02
+ * Rules of form F-02 (email: format and maximum 100; password: not empty, maximum 64) and of the general rules RG-01
+ * and RG-02
  */
 class LoginRequestValidationTest {
 
     private static ValidatorFactory factory;
     private static Validator validator;
 
-    /**
-     * Crea el validador que se comparte entre las pruebas
+        /**
+     * Creates the validator that is shared between the tests
      */
     @BeforeAll
     static void init() {
@@ -35,20 +35,20 @@ class LoginRequestValidationTest {
         validator = factory.getValidator();
     }
 
-    /**
-     * Libera la fábrica de validadores
+        /**
+     * Releases the validator factory
      */
     @AfterAll
     static void close() {
         factory.close();
     }
 
-    /**
-     * Construye una petición de login
+        /**
+     * Builds a login request
      *
-     * @param correo correo de la petición
-     * @param contrasena contraseña de la petición
-     * @return la petición construida
+     * @param correo email of the request
+     * @param contrasena password of the request
+     * @return the built request
      */
     private static LoginRequest request(String correo, String contrasena) {
         LoginRequest request = new LoginRequest();
@@ -57,11 +57,11 @@ class LoginRequestValidationTest {
         return request;
     }
 
-    /**
-     * Obtiene el mensaje de cada campo inválido
+        /**
+     * Gets the message of each invalid field
      *
-     * @param request petición que se valida
-     * @return mapa de nombre de campo a mensaje
+     * @param request request that is validated
+     * @return map from field name to message
      */
     private static Map<String, String> violations(LoginRequest request) {
         Map<String, String> result = new TreeMap<>();
@@ -71,16 +71,16 @@ class LoginRequestValidationTest {
         return result;
     }
 
-    /**
-     * Una petición válida no produce violaciones
+        /**
+     * A valid request produces no violations
      */
     @Test
     void validRequest_hasNoViolations() {
         assertTrue(violations(request("maria.perez@escuelaing.edu.co", "Campus#2026")).isEmpty());
     }
 
-    /**
-     * El correo se recorta y se pasa a minúsculas (RG-01)
+        /**
+     * The email is trimmed and converted to lowercase (RG-01)
      */
     @Test
     void email_isTrimmedAndLowercased_RG01() {
@@ -90,16 +90,16 @@ class LoginRequestValidationTest {
         assertTrue(violations(request).isEmpty());
     }
 
-    /**
-     * La contraseña nunca se recorta ni se modifica (RG-01)
+        /**
+     * The password is never trimmed or modified (RG-01)
      */
     @Test
     void password_isNeverTrimmedOrChanged_RG01() {
         assertEquals(" Campus#2026 ", request("maria.perez@escuelaing.edu.co", " Campus#2026 ").getContrasena());
     }
 
-    /**
-     * Un correo con formato inválido se rechaza con el mensaje de F-02
+        /**
+     * An email with an invalid format is rejected with the message of F-02
      */
     @Test
     void invalidEmailFormat_isRejectedWithTheF02Message() {
@@ -107,8 +107,8 @@ class LoginRequestValidationTest {
                 violations(request("esto-no-es-un-correo", "Campus#2026")));
     }
 
-    /**
-     * Un correo ausente o en blanco se trata como faltante (RG-02)
+        /**
+     * An absent or blank email is treated as missing (RG-02)
      */
     @Test
     void missingOrBlankEmail_isTreatedAsMissing_RG02() {
@@ -117,8 +117,8 @@ class LoginRequestValidationTest {
         assertEquals(Map.of("correo", "Ingrese un correo válido."), violations(request("   ", "Campus#2026")));
     }
 
-    /**
-     * Un correo de exactamente 100 caracteres se acepta
+        /**
+     * An email of exactly 100 characters is accepted
      */
     @Test
     void emailOfExactly100Characters_isAccepted() {
@@ -128,8 +128,8 @@ class LoginRequestValidationTest {
         assertTrue(violations(request(email, "Campus#2026")).isEmpty());
     }
 
-    /**
-     * Un correo de más de 100 caracteres se rechaza
+        /**
+     * An email of more than 100 characters is rejected
      */
     @Test
     void emailLongerThan100Characters_isRejected() {
@@ -138,8 +138,8 @@ class LoginRequestValidationTest {
         assertEquals(Map.of("correo", "Ingrese un correo válido."), violations(request(email, "Campus#2026")));
     }
 
-    /**
-     * Una contraseña ausente o en blanco se rechaza con el mensaje de F-02
+        /**
+     * An absent or blank password is rejected with the message of F-02
      */
     @Test
     void missingOrBlankPassword_isRejectedWithTheF02Message() {
@@ -150,18 +150,18 @@ class LoginRequestValidationTest {
         assertEquals(Map.of("contrasena", "Ingrese su contraseña."), violations(request(email, "    ")));
     }
 
-    /**
-     * La política de contraseña no se vuelve a validar en el login
+        /**
+     * The password policy is not validated again in the login
      */
     @Test
     void passwordPolicyIsNotRevalidatedAtLogin() {
-        // F-02: "No se revalida la politica en el login". Una contrasena corta o sin simbolos sigue siendo
-        // una entrada valida; sera el hash quien decida si coincide.
+        // F-02: "No se revalida la politica en el login". A short password or one without symbols is still a valid
+        // input; it will be the hash that decides whether it matches.
         assertTrue(violations(request("maria.perez@escuelaing.edu.co", "a")).isEmpty());
     }
 
-    /**
-     * Una contraseña de 64 caracteres se acepta y una de 65 se rechaza
+        /**
+     * A password of 64 characters is accepted and one of 65 is rejected
      */
     @Test
     void passwordOf64Characters_isAcceptedAndOf65IsRejected() {
@@ -172,8 +172,8 @@ class LoginRequestValidationTest {
                 violations(request(email, "a".repeat(65))));
     }
 
-    /**
-     * Si faltan los dos campos se informan ambas violaciones
+        /**
+     * If both fields are missing both violations are reported
      */
     @Test
     void bothFieldsMissing_reportsBothViolations() {
@@ -184,8 +184,8 @@ class LoginRequestValidationTest {
         assertEquals("Ingrese su contraseña.", result.get("contrasena"));
     }
 
-    /**
-     * Un correo nulo sigue siendo nulo tras la normalización
+        /**
+     * A null email remains null after the normalization
      */
     @Test
     void nullEmailStaysNullAfterNormalization() {

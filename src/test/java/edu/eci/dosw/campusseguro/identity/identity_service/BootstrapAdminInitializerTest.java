@@ -3,6 +3,7 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,15 +24,16 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.config.BootstrapAdminInitializer;
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 
 /**
- * RN-MS01-12 / seccion "Datos iniciales" del modelo de datos: el primer administrador se crea al arrancar solo
- * si no existe ningun ADMIN, con el correo y la contrasena de las variables de entorno BOOTSTRAP_ADMIN_EMAIL
- * y BOOTSTRAP_ADMIN_PASSWORD, y queda ACTIVO con el rol ADMIN
+ * RN-MS01-12 / "Initial data" section of the data model: the first administrator is created at startup only if no ADMIN
+ * exists, with the email and the password of the environment variables BOOTSTRAP_ADMIN_EMAIL and
+ * BOOTSTRAP_ADMIN_PASSWORD, and it is left ACTIVO with the role ADMIN
  */
 @ExtendWith(MockitoExtension.class)
 class BootstrapAdminInitializerTest {
@@ -44,6 +47,9 @@ class BootstrapAdminInitializerTest {
     private UserRepository userRepository;
 
     @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -51,33 +57,33 @@ class BootstrapAdminInitializerTest {
 
     private BootstrapAdminInitializer initializer;
 
-    /**
-     * Crea el inicializador con la configuracion completa y nombres por defecto
+        /**
+     * Creates the initializer with the complete configuration and default names
      */
     @BeforeEach
     void setUp() {
         initializer = initializer(EMAIL, PASSWORD, null, null);
     }
 
-    /**
-     * Crea un inicializador con los valores de configuracion indicados
+        /**
+     * Creates an initializer with the given configuration values
      *
-     * @param email correo configurado
-     * @param password contrasena configurada
-     * @param firstName primer nombre configurado
-     * @param lastName primer apellido configurado
-     * @return el inicializador
+     * @param email configured email
+     * @param password configured password
+     * @param firstName configured first name
+     * @param lastName configured first lastname
+     * @return the initializer
      */
     private BootstrapAdminInitializer initializer(String email, String password, String firstName,
             String lastName) {
-        return new BootstrapAdminInitializer(userRepository, passwordEncoder, email, password, firstName,
-                lastName);
+        return new BootstrapAdminInitializer(userRepository, roleRepository, passwordEncoder, email, password,
+                firstName, lastName);
     }
 
-    /**
-     * Captura el usuario que se guardo
+        /**
+     * Captures the user that was saved
      *
-     * @return el administrador guardado
+     * @return the saved administrator
      */
     private UserEntity savedAdmin() {
         ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
@@ -85,14 +91,16 @@ class BootstrapAdminInitializerTest {
         return captor.getValue();
     }
 
-    /**
-     * Sin ningun ADMIN y con la configuracion completa se crea el primer administrador: ACTIVO, con rol
-     * ADMIN, correo normalizado y contrasena guardada como hash
+        /**
+     * With no ADMIN and with the complete configuration the first administrator is created: ACTIVO, with role ADMIN,
+     * normalized email and password stored as a hash
      */
     @Test
     void create_noAdminExists_createsTheFirstAdmin() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        RoleEntity adminRole = TestEntities.role("ADMIN", "ms01:profile:read", "ms01:role:manage");
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
         boolean created = initializer.createFirstAdminIfNeeded();
@@ -100,7 +108,7 @@ class BootstrapAdminInitializerTest {
         assertTrue(created);
         UserEntity admin = savedAdmin();
         assertEquals(NORMALIZED_EMAIL, admin.getEmail());
-        assertEquals(Set.of(UserRole.ADMIN), admin.getRoles());
+        assertEquals(Set.of(adminRole), admin.getRoles());
         assertEquals(UserState.ACTIVO, admin.getState());
         assertEquals(HASH, admin.getPassword());
         assertNotEquals(PASSWORD, admin.getPassword());
@@ -108,14 +116,15 @@ class BootstrapAdminInitializerTest {
         assertEquals("Inicial", admin.getFirstLastName());
     }
 
-    /**
-     * Los nombres configurados se usan, recortados
+        /**
+     * The configured names are used, trimmed
      */
     @Test
     void create_withConfiguredNames_usesThem() {
         initializer = initializer(EMAIL, PASSWORD, "  Laura ", " Gomez ");
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(TestEntities.role("ADMIN", "ms01:profile:read")));
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
         initializer.createFirstAdminIfNeeded();
@@ -125,12 +134,12 @@ class BootstrapAdminInitializerTest {
         assertEquals("Gomez", admin.getFirstLastName());
     }
 
-    /**
-     * Si ya existe un ADMIN no se crea otro
+        /**
+     * If an ADMIN already exists another one is not created
      */
     @Test
     void create_adminAlreadyExists_doesNothing() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(1L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(1L);
 
         boolean created = initializer.createFirstAdminIfNeeded();
 
@@ -139,8 +148,8 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(passwordEncoder);
     }
 
-    /**
-     * Sin correo configurado no se crea ningun administrador ni se consulta la base de datos
+        /**
+     * Without a configured email no administrator is created and the database is not queried
      */
     @Test
     void create_withoutEmail_doesNothing() {
@@ -150,8 +159,8 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(userRepository, passwordEncoder);
     }
 
-    /**
-     * Sin contrasena configurada no se crea ningun administrador ni se consulta la base de datos
+        /**
+     * Without a configured password no administrator is created and the database is not queried
      */
     @Test
     void create_withoutPassword_doesNothing() {
@@ -161,12 +170,12 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(userRepository, passwordEncoder);
     }
 
-    /**
-     * Si el correo ya pertenece a un usuario sin rol ADMIN no se crea ni se asciende automaticamente
+        /**
+     * If the email already belongs to a user without the ADMIN role it is neither created nor promoted automatically
      */
     @Test
     void create_emailBelongsToAnotherUser_doesNotPromoteIt() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(true);
 
         boolean created = initializer.createFirstAdminIfNeeded();
@@ -176,13 +185,29 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(passwordEncoder);
     }
 
-    /**
-     * Al arrancar la aplicacion (ApplicationRunner) se ejecuta la creacion del primer administrador
+        /**
+     * If the ADMIN system role does not exist in the database the administrator is not created and the startup fails
+     */
+    @Test
+    void create_adminRoleMissingInTheDatabase_failsWithoutSavingAnything() {
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
+        when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> initializer.createFirstAdminIfNeeded());
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder);
+    }
+
+        /**
+     * When the application starts (ApplicationRunner) the creation of the first administrator is executed
      */
     @Test
     void run_executesTheCreation() {
-        when(userRepository.countWithRole(UserRole.ADMIN)).thenReturn(0L);
+        when(userRepository.countWithRole("ADMIN")).thenReturn(0L);
         when(userRepository.existsByEmail(NORMALIZED_EMAIL)).thenReturn(false);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(TestEntities.role("ADMIN", "ms01:profile:read")));
         when(passwordEncoder.encode(PASSWORD)).thenReturn(HASH);
 
         initializer.run(arguments);

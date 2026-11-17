@@ -9,25 +9,25 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * Configuración de la recuperación de contraseña (RF-MS01-08), se ajusta con variables de entorno
- * (o con las propiedades recovery.*)
+ * Configuration of the password recovery (RF-MS01-08), it is adjusted with environment variables (or with the
+ * recovery.* properties)
  *
- * RECOVERY_CODE_TTL_MINUTES        minutos de vigencia del código, 15 por defecto (RN-MS01-21)
- * RECOVERY_MAX_ATTEMPTS            intentos fallidos por código antes de invalidarlo, 5 por defecto
- * RECOVERY_RESEND_COOLDOWN_SECONDS espera entre dos códigos del mismo usuario, 60 por defecto, 0 la desactiva
+ * RECOVERY_CODE_TTL_MINUTES minutes of validity of the code, 15 by default (RN-MS01-21) RECOVERY_MAX_ATTEMPTS failed
+ * attempts per code before invalidating it, 5 by default RECOVERY_RESEND_COOLDOWN_SECONDS wait between two codes of the
+ * same user, 60 by default, 0 disables it
  */
 @Configuration
 public class PasswordRecoveryConfig {
 
     public static final String MAIL_EXECUTOR = "mailExecutor";
 
-    /**
-     * Crea la política de los códigos de recuperación a partir de la configuración
+        /**
+     * Creates the policy of the recovery codes from the configuration
      *
-     * @param codeTtlMinutes minutos de vigencia de un código
-     * @param maxAttempts intentos fallidos permitidos por código
-     * @param resendCooldownSeconds espera mínima entre dos códigos del mismo usuario
-     * @return la política validada
+     * @param codeTtlMinutes minutes of validity of a code
+     * @param maxAttempts failed attempts allowed per code
+     * @param resendCooldownSeconds minimum wait between two codes of the same user
+     * @return the validated policy
      */
     @Bean
     public RecoveryPolicy recoveryPolicy(
@@ -37,12 +37,12 @@ public class PasswordRecoveryConfig {
         return new RecoveryPolicy(codeTtlMinutes, maxAttempts, resendCooldownSeconds);
     }
 
-    /**
-     * Crea el ejecutor con el que se envían los correos fuera del hilo de la petición, así el tiempo de
-     * respuesta de la solicitud de código no depende del servidor de correo y no revela si la cuenta existe
-     * (RN-MS01-20), los envíos pendientes se completan al apagar la aplicación
+        /**
+     * Creates the executor with which the emails are sent outside the request thread, so the response time of the code
+     * request does not depend on the mail server and does not reveal whether the account exists (RN-MS01-20), the
+     * pending sends are completed when the application is shut down
      *
-     * @return el ejecutor de los envíos de correo
+     * @return the executor of the email sends
      */
     @Bean(name = MAIL_EXECUTOR)
     public Executor mailExecutor() {

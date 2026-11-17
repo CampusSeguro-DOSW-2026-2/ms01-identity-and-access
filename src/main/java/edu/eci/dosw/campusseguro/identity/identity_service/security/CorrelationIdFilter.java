@@ -21,23 +21,23 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Garantiza el X-Correlation-ID de cada peticion (RNF-MS01-03), se conserva el recibido si es un UUID v4
- * valido y si falta o no es valido se genera uno, el mismo valor se devuelve al cliente en la respuesta y
- * queda disponible para los controladores, los manejadores de error y la auditoria, ademas se publica en el
- * MDC del log (RNF-MS01-05) para que cada linea de log de la peticion inicie con el
+ * Guarantees the X-Correlation-ID of each request (RNF-MS01-03), the received one is kept if it is a valid UUID v4 and
+ * if it is missing or not valid one is generated, the same value is returned to the client in the response and is
+ * available to the controllers, the error handlers and the audit, it is also published in the MDC of the log
+ * (RNF-MS01-05) so that each log line of the request starts with it
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorrelationIdFilter extends OncePerRequestFilter {
 
-    /**
-     * Resuelve el correlation id, lo agrega a la respuesta y continua con la cadena de filtros
+        /**
+     * Resolves the correlation id, adds it to the response and continues with the filter chain
      *
-     * @param request peticion recibida
-     * @param response respuesta que se devuelve al cliente
-     * @param filterChain cadena de filtros que sigue
-     * @throws ServletException si falla algun filtro posterior
-     * @throws IOException si falla la escritura o lectura de la peticion
+     * @param request received request
+     * @param response response returned to the client
+     * @param filterChain filter chain that follows
+     * @throws ServletException if any later filter fails
+     * @throws IOException if writing or reading the request fails
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -53,29 +53,29 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         }
     }
 
-    /**
-     * Peticion que expone el correlation id ya resuelto como valor de la cabecera X-Correlation-ID
+        /**
+     * Request that exposes the already resolved correlation id as the value of the X-Correlation-ID header
      */
     private static final class CorrelationIdRequest extends HttpServletRequestWrapper {
 
         private final String correlationId;
 
-        /**
-         * Envuelve la peticion original
+                /**
+         * Wraps the original request
          *
-         * @param request peticion original
-         * @param correlationId correlation id resuelto para esta peticion
+         * @param request original request
+         * @param correlationId correlation id resolved for this request
          */
         CorrelationIdRequest(HttpServletRequest request, String correlationId) {
             super(request);
             this.correlationId = correlationId;
         }
 
-        /**
-         * Devuelve el valor de una cabecera, para X-Correlation-ID el ya resuelto
+                /**
+         * Returns the value of a header, for X-Correlation-ID the already resolved one
          *
-         * @param name nombre de la cabecera
-         * @return el valor de la cabecera
+         * @param name name of the header
+         * @return the value of the header
          */
         @Override
         public String getHeader(String name) {
@@ -85,11 +85,11 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
             return super.getHeader(name);
         }
 
-        /**
-         * Devuelve los valores de una cabecera, para X-Correlation-ID solo el ya resuelto
+                /**
+         * Returns the values of a header, for X-Correlation-ID only the already resolved one
          *
-         * @param name nombre de la cabecera
-         * @return los valores de la cabecera
+         * @param name name of the header
+         * @return the values of the header
          */
         @Override
         public Enumeration<String> getHeaders(String name) {
@@ -99,10 +99,10 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
             return super.getHeaders(name);
         }
 
-        /**
-         * Devuelve los nombres de las cabeceras, incluida X-Correlation-ID
+                /**
+         * Returns the names of the headers, including X-Correlation-ID
          *
-         * @return los nombres de las cabeceras de la peticion
+         * @return the names of the headers of the request
          */
         @Override
         public Enumeration<String> getHeaderNames() {

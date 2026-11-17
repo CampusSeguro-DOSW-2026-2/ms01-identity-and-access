@@ -12,25 +12,25 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPubli
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 
 /**
- * Configuración de la auditoría hacia MS08 a través del API Gateway (RNF-MS01-03, RNF-MS01-10), se ajusta
- * con variables de entorno (o con las propiedades gateway.url y gateway.service-key)
+ * Configuration of the audit towards MS08 through the API Gateway (RNF-MS01-03, RNF-MS01-10), it is adjusted with
+ * environment variables (or with the properties gateway.url and gateway.service-key)
  *
- * GATEWAY_URL          URL base del API Gateway; vacía = solo se registra en el log
- * GATEWAY_SERVICE_KEY  clave de servicio de MS01 (aleatoria, de 32 caracteres o más), nunca en el repositorio
+ * GATEWAY_URL base URL of the API Gateway; empty = it is only logged
+ * GATEWAY_SERVICE_KEY service key of MS01 (random, 32 characters or more), never in the repository
  *
- * El tiempo máximo de conexión y de respuesta es un valor global de los Estándares de Integración
- * (sección 1) y se define en el código, no se configura
+ * The maximum connection and response time is a global value of the Integration Standards (section 1) and it is defined
+ * in the code, it is not configured
  */
 @Configuration
 public class AuditConfig {
 
-    /**
-     * Crea y registra un bean de tipo AuditEventPublisher configurado para enviar eventos de auditoría
-     * por HTTP hacia MS08 a través del Gateway, con un cliente HTTP de timeout acotado
+        /**
+     * Creates and registers a bean of type AuditEventPublisher configured to send audit events by HTTP to MS08 through
+     * the Gateway, with an HTTP client with a bounded timeout
      *
-     * @param gatewayUrl la URL base del API Gateway (puede provenir de propiedades o variables de entorno)
-     * @param serviceKey la clave de servicio de MS01 con la que el Gateway autentica la llamada
-     * @return una instancia configurada de AuditEventPublisherImpl como un bean gestionado por Spring
+     * @param gatewayUrl the base URL of the API Gateway (it may come from properties or environment variables)
+     * @param serviceKey the service key of MS01 with which the Gateway authenticates the call
+     * @return a configured instance of AuditEventPublisherImpl as a bean managed by Spring
      */
     @Bean
     public AuditEventPublisher auditEventPublisher(

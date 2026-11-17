@@ -10,9 +10,9 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -27,22 +27,22 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPubli
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IssuedToken;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
-import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.AuthServiceImpl;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestValidator;
 import jakarta.validation.Validation;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleServiceImpl;
 
 /**
- * RF-MS01-05 postcondicion / RN-MS01-09 / MR-06: los nuevos roles se reflejan en el siguiente token. Se
- * cambian los roles de un usuario con RoleServiceImpl y luego se hace login con AuthServiceImpl sobre el
- * mismo usuario: el JWT se emite con los roles nuevos
+ * RF-MS01-05 postcondition / RN-MS01-09 / MR-06: the new roles are reflected in the next token. The roles of a user are
+ * changed with RoleServiceImpl and then a login is done with AuthServiceImpl on the same user: the JWT is issued with
+ * the new roles
  */
 @ExtendWith(MockitoExtension.class)
 class RoleChangeNextLoginTest {
@@ -58,6 +58,9 @@ class RoleChangeNextLoginTest {
     private UserRepository userRepository;
 
     @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -69,21 +72,21 @@ class RoleChangeNextLoginTest {
     private RoleServiceImpl roleService;
     private AuthServiceImpl authService;
 
-    /**
-     * Crea ambos servicios sobre los mismos mocks y el mismo reloj fijo
+        /**
+     * Creates both services on the same mocks and the same fixed clock
      */
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         when(passwordEncoder.encode(anyString())).thenReturn("dummy-hash");
         AuditRecorder recorder = new AuditRecorder(auditPublisher, clock);
-        roleService = new RoleServiceImpl(userRepository, recorder);
+        roleService = new RoleServiceImpl(userRepository, roleRepository, recorder, FixedDatabaseTime.at(NOW));
         authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtService, recorder,
                 new RequestValidator(Validation.buildDefaultValidatorFactory().getValidator()));
     }
 
-    /**
-     * Tras agregar el rol BRIGADISTA, el siguiente login emite el token con ESTUDIANTE y BRIGADISTA
+        /**
+     * After adding the BRIGADISTA role, the next login issues the token with ESTUDIANTE and BRIGADISTA
      */
     @Test
     void nextLogin_afterAddingARole_issuesTheTokenWithTheNewRoles() {
@@ -92,17 +95,20 @@ class RoleChangeNextLoginTest {
         user.setEmail(EMAIL);
         user.setPassword(STORED_HASH);
         user.setState(UserState.ACTIVO);
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        RoleEntity student = TestEntities.role("ESTUDIANTE", "ms01:profile:read");
+        RoleEntity brigadier = TestEntities.role("BRIGADISTA", "ms05:panel:read_own");
+        user.setRoles(Set.of(student));
         when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(user));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
-        when(jwtService.issueToken(eq(USER_ID), eq(EMAIL), any()))
+        when(roleRepository.findAllByNameIn(any())).thenReturn(List.of(brigadier));
+        when(jwtService.issueToken(eq(USER_ID), eq(EMAIL), any(), any()))
                 .thenReturn(new IssuedToken("header.payload.signature", NOW.plusSeconds(3600)));
 
         ChangeRolesRequest change = new ChangeRolesRequest();
         change.setIds(List.of(USER_ID.toString()));
         change.setAgregar(List.of("BRIGADISTA"));
-        roleService.changeRoles(new RequesterIdentity(ADMIN_ID, EnumSet.of(UserRole.ADMIN)), change,
+        roleService.changeRoles(TestIdentities.of(ADMIN_ID, "ADMIN"), change,
                 "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90");
 
         LoginRequest login = new LoginRequest();
@@ -111,8 +117,11 @@ class RoleChangeNextLoginTest {
         authService.login(login, "1c2f9d34-5b7a-4e0c-9d61-7a4b8e3f2a10");
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<UserRole>> roles = ArgumentCaptor.forClass(List.class);
-        verify(jwtService).issueToken(eq(USER_ID), eq(EMAIL), roles.capture());
-        assertEquals(List.of(UserRole.BRIGADISTA, UserRole.ESTUDIANTE), roles.getValue());
+        ArgumentCaptor<List<String>> roles = ArgumentCaptor.forClass(List.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> permissions = ArgumentCaptor.forClass(List.class);
+        verify(jwtService).issueToken(eq(USER_ID), eq(EMAIL), roles.capture(), permissions.capture());
+        assertEquals(List.of("BRIGADISTA", "ESTUDIANTE"), roles.getValue());
+        assertEquals(List.of("ms01:profile:read", "ms05:panel:read_own"), permissions.getValue());
     }
 }

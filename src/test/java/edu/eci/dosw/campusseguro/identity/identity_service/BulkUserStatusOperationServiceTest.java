@@ -1,6 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,7 +14,7 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumSet;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,11 +32,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusReque
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFoundException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserServiceImpl;
@@ -43,7 +44,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * Pruebas del cambio de estado de usuarios (RF-MS01-07, formulario F-08)
+ * Tests of the status change of users (RF-MS01-07, form F-08)
  */
 class BulkUserStatusOperationServiceTest {
 
@@ -54,10 +55,10 @@ class BulkUserStatusOperationServiceTest {
     private UserServiceImpl userService;
 
     private final UUID adminId = UUID.randomUUID();
-    private final RequesterIdentity admin = new RequesterIdentity(adminId, EnumSet.of(UserRole.ADMIN));
+    private final RequesterIdentity admin = TestIdentities.of(adminId, "ADMIN");
 
-    /**
-     * Prepara el servicio con sus dependencias simuladas
+        /**
+     * Prepares the service with its simulated dependencies
      */
     @BeforeEach
     void setUp() {
@@ -67,46 +68,46 @@ class BulkUserStatusOperationServiceTest {
         AuditRecorder auditRecorder = new AuditRecorder(auditPublisher, clock);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        userService = new UserServiceImpl(userRepository, mock(PasswordEncoder.class), auditRecorder,
-                requestValidator, List.of("escuelaing.edu.co"));
+        userService = new UserServiceImpl(userRepository, mock(RoleRepository.class), mock(PasswordEncoder.class),
+                auditRecorder, requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
     }
 
-    /**
-     * Construye un usuario de prueba
+        /**
+     * Builds a test user
      *
-     * @param id identificador del usuario
-     * @param state estado inicial del usuario
-     * @return el usuario de prueba
+     * @param id identifier of the user
+     * @param state initial status of the user
+     * @return the test user
      */
     private UserEntity user(UUID id, UserState state) {
         UserEntity user = new UserEntity();
         user.setId(id);
         user.setState(state);
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        user.setRoles(TestEntities.roles("ESTUDIANTE"));
         return user;
     }
 
-    /**
-     * Construye la petición de cambio de estado
+        /**
+     * Builds the status change request
      *
-     * @param estado estado solicitado
-     * @param ids identificadores de los usuarios a modificar
-     * @return la petición de cambio de estado
+     * @param estado requested status
+     * @param ids identifiers of the users to modify
+     * @return the status change request
      */
     private ChangeStatusRequest request(String estado, UUID... ids) {
         ChangeStatusRequest request = new ChangeStatusRequest();
-        request.setIds(java.util.Arrays.stream(ids)
+        request.setIds(Arrays.stream(ids)
                 .map(UUID::toString)
                 .toList());
         request.setEstado(estado);
         return request;
     }
 
-    /**
-     * Obtiene los eventos de auditoría publicados
+        /**
+     * Gets the published audit events
      *
-     * @param expected cantidad de eventos que se espera haber publicado
-     * @return los eventos de auditoría en el orden en que se publicaron
+     * @param expected number of events expected to have been published
+     * @return the audit events in the order in which they were published
      */
     private List<AuditEvent> auditEvents(int expected) {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -114,8 +115,8 @@ class BulkUserStatusOperationServiceTest {
         return captor.getAllValues();
     }
 
-    /**
-     * Una petición válida actualiza a cada usuario e informa su estado anterior y el nuevo
+        /**
+     * A valid request updates each user and reports their previous and new status
      */
     @Test
     void changeUserStatus_validRequest_updatesEveryUserAndReportsPreviousAndNewState() {
@@ -139,8 +140,51 @@ class BulkUserStatusOperationServiceTest {
         verify(userRepository).saveAllAndFlush(any());
     }
 
-    /**
-     * Un cambio exitoso audita a cada usuario con su estado anterior y el nuevo
+        /**
+     * Each processed user receives the session cut with the time of the clock truncated to seconds (RF-MS01-11)
+     */
+    @Test
+    void changeUserStatus_setsTheSessionCutOnEveryTarget() {
+        UserEntity firstUser = user(UUID.randomUUID(), UserState.ACTIVO);
+        UserEntity secondUser = user(UUID.randomUUID(), UserState.INACTIVO);
+        when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(firstUser, secondUser));
+
+        userService.changeUserStatus(admin, request("INACTIVO", firstUser.getId(), secondUser.getId()),
+                CORRELATION_ID);
+
+        assertEquals(Instant.parse("2026-03-01T10:00:00Z"), firstUser.getValidFrom());
+        assertEquals(Instant.parse("2026-03-01T10:00:00Z"), secondUser.getValidFrom());
+    }
+
+        /**
+     * If the user already had the requested status the session cut is also recorded, the change is an account one
+     */
+    @Test
+    void changeUserStatus_sameStateStillSetsTheSessionCut() {
+        UserEntity target = user(UUID.randomUUID(), UserState.ACTIVO);
+        when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
+
+        userService.changeUserStatus(admin, request("ACTIVO", target.getId()), CORRELATION_ID);
+
+        assertEquals(Instant.parse("2026-03-01T10:00:00Z"), target.getValidFrom());
+    }
+
+        /**
+     * A rejected change does not record any session cut
+     */
+    @Test
+    void changeUserStatus_rejectedChange_setsNoSessionCut() {
+        UserEntity target = user(UUID.randomUUID(), UserState.ACTIVO);
+        when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
+
+        assertThrows(UsersNotFoundException.class, () -> userService.changeUserStatus(admin,
+                request("INACTIVO", target.getId(), UUID.randomUUID()), CORRELATION_ID));
+
+        assertNull(target.getValidFrom());
+    }
+
+        /**
+     * A successful change audits each user with their previous and new status
      */
     @Test
     void changeUserStatus_success_auditsEachUserWithPreviousAndNewState() {
@@ -159,12 +203,12 @@ class BulkUserStatusOperationServiceTest {
         assertEquals(CORRELATION_ID, event.correlationId());
     }
 
-    /**
-     * Sin permiso la operación se prohíbe, se audita y no toca la base de datos
+        /**
+     * Without permission the operation is forbidden, audited and does not touch the database
      */
     @Test
     void changeUserStatus_withoutPermission_isForbiddenAuditedAndDoesNotTouchTheDatabase() {
-        RequesterIdentity auditor = new RequesterIdentity(UUID.randomUUID(), EnumSet.of(UserRole.AUDITOR));
+        RequesterIdentity auditor = TestIdentities.of(UUID.randomUUID(), "AUDITOR");
 
         ForbiddenOperationException error = assertThrows(ForbiddenOperationException.class,
                 () -> userService.changeUserStatus(auditor, request("INACTIVO", UUID.randomUUID()),
@@ -178,8 +222,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("SIN_PERMISO", event.detalle());
     }
 
-    /**
-     * Incluir el propio identificador se prohíbe y se audita
+        /**
+     * Including the own identifier is forbidden and audited
      */
     @Test
     void changeUserStatus_includingOwnId_isForbiddenAndAudited() {
@@ -195,8 +239,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("usuario:" + adminId, event.recursoAfectado());
     }
 
-    /**
-     * Un usuario inexistente produce un no encontrado, se audita y no cambia nada
+        /**
+     * A non-existent user produces a not found, is audited and changes nothing
      */
     @Test
     void changeUserStatus_unknownUser_isNotFoundAuditedAndChangesNothing() {
@@ -218,8 +262,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("usuario:" + missing, event.recursoAfectado());
     }
 
-    /**
-     * Un fallo de la base de datos audita a cada usuario y propaga el error
+        /**
+     * A database failure audits each user and propagates the error
      */
     @Test
     void changeUserStatus_databaseFailure_auditsEachUserAndPropagatesTheError() {
@@ -227,7 +271,7 @@ class BulkUserStatusOperationServiceTest {
         UUID second = UUID.randomUUID();
         when(userRepository.findAllByIdInOrderById(any()))
                 .thenReturn(List.of(user(first, UserState.ACTIVO), user(second, UserState.ACTIVO)));
-        when(userRepository.saveAllAndFlush(any())).thenThrow(new IllegalStateException("fallo simulado"));
+        when(userRepository.saveAllAndFlush(any())).thenThrow(new IllegalStateException("simulated failure"));
 
         assertThrows(IllegalStateException.class,
                 () -> userService.changeUserStatus(admin, request("INACTIVO", first, second), CORRELATION_ID));
@@ -237,8 +281,8 @@ class BulkUserStatusOperationServiceTest {
         assertTrue(events.stream().allMatch(event -> "ERROR_INTERNO".equals(event.detalle())));
     }
 
-    /**
-     * Un cuerpo inválido informa los mensajes del formulario y no consulta la base de datos
+        /**
+     * An invalid body reports the messages of the form and does not query the database
      */
     @Test
     void changeUserStatus_invalidBody_reportsTheFormMessagesAndDoesNotQuery() {
@@ -254,8 +298,8 @@ class BulkUserStatusOperationServiceTest {
         verify(userRepository, never()).findAllByIdInOrderById(any());
     }
 
-    /**
-     * Una lista de usuarios vacía se rechaza
+        /**
+     * An empty list of users is rejected
      */
     @Test
     void changeUserStatus_emptyUserList_isRejected() {
@@ -270,8 +314,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("Seleccione al menos un usuario.", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Los identificadores repetidos se procesan una sola vez
+        /**
+     * Repeated identifiers are processed only once
      */
     @Test
     void changeUserStatus_duplicatedIds_areProcessedOnce() {

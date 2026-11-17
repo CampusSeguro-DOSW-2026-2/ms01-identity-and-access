@@ -5,79 +5,95 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Identidad del solicitante reconstruida desde las cabeceras que inyecta el API Gateway
+ * Identity of the requester rebuilt from the headers injected by the API Gateway
  */
 class RequesterIdentityTest {
 
     private static final UUID USER_ID = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
 
-    /**
-     * El identificador y los roles son obligatorios
+        /**
+     * The identifier, the roles and the permissions are required
      */
     @Test
     void constructor_rejectsNullValues() {
-        assertThrows(NullPointerException.class, () -> new RequesterIdentity(null, Set.of(UserRole.ADMIN)));
-        assertThrows(NullPointerException.class, () -> new RequesterIdentity(USER_ID, null));
+        assertThrows(NullPointerException.class, () -> new RequesterIdentity(null, Set.of("ADMIN"), Set.of()));
+        assertThrows(NullPointerException.class, () -> new RequesterIdentity(USER_ID, null, Set.of()));
+        assertThrows(NullPointerException.class, () -> new RequesterIdentity(USER_ID, Set.of("ADMIN"), null));
     }
 
-    /**
-     * Los roles se copian y no se pueden modificar desde fuera
+        /**
+     * The roles and the permissions are copied and cannot be modified from outside
      */
     @Test
-    void roles_areAnUnmodifiableCopy() {
-        Set<UserRole> source = EnumSet.of(UserRole.ESTUDIANTE);
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, source);
+    void rolesAndPermissions_areAnUnmodifiableCopy() {
+        Set<String> roles = new HashSet<>(Set.of("ESTUDIANTE"));
+        Set<String> permissions = new HashSet<>(Set.of("ms01:profile:read"));
+        RequesterIdentity requester = new RequesterIdentity(USER_ID, roles, permissions);
 
-        source.add(UserRole.ADMIN);
+        roles.add("ADMIN");
+        permissions.add("ms01:user:roles");
 
-        assertEquals(Set.of(UserRole.ESTUDIANTE), requester.roles());
-        assertThrows(UnsupportedOperationException.class, () -> requester.roles().add(UserRole.ADMIN));
+        assertEquals(Set.of("ESTUDIANTE"), requester.roles());
+        assertEquals(Set.of("ms01:profile:read"), requester.permissions());
+        assertThrows(UnsupportedOperationException.class, () -> requester.roles().add("ADMIN"));
+        assertThrows(UnsupportedOperationException.class, () -> requester.permissions().add("ms01:user:roles"));
     }
 
-    /**
-     * Los permisos son la unión de los permisos de todos sus roles
+        /**
+     * The permissions are exactly the ones the identity receives, they are not computed from the role names
      */
     @Test
-    void permissions_areTheUnionOfTheRolePermissions() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID,
-                Set.of(UserRole.ESTUDIANTE, UserRole.AUDITOR));
+    void permissions_areTheOnesReceived() {
+        RequesterIdentity requester = TestIdentities.withPermissions(USER_ID, Set.of("ADMIN", "AUDITOR"),
+                "ms01:user:read", "ms08:audit:read");
 
-        Set<Permission> expected = EnumSet.noneOf(Permission.class);
-        expected.addAll(UserRole.ESTUDIANTE.getPermissions());
-        expected.addAll(UserRole.AUDITOR.getPermissions());
+        assertEquals(Set.of("ms01:user:read", "ms08:audit:read"), requester.permissions());
+        assertEquals(Set.of("ADMIN", "AUDITOR"), requester.roles());
+    }
+
+        /**
+     * An identity built with the permissions of several seeded roles carries the union of them
+     */
+    @Test
+    void permissions_ofSeveralSeededRoles_areTheUnion() {
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ESTUDIANTE", "AUDITOR");
+
+        Set<String> expected = new TreeSet<>(SeedRoles.PERMISSIONS.get("ESTUDIANTE"));
+        expected.addAll(SeedRoles.PERMISSIONS.get("AUDITOR"));
 
         assertEquals(expected, requester.permissions());
     }
 
-    /**
-     * La verificación de un permiso se resuelve con los permisos de los roles
+        /**
+     * The verification of a permission is resolved with the received permissions and not with the name of the role
      */
     @Test
-    void hasPermission_followsTheRolePermissions() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, Set.of(UserRole.ESTUDIANTE));
+    void hasPermission_followsTheReceivedPermissions() {
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ESTUDIANTE");
+        RequesterIdentity adminName = TestIdentities.withPermissions(USER_ID, Set.of("ADMIN"), "ms01:profile:read");
 
         assertTrue(requester.hasPermission(Permission.MS01_PROFILE_READ));
         assertFalse(requester.hasPermission(Permission.MS01_USER_STATUS));
+        assertFalse(adminName.hasPermission(Permission.MS01_USER_STATUS));
     }
 
-    /**
-     * La cabecera de roles va separada por comas y en orden alfabético
+        /**
+     * The roles header is comma-separated and in alphabetical order
      */
     @Test
     void rolesHeader_isCommaSeparatedAndAlphabetical() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID,
-                Set.of(UserRole.PROFESOR, UserRole.ADMIN, UserRole.BRIGADISTA));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "PROFESOR", "ADMIN", "BRIGADISTA");
 
         assertEquals("ADMIN,BRIGADISTA,PROFESOR", requester.rolesHeader());
     }

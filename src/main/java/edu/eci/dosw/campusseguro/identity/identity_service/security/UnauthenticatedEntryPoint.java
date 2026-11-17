@@ -10,20 +10,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Responde 401 con el cuerpo de error normalizado (RNF-MS01-04) cuando una ruta protegida
- * se llama sin las cabeceras de identidad (RN-MS01-23)
+ * Answers 401 with the normalized error body (RNF-MS01-04) when a protected route is called without the identity
+ * headers (RN-MS01-23)
  */
 public class UnauthenticatedEntryPoint implements AuthenticationEntryPoint {
 
     public static final String CODE = ErrorCode.UNAUTHENTICATED.getCode();
 
-    /**
-     * Escribe la respuesta 401 con codigo NO_AUTENTICADO y el correlation id de la peticion
+        /**
+     * Writes the 401 response with code NO_AUTENTICADO and the correlation id of the request
      *
-     * @param request peticion rechazada
-     * @param response respuesta donde se escribe el error
-     * @param authException motivo de seguridad del rechazo
-     * @throws IOException si falla la escritura de la respuesta
+     * @param request rejected request
+     * @param response response where the error is written
+     * @param authException security reason for the rejection
+     * @throws IOException if writing the response fails
      */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,

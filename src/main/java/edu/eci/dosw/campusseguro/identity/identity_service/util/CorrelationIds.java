@@ -6,9 +6,9 @@ import java.util.regex.Pattern;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Normaliza el X-Correlation-ID de la petición (RNF-MS01-03, Estándares de Integración, sección 8), se
- * conserva si es un UUID v4 válido y si falta o no es válido se genera uno nuevo, la correlación nunca
- * causa el rechazo de una petición
+ * Normalizes the X-Correlation-ID of the request (RNF-MS01-03, Integration Standards, section 8), it is kept if it is a
+ * valid UUID v4 and if it is missing or invalid a new one is generated, the correlation never causes the rejection of a
+ * request
  */
 public final class CorrelationIds {
 
@@ -21,17 +21,17 @@ public final class CorrelationIds {
     private static final Pattern UUID_V4 = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$");
 
-    /**
-     * No se instancia
+        /**
+     * It is not instantiated
      */
     private CorrelationIds() {
     }
 
-    /**
-     * Devuelve el correlation id que se usa en logs, auditoría y respuestas
+        /**
+     * Returns the correlation id used in logs, audit and responses
      *
-     * @param received valor recibido en la cabecera X-Correlation-ID, puede ser null
-     * @return el valor recibido sin espacios laterales si es un UUID v4 válido, o un UUID v4 aleatorio nuevo
+     * @param received value received in the X-Correlation-ID header, may be null
+     * @return the received value without surrounding spaces if it is a valid UUID v4, or a new random UUID v4
      */
     public static String resolve(String received) {
         if (received != null) {
@@ -43,12 +43,12 @@ public final class CorrelationIds {
         return UUID.randomUUID().toString();
     }
 
-    /**
-     * Devuelve el correlation id ya resuelto para la petición en curso, si ningún filtro lo resolvió
-     * antes lo resuelve a partir de la cabecera recibida
+        /**
+     * Returns the correlation id already resolved for the current request, if no filter resolved it before it resolves
+     * it from the received header
      *
-     * @param request petición en curso
-     * @return el correlation id de la petición
+     * @param request current request
+     * @return the correlation id of the request
      */
     public static String current(HttpServletRequest request) {
         Object resolved = request.getAttribute(ATTRIBUTE);

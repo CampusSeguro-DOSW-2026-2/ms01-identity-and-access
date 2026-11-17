@@ -12,8 +12,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -32,19 +32,20 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesReques
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.RolePermissionsResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.exception.BusinessRuleException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFoundException;
+import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentityArgumentResolver;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleService;
 
 /**
- * GET /api/v1/roles y PATCH /api/v1/users/roles (RF-MS01-05, formulario F-09): contrato HTTP segun el
- * OpenAPI, lectura de la identidad desde las cabeceras del Gateway y traduccion de errores 400, 401, 403 y 404
- * al formato ErrorResponse
+ * GET /api/v1/roles and PATCH /api/v1/users/roles (RF-MS01-05, form F-09): HTTP contract according to the OpenAPI,
+ * reading of the identity from the Gateway headers and translation of errors 400, 401, 403 and 404 into the
+ * ErrorResponse format
  */
 @ExtendWith(MockitoExtension.class)
 class RoleControllerTest {
@@ -62,8 +63,8 @@ class RoleControllerTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Arma MockMvc con el controlador y el manejador global de errores
+        /**
+     * Builds MockMvc with the controller and the global error handler
      */
     @BeforeEach
     void setUp() {
@@ -73,10 +74,10 @@ class RoleControllerTest {
                 .build();
     }
 
-    /**
-     * Cuerpo valido de PATCH /users/roles
+        /**
+     * Valid body of PATCH /users/roles
      *
-     * @return JSON con un usuario, un rol a agregar y uno a retirar
+     * @return JSON with a user, a role to add and one to remove
      */
     private String validBody() {
         return """
@@ -90,22 +91,23 @@ class RoleControllerTest {
 
     // ------------------------------------------------------------------ GET /roles
 
-    /**
-     * 200: el servicio recibe la identidad armada con las cabeceras y la lista se serializa con rol y
-     * permisos
+        /**
+     * 200: the service receives the identity built with the headers and the list is serialized with role and
+     * permissions
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRoles_withIdentityHeaders_returns200AndPassesTheIdentity() throws Exception {
         when(roleService.getRoles(any(RequesterIdentity.class))).thenReturn(List.of(
-                new RolePermissionsResponse(UserRole.ESTUDIANTE,
+                new RolePermissionsResponse("ESTUDIANTE",
                         List.of("ms01:profile:read", "ms01:profile:write")),
-                new RolePermissionsResponse(UserRole.PROFESOR, List.of("ms05:incident:report"))));
+                new RolePermissionsResponse("PROFESOR", List.of("ms05:incident:report"))));
 
         mockMvc.perform(get(ROLES_URL)
                 .header("X-User-Id", ADMIN_ID)
-                .header("X-User-Role", "ESTUDIANTE, PROFESOR"))
+                .header("X-User-Role", "ESTUDIANTE, PROFESOR")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ESTUDIANTE, PROFESOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].rol").value("ESTUDIANTE"))
@@ -116,13 +118,13 @@ class RoleControllerTest {
         ArgumentCaptor<RequesterIdentity> captor = ArgumentCaptor.forClass(RequesterIdentity.class);
         verify(roleService).getRoles(captor.capture());
         assertEquals(UUID.fromString(ADMIN_ID), captor.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), captor.getValue().roles());
+        assertEquals(Set.of("ESTUDIANTE", "PROFESOR"), captor.getValue().roles());
     }
 
-    /**
-     * 401: sin cabeceras de identidad no se llama al servicio y el cuerpo sigue el formato ErrorResponse
+        /**
+     * 401: without identity headers the service is not called and the body follows the ErrorResponse format
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRoles_withoutIdentityHeaders_returns401() throws Exception {
@@ -130,38 +132,40 @@ class RoleControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"))
-                .andExpect(jsonPath("$.mensaje").value("Faltan las cabeceras de identidad (X-User-Id / X-User-Role)."))
+                .andExpect(jsonPath("$.mensaje").value(IdentityHeaderParser.MISSING_MESSAGE))
                 .andExpect(jsonPath("$.correlation_id").value("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
 
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * 401: un rol fuera del catalogo en X-User-Role no establece una identidad
+        /**
+     * 401: a role outside the catalog in X-User-Role does not establish an identity
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRoles_withUnknownRole_returns401() throws Exception {
         mockMvc.perform(get(ROLES_URL)
                 .header("X-User-Id", ADMIN_ID)
-                .header("X-User-Role", "SUPERUSUARIO"))
+                .header("X-User-Role", "SUPERUSUARIO")
+                .header("X-User-Permission", TestIdentities.permissionHeader("SUPERUSUARIO")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"));
 
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * 401: un X-User-Id que no es un UUID no establece una identidad
+        /**
+     * 401: an X-User-Id that is not a UUID does not establish an identity
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRoles_withInvalidUserId_returns401() throws Exception {
         mockMvc.perform(get(ROLES_URL)
                 .header("X-User-Id", "USR-1034")
-                .header("X-User-Role", "ADMIN"))
+                .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(roleService);
@@ -169,23 +173,24 @@ class RoleControllerTest {
 
     // ------------------------------------------------------------------ PATCH /users/roles
 
-    /**
-     * 200: el servicio recibe el cuerpo, la identidad y el correlation id, y la respuesta lleva los roles
-     * resultantes por usuario
+        /**
+     * 200: the service receives the body, the identity and the correlation id, and the response carries the resulting
+     * roles per user
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_validRequest_returns200WithTheResultingRoles() throws Exception {
         when(roleService.changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class),
                 eq("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")))
                 .thenReturn(new ChangeRolesResponse(List.of(
-                        new ChangeRolesResponse.UserRoles(TARGET_ID, List.of(UserRole.PROFESOR)))));
+                        new ChangeRolesResponse.UserRoles(TARGET_ID, List.of("PROFESOR")))));
 
         mockMvc.perform(patch(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")
                 .content(validBody()))
                 .andExpect(status().isOk())
@@ -197,16 +202,16 @@ class RoleControllerTest {
         ArgumentCaptor<ChangeRolesRequest> body = ArgumentCaptor.forClass(ChangeRolesRequest.class);
         verify(roleService).changeRoles(identity.capture(), body.capture(), eq("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
         assertEquals(UUID.fromString(ADMIN_ID), identity.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.ADMIN), identity.getValue().roles());
+        assertEquals(Set.of("ADMIN"), identity.getValue().roles());
         assertEquals(List.of(TARGET_ID), body.getValue().getIds());
         assertEquals(List.of("PROFESOR"), body.getValue().getAgregar());
         assertEquals(List.of("ESTUDIANTE"), body.getValue().getRetirar());
     }
 
-    /**
-     * Sin X-Correlation-ID el controlador pasa al servicio un UUID v4 generado
+        /**
+     * Without X-Correlation-ID the controller passes a generated UUID v4 to the service
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_withoutCorrelationId_passesAGeneratedUuid() throws Exception {
@@ -217,6 +222,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .content(validBody()))
                 .andExpect(status().isOk());
 
@@ -226,10 +232,10 @@ class RoleControllerTest {
         assertEquals(4, UUID.fromString(correlation.getValue()).version());
     }
 
-    /**
-     * 401: sin cabeceras de identidad no se llama al servicio
+        /**
+     * 401: without identity headers the service is not called
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_withoutIdentityHeaders_returns401() throws Exception {
@@ -242,11 +248,11 @@ class RoleControllerTest {
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * RG-04: un campo que no está en el contrato llega al servicio registrado como desconocido para que lo
-     * rechace con un error por campo, por ejemplo intentar enviar quien solicita en el cuerpo
+        /**
+     * RG-04: a field that is not in the contract reaches the service registered as unknown so it rejects it with an
+     * error per field, for example trying to send the requester in the body
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_unknownField_isCapturedForTheServiceToReject() throws Exception {
@@ -264,6 +270,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .content(body))
                 .andExpect(status().isOk());
 
@@ -272,10 +279,10 @@ class RoleControllerTest {
         assertTrue(captured.getValue().unknownFieldNames().contains("solicitante"));
     }
 
-    /**
-     * 400: un cuerpo que no es JSON valido o no es un objeto se rechaza
+        /**
+     * 400: a body that is not a valid JSON or is not an object is rejected
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_malformedBody_returns400() throws Exception {
@@ -283,6 +290,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .content("{\"ids\": \"no-es-un-arreglo\""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"));
@@ -290,26 +298,27 @@ class RoleControllerTest {
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * 400: sin cuerpo la peticion se rechaza
+        /**
+     * 400: without a body the request is rejected
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_withoutBody_returns400() throws Exception {
         mockMvc.perform(patch(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
-                .header("X-User-Role", "ADMIN"))
+                .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN")))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * 400: las validaciones de F-09 se devuelven con su mensaje y el detalle por campo
+        /**
+     * 400: the validations of F-09 are returned with their message and the detail by field
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_validationFailure_returns400WithFieldDetail() throws Exception {
@@ -321,6 +330,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")
                 .content(validBody()))
                 .andExpect(status().isBadRequest())
@@ -332,10 +342,10 @@ class RoleControllerTest {
                 .andExpect(jsonPath("$.correlation_id").value("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
     }
 
-    /**
-     * 400: un mensaje de regla sin campo (usuario sin roles) llega como mensaje con errores vacios
+        /**
+     * 400: a rule message without a field (user without roles) arrives as a message with empty errors
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_ruleFailureWithoutField_returns400WithMessage() throws Exception {
@@ -346,6 +356,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .content(validBody()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"))
@@ -353,10 +364,10 @@ class RoleControllerTest {
                 .andExpect(jsonPath("$.errores.length()").value(0));
     }
 
-    /**
-     * 403: no ser administrador o modificar los propios roles responde PROHIBIDO
+        /**
+     * 403: not being an administrator or modifying the own roles answers PROHIBIDO
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_forbidden_returns403() throws Exception {
@@ -367,6 +378,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")
                 .content(validBody()))
                 .andExpect(status().isForbidden())
@@ -376,10 +388,34 @@ class RoleControllerTest {
                 .andExpect(jsonPath("$.correlation_id").value("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
     }
 
-    /**
-     * 404: un usuario inexistente responde NO_ENCONTRADO con el mensaje del formulario F-09
+        /**
+     * 422: exceeding the limit of 50 roles per user answers REGLA_NEGOCIO with the message of the rule
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
+     */
+    @Test
+    void changeRoles_userExceedingTheMaximum_returns422() throws Exception {
+        when(roleService.changeRoles(any(RequesterIdentity.class), any(ChangeRolesRequest.class), any()))
+                .thenThrow(new BusinessRuleException("Un usuario no puede tener más de 50 roles."));
+
+        mockMvc.perform(patch(CHANGE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Id", ADMIN_ID)
+                .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
+                .header("X-Correlation-ID", "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90")
+                .content(validBody()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.codigo").value("REGLA_NEGOCIO"))
+                .andExpect(jsonPath("$.mensaje").value("Un usuario no puede tener más de 50 roles."))
+                .andExpect(jsonPath("$.correlation_id").value("8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90"));
+    }
+
+        /**
+     * 404: a non-existent user answers NO_ENCONTRADO with the message of form F-09
+     *
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_unknownUser_returns404() throws Exception {
@@ -390,6 +426,7 @@ class RoleControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-User-Id", ADMIN_ID)
                 .header("X-User-Role", "ADMIN")
+                .header("X-User-Permission", TestIdentities.permissionHeader("ADMIN"))
                 .content(validBody()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))

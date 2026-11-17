@@ -14,15 +14,15 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * RF-MS01-04 Cerrar sesión (logout)
+ * RF-MS01-04 Log out (logout)
  *
- * Flujo base: identificar al usuario autenticado (X-User-Id) -> auditar LOGOUT/EXITO -> responder
+ * Base flow: identify the authenticated user (X-User-Id) -> audit LOGOUT/EXITO -> respond
  *
- * RN-MS01-10: El cierre de sesión queda auditado y no revoca el token ya emitido, que sigue siendo válido
- * hasta que expire, el cliente lo descarta
+ * RN-MS01-10: The logout is audited and does not revoke the token already issued, which remains valid until it expires,
+ * the client discards it
  *
- * RNF-MS01-10: Se audita el cierre de sesión exitoso y el rechazado por falta de permiso, el fallo al
- * auditar nunca cambia la respuesta
+ * RNF-MS01-10: The successful logout and the one rejected for lack of permission are audited, a failure when auditing
+ * never changes the response
  */
 @Service
 public class SessionServiceImpl implements SessionService {
@@ -33,22 +33,22 @@ public class SessionServiceImpl implements SessionService {
 
     private final AuditRecorder auditRecorder;
 
-    /**
-     * Crea el servicio con su dependencia
+        /**
+     * Creates the service with its dependency
      *
-     * @param auditRecorder registrador de los eventos de auditoría de MS08
+     * @param auditRecorder recorder of the audit events of MS08
      */
     public SessionServiceImpl(AuditRecorder auditRecorder) {
         this.auditRecorder = auditRecorder;
     }
 
-    /**
-     * Cierra la sesión del solicitante y deja registrado el evento de auditoría (RF-MS01-04), el cierre no
-     * revoca el token ya emitido, que sigue siendo válido hasta que expire (RN-MS01-10)
+        /**
+     * Closes the session of the requester and records the audit event (RF-MS01-04), the logout does not revoke the
+     * token already issued, which remains valid until it expires (RN-MS01-10)
      *
-     * @param requester identidad de quien cierra la sesión
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
+     * @param requester identity of whoever closes the session
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @throws ForbiddenOperationException if the requester does not have the required permission
      */
     @Override
     public void logout(RequesterIdentity requester, String correlationId) {
@@ -58,12 +58,12 @@ public class SessionServiceImpl implements SessionService {
         if (!requester.hasPermission(Permission.MS01_SESSION_LOGOUT)) {
             auditRecorder.recordAs(AuditAction.LOGOUT, AuditResult.FALLO, requester, resource,
                     REASON_NOT_ALLOWED, corr);
-            log.warn("Cierre de sesión rechazado: el solicitante {} no tiene el permiso requerido",
+            log.warn("Logout rejected: the requester {} does not have the required permission",
                     requester.userId());
             throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
         }
 
         auditRecorder.recordAs(AuditAction.LOGOUT, AuditResult.EXITO, requester, resource, null, corr);
-        log.info("Cierre de sesión. usuario={}", requester.userId());
+        log.info("Logout. user={}", requester.userId());
     }
 }

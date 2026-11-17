@@ -19,107 +19,106 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFou
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Registro de usuarios (RF-MS01-01), gestión del perfil propio (RF-MS01-06) y administración de usuarios:
- * consulta y activación o inactivación (RF-MS01-07)
+ * User registration (RF-MS01-01), management of the own profile (RF-MS01-06) and user administration: query and
+ * activation or deactivation (RF-MS01-07)
  */
 public interface UserService {
 
-    /**
-     * Registra un usuario institucional (RF-MS01-01), cada intento, exitoso o fallido, se audita en MS08
+        /**
+     * Registers an institutional user (RF-MS01-01), every attempt, successful or failed, is audited in MS08
      *
-     * @param request datos del formulario de registro
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return el usuario creado con su id, correo, roles y estado
-     * @throws InvalidRequestException si los datos incumplen el formulario F-01
-     * @throws EmailAlreadyExistsException si el correo ya está registrado
+     * @param request data of the registration form
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the created user with its id, email, roles and status
+     * @throws InvalidRequestException if the data breaks form F-01
+     * @throws EmailAlreadyExistsException if the email is already registered
      */
     UserResponse create(UserCreateRequest request, String correlationId);
 
-    /**
-     * Consulta el perfil del propio solicitante (RF-MS01-03, RF-MS01-06)
+        /**
+     * Queries the profile of the requester themselves (RF-MS01-03, RF-MS01-06)
      *
-     * @param requester identidad de quien consulta
-     * @return los datos del usuario identificado por la cabecera de identidad
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws UserNotFoundException si el usuario ya no existe
+     * @param requester identity of whoever queries
+     * @return the data of the user identified by the identity header
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws UserNotFoundException if the user no longer exists
      */
     UserProfileResponse getMyProfile(RequesterIdentity requester);
 
-    /**
-     * Actualiza el perfil propio (RF-MS01-06), la actualización reemplaza el perfil completo
+        /**
+     * Updates the own profile (RF-MS01-06), the update replaces the complete profile
      *
-     * @param requester identidad de quien actualiza
-     * @param request nombres y apellidos nuevos
-     * @return el perfil actualizado
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws InvalidRequestException si los datos incumplen el formulario F-03
-     * @throws UserNotFoundException si el usuario ya no existe
+     * @param requester identity of whoever updates
+     * @param request new names and lastnames
+     * @return the updated profile
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws InvalidRequestException if the data breaks form F-03
+     * @throws UserNotFoundException if the user no longer exists
      */
     UserProfileResponse updateProfile(RequesterIdentity requester, UserUpdateProfileRequest request);
 
-    /**
-     * Consulta un usuario por su id (RF-MS01-05, RF-MS01-07)
+        /**
+     * Queries a user by their id (RF-MS01-05, RF-MS01-07)
      *
-     * @param requester identidad de quien consulta
-     * @param id id del usuario consultado
-     * @return los datos del usuario
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws UserNotFoundException si el usuario no existe
+     * @param requester identity of whoever queries
+     * @param id id of the queried user
+     * @return the data of the user
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws UserNotFoundException if the user does not exist
      */
     UserProfileResponse getUserById(RequesterIdentity requester, UUID id);
 
-    /**
-     * Lista y busca usuarios con paginación y filtros opcionales (RF-MS01-07, formulario F-07)
+        /**
+     * Lists and searches users with pagination and optional filters (RF-MS01-07, form F-07)
      *
-     * @param requester identidad de quien consulta
-     * @param correo búsqueda parcial por correo, puede ser null
-     * @param estado filtro de estado, puede ser null
-     * @param rol filtro de rol, puede ser null
-     * @param page número de página recibido como texto, null equivale a 0
-     * @param size tamaño de página recibido como texto, null equivale a 20
-     * @return la página de usuarios con sus roles completos
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws InvalidRequestException si algún parámetro incumple el formulario F-07
+     * @param requester identity of whoever queries
+     * @param correo partial search by email, may be null
+     * @param estado status filter, may be null
+     * @param rol role filter, may be null
+     * @param page page number received as text, null is equivalent to 0
+     * @param size page size received as text, null is equivalent to 20
+     * @return the page of users with their complete roles
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws InvalidRequestException if any parameter breaks form F-07 or the role does not exist
      */
     PageResponse<UserProfileResponse> search(RequesterIdentity requester, String correo, String estado, String rol,
             String page, String size);
 
-    /**
-     * Activa o inactiva a uno o varios usuarios en una sola operación atómica (RF-MS01-07, formulario
-     * F-08), cada usuario procesado se audita en MS08
+        /**
+     * Activates or deactivates one or several users in a single atomic operation (RF-MS01-07, form F-08), every
+     * processed user is audited in MS08
      *
-     * @param requester identidad de quien solicita
-     * @param request usuarios objetivo y nuevo estado
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return el estado anterior y el nuevo de cada usuario
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido o se incluye a sí
-     *         mismo
-     * @throws InvalidRequestException si el cuerpo incumple el formulario F-08
-     * @throws UsersNotFoundException si algún usuario objetivo no existe
+     * @param requester identity of whoever requests
+     * @param request target users and new status
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the previous and the new status of each user
+     * @throws ForbiddenOperationException if the requester does not have the required permission or includes themselves
+     * @throws InvalidRequestException if the body breaks form F-08
+     * @throws UsersNotFoundException if any target user does not exist
      */
     ChangeStatusResponse changeUserStatus(RequesterIdentity requester, ChangeStatusRequest request,
             String correlationId);
 
-    /**
-     * Consulta interna de varios usuarios por id (RF-MS01-09), la autoriza la cadena de seguridad interna
-     * por el servicio que llama y no se audita
+        /**
+     * Internal query of several users by id (RF-MS01-09), it is authorized by the internal security chain through the
+     * calling service and is not audited
      *
-     * @param request ids de los usuarios, de 1 a 100
-     * @return los usuarios encontrados en el orden pedido, sin repetidos, y los ids que no existen
-     * @throws InvalidRequestException si la lista falta, tiene más de 100 ids o algún id no es UUID
+     * @param request ids of the users, from 1 to 100
+     * @return the users found in the requested order, without repeated ones, and the ids that do not exist
+     * @throws InvalidRequestException if the list is missing, has more than 100 ids or any id is not a UUID
      */
     BatchUsersResponse findUsersByIds(BatchUsersRequest request);
 
-    /**
-     * Consulta interna de los usuarios que tienen un rol (RF-MS01-09), ordenados por id, la autoriza la
-     * cadena de seguridad interna por el servicio que llama y no se audita
+        /**
+     * Internal query of the users that have a role (RF-MS01-09), sorted by id, it is authorized by the internal
+     * security chain through the calling service and is not audited
      *
-     * @param rol rol obligatorio
-     * @param creadoAntes instante de corte en ISO 8601, puede ser null
-     * @param page número de página recibido como texto, null equivale a 0
-     * @param size tamaño de página recibido como texto, null equivale a 20
-     * @return la página de usuarios con ese rol, activos e inactivos
-     * @throws InvalidRequestException si algún parámetro no es válido
+     * @param rol required role
+     * @param creadoAntes cut-off instant in ISO 8601, may be null
+     * @param page page number received as text, null is equivalent to 0
+     * @param size page size received as text, null is equivalent to 20
+     * @return the page of users with that role, active and inactive
+     * @throws InvalidRequestException if any parameter is not valid or the role does not exist
      */
     PageResponse<UserProfileResponse> searchByRole(String rol, String creadoAntes, String page, String size);
 }

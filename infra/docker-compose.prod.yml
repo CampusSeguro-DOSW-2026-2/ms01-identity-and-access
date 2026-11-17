@@ -1,8 +1,8 @@
-# Stack de MS01 en la nube: uno por entorno en la misma VM (ms01-prod y ms01-test), cada uno con su BD.
-# No publica puertos: solo el Caddy de borde de la VM (red campus-edge) llega a MS01, con el alias ms01-<entorno>,
-# y la BD solo es visible dentro del stack. Lo usa infra/deploy.sh con el .env que escribe en DEPLOY_DIR/<entorno>;
-# no se ejecuta a mano.
-name: ms01-${ENTORNO:?ENTORNO es obligatoria (test o prod)}
+# MS01 stack in the cloud: one per environment on the same VM (ms01-prod and ms01-test), each one with its DB.
+# It publishes no ports: only the edge Caddy of the VM (campus-edge network) reaches MS01, with the alias ms01-<environment>,
+# and the DB is only visible inside the stack. It is used by infra/deploy.sh with the .env it writes in DEPLOY_DIR/<environment>;
+# it is not run by hand.
+name: ms01-${ENTORNO:?ENTORNO is required (test or prod)}
 
 services:
   db:
@@ -11,10 +11,10 @@ services:
     environment:
       POSTGRES_DB: campus_db
       POSTGRES_USER: campus_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD es obligatoria}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     volumes:
       - datos:/var/lib/postgresql/data
-      # Esquema inicial (database/*.sql): Postgres solo lo ejecuta la primera vez, con el volumen vacío.
+      # Initial schema (database/*.sql): Postgres only runs it the first time, with the empty volume.
       - ./database:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U campus_user -d campus_db"]
@@ -25,7 +25,7 @@ services:
       - interna
 
   ms01:
-    image: ${IMAGE:?IMAGE es obligatoria}:${TAG:?TAG es obligatoria (sha-xxxxxxx)}
+    image: ${IMAGE:?IMAGE is required}:${TAG:?TAG is required (sha-xxxxxxx)}
     restart: unless-stopped
     depends_on:
       db:
@@ -33,24 +33,24 @@ services:
     environment:
       DB_URL: jdbc:postgresql://db:5432/campus_db
       DB_USERNAME: campus_user
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD es obligatoria}
-      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY es obligatoria}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY is required}
       JWT_KEY_ID: ${JWT_KEY_ID:-ms01-2026-01}
-      GATEWAY_URL: ${GATEWAY_URL:?GATEWAY_URL es obligatoria (https://<dominio del GW> o :8443)}
-      GATEWAY_SERVICE_KEY: ${GATEWAY_SERVICE_KEY:?GATEWAY_SERVICE_KEY es obligatoria}
+      GATEWAY_URL: ${GATEWAY_URL:?GATEWAY_URL is required (https://<domain of the GW> or :8443)}
+      GATEWAY_SERVICE_KEY: ${GATEWAY_SERVICE_KEY:?GATEWAY_SERVICE_KEY is required}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-proyectometx@gmail.com}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD es obligatoria (contraseña de aplicación de Gmail)}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD is required (Gmail application password)}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
       MAIL_SMTP_STARTTLS: "true"
       MAIL_FROM: ${MAIL_FROM:-CampusSeguro <proyectometx@gmail.com>}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       SWAGGER_ENABLED: "false"
-      # El health refleja MS01 y su BD: una caída del SMTP externo solo afecta la recuperación de contraseña.
+      # The health reflects MS01 and its DB: a failure of the external SMTP only affects the password recovery.
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
-    # Variables opcionales del entorno (p. ej. INTERNAL_ALLOWED_SERVICES, RECOVERY_*), si las hay.
+    # Optional variables of the environment (e.g. INTERNAL_ALLOWED_SERVICES, RECOVERY_*), if there are any.
     env_file:
       - path: extra.env
         required: false

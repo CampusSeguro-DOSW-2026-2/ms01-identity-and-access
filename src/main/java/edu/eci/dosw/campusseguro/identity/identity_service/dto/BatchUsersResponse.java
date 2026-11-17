@@ -6,10 +6,10 @@ import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Respuesta de POST /api/v1/users/batch (RF-MS01-09)
+ * Response of POST /api/v1/users/batch (RF-MS01-09)
  *
- * @param usuarios usuarios encontrados, sin repetidos y en el orden de la solicitud, activos e inactivos
- * @param noEncontrados ids solicitados que no corresponden a ningún usuario, en el orden de la solicitud
+ * @param usuarios users found, without repeated ones and in the order of the request, active and inactive
+ * @param noEncontrados requested ids that do not match any user, in the order of the request
  */
 public record BatchUsersResponse(
         List<UserProfileResponse> usuarios,

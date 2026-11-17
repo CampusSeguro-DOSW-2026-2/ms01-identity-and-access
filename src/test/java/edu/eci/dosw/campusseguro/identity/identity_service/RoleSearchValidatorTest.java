@@ -13,31 +13,30 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleSearchCriteria;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserSearchValidator;
 
 /**
- * Pruebas de la validación de la consulta interna por rol (RF-MS01-09)
+ * Tests of the validation of the internal query by role (RF-MS01-09)
  */
 class RoleSearchValidatorTest {
 
-    /**
-     * Solo con el rol se usan la página y el tamaño por defecto y no hay corte
+        /**
+     * With only the role the default page and size are used and there is no cut
      */
     @Test
     void validateByRole_onlyRole_usesTheDefaults() {
         RoleSearchCriteria criteria = UserSearchValidator.validateByRole(" BRIGADISTA ", null, null, null);
 
-        assertEquals(UserRole.BRIGADISTA, criteria.role());
+        assertEquals("BRIGADISTA", criteria.role());
         assertNull(criteria.createdBefore());
         assertEquals(UserSearchValidator.DEFAULT_PAGE, criteria.page());
         assertEquals(UserSearchValidator.DEFAULT_SIZE, criteria.size());
     }
 
-    /**
-     * Todos los parámetros válidos se convierten
+        /**
+     * All the valid parameters are converted
      */
     @Test
     void validateByRole_allParameters_areConverted() {
@@ -49,14 +48,15 @@ class RoleSearchValidatorTest {
         assertEquals(100, criteria.size());
     }
 
-    /**
-     * Un rol ausente, vacío, fuera del catálogo o Todos se rechaza, este parámetro es obligatorio
+        /**
+     * An absent, empty role or one without the stored format is rejected, this parameter is required. Whether the role
+     * exists is checked by the service
      *
-     * @param role rol recibido
+     * @param role received role
      */
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"  ", "brigadista", "SUPERUSUARIO", "TODOS"})
+    @ValueSource(strings = {"  ", "brigadista", "SUPER-USUARIO", "1ROL", "R"})
     void validateByRole_missingOrInvalidRole_isRejected(String role) {
         InvalidRequestException e = assertThrows(InvalidRequestException.class,
                 () -> UserSearchValidator.validateByRole(role, null, null, null));
@@ -65,10 +65,10 @@ class RoleSearchValidatorTest {
                 UserSearchValidator.INVALID_ROLE_MESSAGE)), e.getErrors());
     }
 
-    /**
-     * Una fecha de corte que no es un instante ISO 8601 se rechaza
+        /**
+     * A cut-off date that is not an ISO 8601 instant is rejected
      *
-     * @param cutoff fecha recibida
+     * @param cutoff received date
      */
     @ParameterizedTest
     @ValueSource(strings = {"ayer", "2026-11-07", "2026-13-01T00:00:00Z"})
@@ -80,8 +80,8 @@ class RoleSearchValidatorTest {
                 UserSearchValidator.INVALID_CREATED_BEFORE_MESSAGE)), e.getErrors());
     }
 
-    /**
-     * La página y el tamaño siguen las reglas del listado, con sus mensajes
+        /**
+     * The page and the size follow the rules of the list, with their messages
      */
     @Test
     void validateByRole_invalidPagination_reportsEachParameter() {

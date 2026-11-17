@@ -5,14 +5,14 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Cuerpo de PATCH /api/v1/users/roles
+ * Body of PATCH /api/v1/users/roles
  *
- * ids: usuarios objetivo
- * agregar: roles que se agregan a cada usuario
- * retirar: roles que se retiran a cada usuario
+ * ids: target users
+ * agregar: roles added to each user
+ * retirar: roles removed from each user
  *
- * cualquier campo no definido en el contrato se rechaza con HTTP 400 (RG-04)
- * la identidad de quien solicita nunca viaja en el cuerpo, sino en las cabeceras (RG-07)
+ * any field not defined in the contract is rejected with HTTP 400 (RG-04)
+ * the identity of the requester never travels in the body, but in the headers (RG-07)
  */
 public class ChangeRolesRequest extends StrictRequest {
 
@@ -25,55 +25,55 @@ public class ChangeRolesRequest extends StrictRequest {
     @JsonProperty("retirar")
     private List<String> retirar;
 
-    /**
-     * Devuelve los ids de los usuarios
+        /**
+     * Returns the ids of the users
      *
-     * @return ids de los usuarios
+     * @return ids of the users
      */
     public List<String> getIds() {
         return ids;
     }
 
-    /**
-     * Coloca los ids de los usuarios
+        /**
+     * Sets the ids of the users
      *
-     * @param ids identificadores de los usuarios a los que se les cambian los roles
+     * @param ids identifiers of the users whose roles are changed
      */
     public void setIds(List<String> ids) {
         this.ids = ids;
     }
 
-    /**
-     * Devuelve los roles que se deben agregar
+        /**
+     * Returns the roles that must be added
      *
-     * @return nombres de roles recibidos
+     * @return role names received
      */
     public List<String> getAgregar() {
         return agregar;
     }
 
-    /**
-     * Coloca los roles que se deben agregar
+        /**
+     * Sets the roles that must be added
      *
-     * @param agregar nombres de los roles que se agregan a cada usuario
+     * @param agregar names of the roles added to each user
      */
     public void setAgregar(List<String> agregar) {
         this.agregar = agregar;
     }
 
-    /**
-     * Devuelve los roles que se deben retirar
+        /**
+     * Returns the roles that must be removed
      *
-     * @return nombres de roles recibidos
+     * @return role names received
      */
     public List<String> getRetirar() {
         return retirar;
     }
 
-    /**
-     * Coloca los roles que se deben retirar
+        /**
+     * Sets the roles that must be removed
      *
-     * @param retirar nombres de los roles que se retiran a cada usuario
+     * @param retirar names of the roles removed from each user
      */
     public void setRetirar(List<String> retirar) {
         this.retirar = retirar;

@@ -5,9 +5,7 @@ import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.interfaces.RSAKey;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,18 +13,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
 
 /**
- * Emite JWT firmados con RS256 (RSASSA-PKCS1-v1_5 con SHA-256, RSA 2048)
+ * Issues JWTs signed with RS256 (RSASSA-PKCS1-v1_5 with SHA-256, RSA 2048)
  *
- * Serializacion JWS compacta (RFC 7515): Contiene header, payload y firma
- * La firma usa unicamente el proveedor estandar del JDK
+ * Compact JWS serialization (RFC 7515): It contains header, payload and signature The signature uses only the standard
+ * JDK provider
  *
- * Header:  {"alg":"RS256","typ":"JWT","kid":"..."}
- * Payload: iss, aud, sub, email, roles (ordenados alfabeticamente), iat, exp (= iat + vigencia), jti
+ * Header: {"alg":"RS256","typ":"JWT","kid":"..."}
+ * Payload: iss, aud, sub, email, roles and permissions (sorted alphabetically), iat, exp (= iat + validity), jti
  */
 public class JwtServiceImpl implements JwtService {
 
@@ -36,49 +34,52 @@ public class JwtServiceImpl implements JwtService {
 
     private final PrivateKey privateKey;
     private final String keyId;
-    private final Clock clock;
+    private final DatabaseTimeService timeService;
 
-    /**
-     * Crea el emisor de tokens y valida la llave según la especificación del JWT, el emisor, la audiencia y
-     * la vigencia son los valores globales de los Estándares de Integración
+        /**
+     * Creates the token issuer and validates the key according to the JWT specification, the issuer, the audience and
+     * the validity are the global values of the Integration Standards
      *
-     * @param privateKey llave privada RSA con la que se firman los tokens
-     * @param keyId valor del campo kid del header
-     * @param clock reloj con el que se calculan iat y exp
-     * @throws IllegalArgumentException si el identificador de la llave está vacío o la llave no es RSA de al
-     *         menos 2048 bits
+     * @param privateKey RSA private key with which the tokens are signed
+     * @param keyId value of the kid field of the header
+     * @param timeService single clock of the database with which iat and exp are calculated
+     * @throws IllegalArgumentException if the key identifier is empty or the key is not RSA of at least 2048 bits
      */
-    public JwtServiceImpl(PrivateKey privateKey, String keyId, Clock clock) {
+    public JwtServiceImpl(PrivateKey privateKey, String keyId, DatabaseTimeService timeService) {
         this.privateKey = Objects.requireNonNull(privateKey, "privateKey");
         this.keyId = requireText(keyId, "keyId");
-        this.clock = Objects.requireNonNull(clock, "clock");
+        this.timeService = Objects.requireNonNull(timeService, "timeService");
         if (!(privateKey instanceof RSAKey rsaKey) || !"RSA".equals(privateKey.getAlgorithm())) {
-            throw new IllegalArgumentException("La llave de firma del JWT debe ser RSA.");
+            throw new IllegalArgumentException("The JWT signing key must be RSA.");
         }
         if (rsaKey.getModulus().bitLength() < MIN_KEY_BITS) {
-            throw new IllegalArgumentException("La llave RSA del JWT debe tener al menos 2048 bits.");
+            throw new IllegalArgumentException("The RSA key of the JWT must have at least 2048 bits.");
         }
     }
 
-    /**
-     * Emite un JWT RS256 con los claims iss, aud, sub (userId), email, roles, iat, exp y jti, sin incluir
-     * contrasenas, hashes, nombres, estado ni permisos (RN-MS01-08)
+        /**
+     * Issues an RS256 JWT with the claims iss, aud, sub (userId), email, roles, permissions, iat, exp and jti, without
+     * including passwords, hashes, names or status (RN-MS01-08)
      *
-     * @param userId id del usuario
-     * @param email correo del usuario
-     * @param roles roles del usuario
-     * @return el token firmado junto con su fecha de expiración
-     * @throws IllegalArgumentException si el correo está vacío o el usuario no tiene ningún rol
+     * @param userId id of the user
+     * @param email email of the user
+     * @param roles names of the roles of the user
+     * @param permissions effective permissions of the user, the union of those of all their roles
+     * @return the signed token together with its expiration date
+     * @throws IllegalArgumentException if the email is empty or the user has no role or no permission
      */
     @Override
-    public IssuedToken issueToken(UUID userId, String email, List<UserRole> roles) {
+    public IssuedToken issueToken(UUID userId, String email, List<String> roles, List<String> permissions) {
         Objects.requireNonNull(userId, "userId");
         requireText(email, "email");
         if (roles == null || roles.isEmpty()) {
-            throw new IllegalArgumentException("El JWT debe incluir al menos un rol.");
+            throw new IllegalArgumentException("The JWT must include at least one role.");
+        }
+        if (permissions == null || permissions.isEmpty()) {
+            throw new IllegalArgumentException("The JWT must include at least one permission.");
         }
 
-        Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
+        Instant issuedAt = timeService.now();
         Instant expiresAt = issuedAt.plusSeconds(GlobalValues.JWT_LIFETIME_SECONDS);
 
         Map<String, Object> header = new LinkedHashMap<>();
@@ -91,7 +92,8 @@ public class JwtServiceImpl implements JwtService {
         payload.put("aud", GlobalValues.JWT_AUDIENCE);
         payload.put("sub", userId.toString());
         payload.put("email", email);
-        payload.put("roles", roles.stream().map(UserRole::name).sorted().toList());
+        payload.put("roles", roles.stream().distinct().sorted().toList());
+        payload.put("permissions", permissions.stream().distinct().sorted().toList());
         payload.put("iat", issuedAt.getEpochSecond());
         payload.put("exp", expiresAt.getEpochSecond());
         payload.put("jti", UUID.randomUUID().toString());
@@ -101,11 +103,11 @@ public class JwtServiceImpl implements JwtService {
         return new IssuedToken(signingInput + "." + signature, expiresAt);
     }
 
-    /**
-     * Genera la firma digital del token
+        /**
+     * Generates the digital signature of the token
      *
-     * @param signingInput header y payload codificado en BASE64_URL
-     * @return la firma digital
+     * @param signingInput header and payload encoded in BASE64_URL
+     * @return the digital signature
      */
     private byte[] sign(String signingInput) {
         try {
@@ -114,31 +116,31 @@ public class JwtServiceImpl implements JwtService {
             signature.update(signingInput.getBytes(StandardCharsets.US_ASCII));
             return signature.sign();
         } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("No fue posible firmar el JWT.", e);
+            throw new IllegalStateException("The JWT could not be signed.", e);
         }
     }
 
-    /**
-     * Codifica en formato BASE64_URL el String recibido
+        /**
+     * Encodes the received String in BASE64_URL format
      *
-     * @param json cadena recibida y que se debe de codificar
-     * @return devuelve la codificacion en BASE64
+     * @param json received string that must be encoded
+     * @return returns the BASE64 encoding
      */
     private static String encode(String json) {
         return BASE64_URL.encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * Verifica que el valor de un campo sea valido (es requerido), revisando que no sea nulo ni este
-     * lleno de espacios
+        /**
+     * Checks that the value of a field is valid (it is required), verifying that it is neither null nor filled with
+     * spaces
      *
-     * @param value valor de un campo
-     * @param name nombre del campo
-     * @return el valor recibido solo cuando se considera valido
+     * @param value value of a field
+     * @param name name of the field
+     * @return the received value only when it is considered valid
      */
     private static String requireText(String value, String name) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("El parámetro '" + name + "' no puede estar vacío.");
+            throw new IllegalArgumentException("The parameter '" + name + "' must not be empty.");
         }
         return value;
     }

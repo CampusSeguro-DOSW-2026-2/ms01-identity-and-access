@@ -7,19 +7,19 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidCred
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 
 /**
- * Autenticación de usuarios (RF-MS01-02) y emisión del token de sesión (RF-MS01-03)
+ * User authentication (RF-MS01-02) and issuance of the session token (RF-MS01-03)
  */
 public interface AuthService {
 
-    /**
-     * Autentica con correo y contraseña (RF-MS01-02) y emite el JWT (RF-MS01-03)
+        /**
+     * Authenticates with email and password (RF-MS01-02) and issues the JWT (RF-MS01-03)
      *
-     * @param request contiene las credenciales; correo y contraseña
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return LoginResponse que contiene token, tipo, expiración y datos básicos del usuario
-     * @throws InvalidRequestException si el cuerpo no cumple el formulario F-02
-     * @throws InvalidCredentialsException si el correo no existe o la contraseña no coincide
-     * @throws InactiveAccountException si las credenciales son correctas pero la cuenta está inactiva
+     * @param request contains the credentials; email and password
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return LoginResponse containing token, type, expiration and basic data of the user
+     * @throws InvalidRequestException if the body does not meet form F-02
+     * @throws InvalidCredentialsException if the email does not exist or the password does not match
+     * @throws InactiveAccountException if the credentials are correct but the account is inactive
      */
     LoginResponse login(LoginRequest request, String correlationId);
 }

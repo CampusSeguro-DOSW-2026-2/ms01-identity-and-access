@@ -13,30 +13,29 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 
 /**
- * Valida los cuerpos de las peticiones en la capa de servicio (RNF-MS01-09), de modo que primero se
- * comprueba la autorización y después los datos, y que los flujos que auditan los rechazos puedan
- * registrarlos antes de responder
+ * Validates the bodies of the requests in the service layer (RNF-MS01-09), so that the authorization is checked first
+ * and then the data, and so that the flows that audit the rejections can record them before answering
  */
 @Component
 public class RequestValidator {
 
     private final Validator validator;
 
-    /**
-     * Crea el validador con el motor de Bean Validation
+        /**
+     * Creates the validator with the Bean Validation engine
      *
-     * @param validator motor de Bean Validation
+     * @param validator Bean Validation engine
      */
     public RequestValidator(Validator validator) {
         this.validator = validator;
     }
 
-    /**
-     * Valida la petición y devuelve todos los errores por campo encontrados, incluidos los campos que el
-     * contrato no define (RG-04)
+        /**
+     * Validates the request and returns all the errors by field found, including the fields that the contract does not
+     * define (RG-04)
      *
-     * @param request cuerpo recibido
-     * @return errores por campo, uno por campo y ordenados por nombre, vacío si la petición es válida
+     * @param request body received
+     * @return errors by field, one per field and sorted by name, empty if the request is valid
      */
     public List<ErrorResponse.ErrorDetail> collectErrors(Object request) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
@@ -48,11 +47,11 @@ public class RequestValidator {
         return ValidationErrors.merge(errors);
     }
 
-    /**
-     * Valida la petición y la rechaza con HTTP 400 si tiene errores
+        /**
+     * Validates the request and rejects it with HTTP 400 if it has errors
      *
-     * @param request cuerpo recibido
-     * @throws InvalidRequestException si la petición tiene campos inválidos, faltantes o no definidos
+     * @param request body received
+     * @throws InvalidRequestException if the request has invalid, missing or undefined fields
      */
     public void validate(Object request) {
         List<ErrorResponse.ErrorDetail> errors = collectErrors(request);

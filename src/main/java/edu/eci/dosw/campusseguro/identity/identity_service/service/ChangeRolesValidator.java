@@ -1,7 +1,6 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -10,22 +9,22 @@ import java.util.regex.Pattern;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeRolesRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * Valida el cuerpo de PATCH /api/v1/users/roles segun el formulario F-09 y lo convierte en un
- * ChangeRolesCommand
+ * Validates the body of PATCH /api/v1/users/roles according to form F-09 and converts it into a ChangeRolesCommand
  *
- * ids: al menos un usuario y todos con formato de identificador valido
+ * ids: at least one user and all of them with a valid identifier format
  *
- * agregar / retirar: solo roles del catalogo y sin repetir (0 a 8 por lista)
+ * agregar / retirar: role names with valid format and without repeats, that they exist is checked by the service
+ * against the roles table
  *
  * Ambas listas vacias: "Indique roles a agregar o retirar."
  *
- * Un rol en ambas listas: "Un rol no puede agregarse y retirarse a la vez."
+ * A role in both lists: "Un rol no puede agregarse y retirarse a la vez."
  */
 public final class ChangeRolesValidator {
 
@@ -43,24 +42,24 @@ public final class ChangeRolesValidator {
     private static final Pattern UUID_FORMAT = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
-    /**
-     * Clase de utilidad, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private ChangeRolesValidator() {
     }
 
-    /**
-     * Valida la peticion y la convierte en un comando con tipos fuertes
+        /**
+     * Validates the request and converts it into a command with strong types
      *
-     * @param request cuerpo recibido en PATCH /api/v1/users/roles
-     * @return el comando con los usuarios, los roles a agregar y a retirar
-     * @throws InvalidRequestException si algun dato incumple F-09 y se lanza HTTP 400
+     * @param request body received in PATCH /api/v1/users/roles
+     * @return the command with the users, the roles to add and to remove
+     * @throws InvalidRequestException if any data breaks F-09 and HTTP 400 is thrown
      */
     public static ChangeRolesCommand validate(ChangeRolesRequest request) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(request.unknownFieldErrors());
         Set<UUID> userIds = parseUserIds(request.getIds(), errors);
-        Set<UserRole> rolesToAdd = parseRoles(FIELD_ADD, request.getAgregar(), errors);
-        Set<UserRole> rolesToRemove = parseRoles(FIELD_REMOVE, request.getRetirar(), errors);
+        Set<String> rolesToAdd = parseRoles(FIELD_ADD, request.getAgregar(), errors);
+        Set<String> rolesToRemove = parseRoles(FIELD_REMOVE, request.getRetirar(), errors);
 
         if (!errors.isEmpty()) {
             throw new InvalidRequestException(INVALID_DATA_MESSAGE, ValidationErrors.merge(errors));
@@ -74,12 +73,12 @@ public final class ChangeRolesValidator {
         return new ChangeRolesCommand(userIds, rolesToAdd, rolesToRemove);
     }
 
-    /**
-     * Convierte la lista de ids recibida en un conjunto de UUID sin repetidos y en el mismo orden
+        /**
+     * Converts the received list of ids into a set of UUID without repeated ones and in the same order
      *
-     * @param rawIds ids recibidos
-     * @param errors lista donde se agregan los errores por campo que se encuentren
-     * @return conjunto ordenado de identificadores validos
+     * @param rawIds ids received
+     * @param errors list where the errors by field found are added
+     * @return ordered set of valid identifiers
      */
     private static Set<UUID> parseUserIds(List<String> rawIds, List<ErrorResponse.ErrorDetail> errors) {
         Set<UUID> ids = new LinkedHashSet<>();
@@ -103,11 +102,11 @@ public final class ChangeRolesValidator {
         return ids;
     }
 
-    /**
-     * Convierte un identificador recibido en UUID
+        /**
+     * Converts a received identifier into a UUID
      *
-     * @param rawId identificador recibido
-     * @return el UUID, o null si el valor esta vacio o no tiene formato UUID
+     * @param rawId identifier received
+     * @return the UUID, or null if the value is empty or does not have UUID format
      */
     private static UUID parseUuid(String rawId) {
         if (rawId == null) {
@@ -120,27 +119,31 @@ public final class ChangeRolesValidator {
         return UUID.fromString(trimmed);
     }
 
-    /**
-     * Convierte una lista de nombres de rol en un conjunto de roles
+        /**
+     * Converts a list of role names into a set of names, the name is trimmed but not normalized: it must arrive exactly
+     * as it is stored
      *
-     * @param field nombre del campo de la peticion, para reportar errores si es necesario
-     * @param rawRoles nombres de rol recibidos
-     * @param errors lista donde se agrega el error por campo si hay roles invalidos o repetidos
-     * @return conjunto de roles validos
+     * @param field name of the field of the request, to report errors if necessary
+     * @param rawRoles role names received
+     * @param errors list where the error by field is added if there are invalid or repeated names
+     * @return set of role names with valid format, in the order received
      */
-    private static Set<UserRole> parseRoles(String field, List<String> rawRoles,
+    private static Set<String> parseRoles(String field, List<String> rawRoles,
             List<ErrorResponse.ErrorDetail> errors) {
-        Set<UserRole> roles = EnumSet.noneOf(UserRole.class);
+        Set<String> roles = new LinkedHashSet<>();
         if (rawRoles == null) {
             return roles;
         }
 
         boolean anyInvalid = false;
         for (String rawRole : rawRoles) {
-            UserRole role = parseRole(rawRole);
-            if (role == null) {
+            String name = null;
+            if (rawRole != null) {
+                name = rawRole.trim();
+            }
+            if (!RoleNames.hasStoredFormat(name)) {
                 anyInvalid = true;
-            } else if (!roles.add(role)) {
+            } else if (!roles.add(name)) {
                 anyInvalid = true;
             }
         }
@@ -150,33 +153,15 @@ public final class ChangeRolesValidator {
         return roles;
     }
 
-    /**
-     * Convierte el nombre de un rol en su enum
+        /**
+     * Tells whether two sets of roles share any role
      *
-     * @param rawRole nombre recibido; puede ser null
-     * @return el rol del enum, envia null si ya era null o si no pertenece al enum
+     * @param first first set of roles
+     * @param second second set of roles
+     * @return true if at least one role is present in both sets
      */
-    private static UserRole parseRole(String rawRole) {
-        if (rawRole == null) {
-            return null;
-        }
-        try {
-            return UserRole.valueOf(rawRole.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    /**
-     * Indica si dos conjuntos de roles comparten algun rol
-     *
-     * @param first primer conjunto de roles
-     * @param second segundo conjunto de roles
-     * @return true si existe al menos un rol presente en ambos conjuntos
-     */
-    private static boolean hasCommonRole(Set<UserRole> first, Set<UserRole> second) {
-        Set<UserRole> common = EnumSet.noneOf(UserRole.class);
-        common.addAll(first);
+    private static boolean hasCommonRole(Set<String> first, Set<String> second) {
+        Set<String> common = new LinkedHashSet<>(first);
         common.retainAll(second);
         return !common.isEmpty();
     }

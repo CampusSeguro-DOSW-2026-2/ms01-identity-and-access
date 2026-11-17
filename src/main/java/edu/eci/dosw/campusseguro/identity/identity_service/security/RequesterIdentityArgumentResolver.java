@@ -9,38 +9,39 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UnauthenticatedException;
 
 /**
- * Entrega a los controladores la identidad del solicitante (RequesterIdentity) construida con las
- * cabeceras X-User-Id y X-User-Role que inyecta el API Gateway (RN-MS01-23, RG-07), la identidad nunca se
- * toma del cuerpo de la petición
+ * Delivers to the controllers the identity of the requester (RequesterIdentity) built with the headers X-User-Id,
+ * X-User-Role and X-User-Permission injected by the API Gateway (RN-MS01-23, RG-07), the identity is never taken from
+ * the body of the request
  */
 public class RequesterIdentityArgumentResolver implements HandlerMethodArgumentResolver {
 
-    /**
-     * Indica que este resolvedor atiende los parámetros de tipo RequesterIdentity
+        /**
+     * Indicates that this resolver handles the parameters of type RequesterIdentity
      *
-     * @param parameter parámetro del método del controlador
-     * @return true si el parámetro es de tipo RequesterIdentity
+     * @param parameter parameter of the controller method
+     * @return true if the parameter is of type RequesterIdentity
      */
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
         return RequesterIdentity.class.equals(parameter.getParameterType());
     }
 
-    /**
-     * Construye la identidad del solicitante a partir de las cabeceras de la petición
+        /**
+     * Builds the identity of the requester from the headers of the request
      *
-     * @param parameter parámetro del método del controlador
-     * @param mavContainer contenedor del modelo y la vista, no se usa
-     * @param webRequest petición en curso
-     * @param binderFactory fábrica de enlazadores de datos, no se usa
-     * @return la identidad del solicitante
-     * @throws UnauthenticatedException si faltan las cabeceras de identidad o su valor no es válido
+     * @param parameter parameter of the controller method
+     * @param mavContainer container of the model and the view, it is not used
+     * @param webRequest current request
+     * @param binderFactory factory of data binders, it is not used
+     * @return the identity of the requester
+     * @throws UnauthenticatedException if the identity headers are missing or their value is not valid
      */
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
             NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
         return IdentityHeaderParser.parse(
                 webRequest.getHeader(IdentityHeaderParser.USER_ID_HEADER),
-                webRequest.getHeader(IdentityHeaderParser.USER_ROLE_HEADER));
+                webRequest.getHeader(IdentityHeaderParser.USER_ROLE_HEADER),
+                webRequest.getHeader(IdentityHeaderParser.USER_PERMISSION_HEADER));
     }
 }

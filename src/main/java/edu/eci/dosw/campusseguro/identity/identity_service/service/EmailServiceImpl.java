@@ -7,11 +7,10 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 /**
- * Envío de correos de MS01 por SMTP, las credenciales y el servidor se configuran con variables de entorno
- * (RNF-MS01-06) y el código de recuperación nunca se escribe en los logs
+ * Sending of MS01 emails by SMTP, the credentials and the server are configured with environment variables
+ * (RNF-MS01-06) and the recovery code is never written to the logs
  *
- * MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD  servidor SMTP y sus credenciales
- * MAIL_FROM                                           remitente de los mensajes
+ * MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD SMTP server and its credentials MAIL_FROM sender of the messages
  */
 @Service
 public class EmailServiceImpl implements EmailService {
@@ -21,11 +20,11 @@ public class EmailServiceImpl implements EmailService {
     private final JavaMailSender mailSender;
     private final String from;
 
-    /**
-     * Crea el servicio con el cliente SMTP y el remitente
+        /**
+     * Creates the service with the SMTP client and the sender
      *
-     * @param mailSender cliente SMTP configurado por Spring Boot
-     * @param from remitente de los mensajes
+     * @param mailSender SMTP client configured by Spring Boot
+     * @param from sender of the messages
      */
     public EmailServiceImpl(JavaMailSender mailSender,
             @Value("${recovery.mail-from:no-reply@campusseguro.local}") String from) {
@@ -33,13 +32,13 @@ public class EmailServiceImpl implements EmailService {
         this.from = from;
     }
 
-    /**
-     * Envía el código de recuperación de contraseña al correo de la cuenta
+        /**
+     * Sends the password recovery code to the email of the account
      *
-     * @param to correo al que se envía el código
-     * @param code código de recuperación en claro, solo existe en memoria y en el mensaje
-     * @param validMinutes minutos que el código permanece vigente
-     * @throws MailException si el servidor de correo rechaza el mensaje o no está disponible
+     * @param to email to which the code is sent
+     * @param code recovery code in clear text, it only exists in memory and in the message
+     * @param validMinutes minutes during which the code remains valid
+     * @throws MailException if the mail server rejects the message or is not available
      */
     @Override
     public void sendRecoveryCode(String to, String code, int validMinutes) {
@@ -51,12 +50,12 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
-    /**
-     * Construye el texto del mensaje con el código y su vigencia
+        /**
+     * Builds the text of the message with the code and its validity
      *
-     * @param code código de recuperación en claro
-     * @param validMinutes minutos que el código permanece vigente
-     * @return el cuerpo del mensaje
+     * @param code recovery code in clear text
+     * @param validMinutes minutes during which the code remains valid
+     * @return the body of the message
      */
     private String buildBody(String code, int validMinutes) {
         StringBuilder body = new StringBuilder();

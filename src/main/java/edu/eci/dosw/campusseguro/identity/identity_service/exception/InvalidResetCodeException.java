@@ -1,18 +1,18 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
 /**
- * Código de recuperación incorrecto, vencido o ya usado (RF-MS01-08, flujo alterno A1)
+ * Incorrect, expired or already used recovery code (RF-MS01-08, alternate flow A1)
  *
- * Se usa la misma excepción, con el mismo mensaje, para todas las causas y también cuando el correo no
- * corresponde a una cuenta activa, de modo que el cliente no pueda distinguirlas. No registra traza de pila:
- * es un resultado esperado del negocio, no un error del sistema
+ * The same exception, with the same message, is used for all the causes and also when the email does not correspond to
+ * an active account, so that the client cannot distinguish them. It does not record a stack trace: it is an expected
+ * business result, not a system error
  */
 public class InvalidResetCodeException extends RuntimeException {
 
     public static final String MESSAGE = "Código incorrecto o vencido.";
 
-    /**
-     * Crea la excepción con el mensaje genérico del formulario F-05, sin traza de pila
+        /**
+     * Creates the exception with the generic message of form F-05, without a stack trace
      */
     public InvalidResetCodeException() {
         super(MESSAGE, null, false, false);

@@ -1,65 +1,52 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.security;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
- * Identidad de quien hace la peticion
+ * Identity of whoever makes the request, as delivered by the API Gateway in the headers
  *
- * @param userId id del usuario autenticado
- * @param roles roles del usuario
+ * @param userId id of the authenticated user
+ * @param roles names of the roles of the user (X-User-Role)
+ * @param permissions codes of the effective permissions of the user (X-User-Permission)
  */
-public record RequesterIdentity(UUID userId, Set<UserRole> roles) {
+public record RequesterIdentity(UUID userId, Set<String> roles, Set<String> permissions) {
 
-    /**
-     * Valida los componentes y deja los roles como un conjunto inmutable
+        /**
+     * Validates the components and leaves the roles and the permissions as immutable sets
      */
     public RequesterIdentity {
         Objects.requireNonNull(userId, "userId");
         Objects.requireNonNull(roles, "roles");
-        EnumSet<UserRole> copy = EnumSet.noneOf(UserRole.class);
-        copy.addAll(roles);
-        roles = Collections.unmodifiableSet(copy);
+        Objects.requireNonNull(permissions, "permissions");
+        roles = Collections.unmodifiableSet(new TreeSet<>(roles));
+        permissions = Collections.unmodifiableSet(new TreeSet<>(permissions));
     }
 
-    /**
-     * Calcula los permisos del solicitante
+        /**
+     * Tells whether the requester has the permission, the authorization is decided only with the permissions of the
+     * X-User-Permission header and never with the name of a role
      *
-     * @return conjunto con los permisos de todos los roles del solicitante
-     */
-    public Set<Permission> permissions() {
-        return UserRole.permissionsOf(roles);
-    }
-
-    /**
-     * Indica si alguno de los roles del solicitante concede el permiso
-     *
-     * @param permission permiso que se desea comprobar
-     * @return true si sus permisos contienen el permiso a comprobar, false en caso contrario
+     * @param permission permission to be checked
+     * @return true if its permissions contain the permission to be checked, false otherwise
      */
     public boolean hasPermission(Permission permission) {
-        return permissions().contains(permission);
+        return permissions.contains(permission.getCode());
     }
 
-    /**
-     * Devuelve los roles del solicitante con el mismo formato de la cabecera X-User-Role, separados por
-     * coma, sin espacios y en orden alfabetico (Estandares de Integracion, seccion 4)
+        /**
+     * Returns the roles of the requester with the same format as the X-User-Role header, separated by comma, without
+     * spaces and in alphabetical order (Integration Standards, section 4)
      *
-     * @return los nombres de los roles separados por coma
+     * @return the names of the roles separated by comma
      */
     public String rolesHeader() {
-        List<String> names = new ArrayList<>();
-        for (UserRole role : UserRole.sortedByName(roles)) {
-            names.add(role.name());
-        }
-        return String.join(",", names);
+        return String.join(",", RoleNames.sorted(roles));
     }
 }

@@ -11,8 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de POST /api/v1/auth/login (RF-MS01-02, formulario F-02), cualquier campo fuera del contrato
- * se rechaza (RG-04)
+ * Body of POST /api/v1/auth/login (RF-MS01-02, form F-02), any field outside the contract is rejected (RG-04)
  */
 public class LoginRequest extends StrictRequest {
 
@@ -31,19 +30,19 @@ public class LoginRequest extends StrictRequest {
     @Size(max = FieldRules.PASSWORD_MAX_LENGTH, message = PASSWORD_SIZE_MESSAGE)
     private String contrasena;
 
-    /**
-     * Devuelve el correo con el que se intenta iniciar sesión
+        /**
+     * Returns the email used to try to log in
      *
-     * @return el correo recortado y en minúsculas, null si no se envió
+     * @return the email trimmed and in lowercase, null if it was not sent
      */
     public String getCorreo() {
         return correo;
     }
 
-    /**
-     * Coloca el correo, recortado y normalizado a minúsculas según RG-01
+        /**
+     * Sets the email, trimmed and normalized to lowercase according to RG-01
      *
-     * @param correo correo recibido
+     * @param correo email received
      */
     public void setCorreo(String correo) {
         String trimmed = Texts.trimToNull(correo);
@@ -54,19 +53,19 @@ public class LoginRequest extends StrictRequest {
         }
     }
 
-    /**
-     * Devuelve la contraseña tal como se recibió
+        /**
+     * Returns the password as it was received
      *
-     * @return la contraseña, null si no se envió
+     * @return the password, null if it was not sent
      */
     public String getContrasena() {
         return contrasena;
     }
 
-    /**
-     * Coloca la contraseña, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param contrasena contraseña recibida
+     * @param contrasena password received
      */
     public void setContrasena(String contrasena) {
         this.contrasena = contrasena;

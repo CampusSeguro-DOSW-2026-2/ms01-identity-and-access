@@ -28,7 +28,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.controller.AuthContro
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
@@ -37,8 +36,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.AuthService;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 
 /**
- * Pruebas de POST /api/v1/auth/register (RF-MS01-01, formulario F-01), la validación de los campos la
- * hace el servicio y se prueba en UserServiceTest
+ * Tests of POST /api/v1/auth/register (RF-MS01-01, form F-01), the validation of the fields is done by the service and
+ * is tested in UserServiceTest
  */
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
@@ -57,8 +56,8 @@ class AuthControllerTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Prepara el controlador y el cliente de pruebas con el manejador global de errores
+        /**
+     * Prepares the controller and the test client with the global error handler
      */
     @BeforeEach
     void setUp() {
@@ -67,10 +66,10 @@ class AuthControllerTest {
                 .build();
     }
 
-    /**
-     * Construye el cuerpo JSON de un registro válido
+        /**
+     * Builds the JSON body of a valid registration
      *
-     * @return el cuerpo JSON de la petición
+     * @return the JSON body of the request
      */
     private String body() {
         return """
@@ -86,20 +85,20 @@ class AuthControllerTest {
                 """;
     }
 
-    /**
-     * Construye la respuesta de un usuario registrado de ejemplo
+        /**
+     * Builds the response of a sample registered user
      *
-     * @return la respuesta del registro
+     * @return the response of the registration
      */
     private UserResponse buildResponse() {
         return new UserResponse(UUID.randomUUID(), "carlos.gomez@escuelaing.edu.co",
-                List.of(UserRole.ESTUDIANTE), UserState.ACTIVO);
+                List.of("ESTUDIANTE"), UserState.ACTIVO);
     }
 
-    /**
-     * Un registro correcto responde 201 con los campos del contrato y sin contraseña
+        /**
+     * A successful registration answers 201 with the fields of the contract and without a password
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void register_validRequest_returns201WithTheContractFieldsAndWithoutPassword() throws Exception {
@@ -119,10 +118,10 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.password_hash").doesNotExist());
     }
 
-    /**
-     * Los nombres de campo del contrato se asignan a la petición que recibe el servicio
+        /**
+     * The field names of the contract are assigned to the request that the service receives
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void register_mapsTheWireNamesToTheRequest() throws Exception {
@@ -143,10 +142,10 @@ class AuthControllerTest {
         assertEquals("MiPassword#2026", request.getPasswordConfirmation());
     }
 
-    /**
-     * Un correo ya registrado responde 409 con el código de conflicto
+        /**
+     * An already registered email answers 409 with the conflict code
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void register_emailAlreadyExists_returns409() throws Exception {
@@ -165,10 +164,10 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.correlation_id").value(CORRELATION_ID));
     }
 
-    /**
-     * Los errores de validación del servicio responden 400 con el detalle por campo
+        /**
+     * The validation errors of the service answer 400 with the detail by field
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void register_validationErrorsFromTheService_return400() throws Exception {
@@ -185,10 +184,10 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.errores[1].campo").value("confirmar_contrasena"));
     }
 
-    /**
-     * Un JSON mal formado responde 400 sin llamar al servicio
+        /**
+     * A malformed JSON answers 400 without calling the service
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void register_malformedJson_returns400WithoutCallingTheService() throws Exception {
@@ -199,10 +198,10 @@ class AuthControllerTest {
         verifyNoInteractions(userService);
     }
 
-    /**
-     * Una petición sin cuerpo responde 400 sin llamar al servicio
+        /**
+     * A request without a body answers 400 without calling the service
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void register_missingBody_returns400WithoutCallingTheService() throws Exception {
@@ -212,10 +211,10 @@ class AuthControllerTest {
         verifyNoInteractions(userService);
     }
 
-    /**
-     * El registro es público y no exige las cabeceras de identidad
+        /**
+     * The registration is public and does not require the identity headers
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void register_isPublic_itDoesNotRequireTheIdentityHeaders() throws Exception {

@@ -23,7 +23,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 
 /**
- * Reglas del formulario F-08 de cambio de estado
+ * Rules of form F-08 for the status change
  */
 class ChangeStatusRequestValidationTest {
 
@@ -33,8 +33,8 @@ class ChangeStatusRequestValidationTest {
     private static ValidatorFactory factory;
     private static RequestValidator validator;
 
-    /**
-     * Crea el validador que se comparte entre las pruebas
+        /**
+     * Creates the validator that is shared between the tests
      */
     @BeforeAll
     static void init() {
@@ -42,20 +42,20 @@ class ChangeStatusRequestValidationTest {
         validator = new RequestValidator(factory.getValidator());
     }
 
-    /**
-     * Libera la fábrica de validadores
+        /**
+     * Releases the validator factory
      */
     @AfterAll
     static void close() {
         factory.close();
     }
 
-    /**
-     * Construye una petición de cambio de estado
+        /**
+     * Builds a status change request
      *
-     * @param ids identificadores de los usuarios
-     * @param estado estado solicitado
-     * @return la petición construida
+     * @param ids identifiers of the users
+     * @param estado requested status
+     * @return the built request
      */
     private static ChangeStatusRequest request(List<String> ids, String estado) {
         ChangeStatusRequest request = new ChangeStatusRequest();
@@ -64,11 +64,11 @@ class ChangeStatusRequestValidationTest {
         return request;
     }
 
-    /**
-     * Obtiene el mensaje de error de cada campo inválido
+        /**
+     * Gets the error message of each invalid field
      *
-     * @param request petición que se valida
-     * @return mapa de nombre de campo a mensaje, ordenado por campo
+     * @param request request that is validated
+     * @return map from field name to message, sorted by field
      */
     private static Map<String, String> errors(ChangeStatusRequest request) {
         Map<String, String> result = new TreeMap<>();
@@ -78,8 +78,8 @@ class ChangeStatusRequestValidationTest {
         return result;
     }
 
-    /**
-     * Una petición válida no produce errores
+        /**
+     * A valid request produces no errors
      */
     @Test
     void validRequest_hasNoErrors() {
@@ -87,8 +87,8 @@ class ChangeStatusRequestValidationTest {
         assertTrue(errors(request(List.of(ID_ONE), "ACTIVO")).isEmpty());
     }
 
-    /**
-     * Una lista de identificadores vacía o ausente se rechaza con el mensaje del formulario
+        /**
+     * An empty or absent list of identifiers is rejected with the message of the form
      */
     @Test
     void emptyOrMissingIds_areRejectedWithTheFormMessage() {
@@ -96,8 +96,8 @@ class ChangeStatusRequestValidationTest {
         assertEquals(Map.of("ids", "Seleccione al menos un usuario."), errors(request(null, "ACTIVO")));
     }
 
-    /**
-     * Un identificador inválido se informa sobre el campo de identificadores
+        /**
+     * An invalid identifier is reported on the identifiers field
      */
     @Test
     void invalidIdInTheList_isReportedOnTheIdsField() {
@@ -105,8 +105,8 @@ class ChangeStatusRequestValidationTest {
                 errors(request(List.of(ID_ONE, "no-es-uuid"), "ACTIVO")));
     }
 
-    /**
-     * Un identificador nulo o en blanco se rechaza
+        /**
+     * A null or blank identifier is rejected
      */
     @Test
     void nullOrBlankIdInTheList_isRejected() {
@@ -116,8 +116,8 @@ class ChangeStatusRequestValidationTest {
         assertEquals(Map.of("ids", "Identificador de usuario no válido."), errors(request(List.of("  "), "ACTIVO")));
     }
 
-    /**
-     * Un estado inválido o ausente se rechaza con el mensaje del formulario
+        /**
+     * An invalid or absent status is rejected with the message of the form
      */
     @Test
     void invalidOrMissingState_isRejectedWithTheFormMessage() {
@@ -126,8 +126,8 @@ class ChangeStatusRequestValidationTest {
         assertEquals(Map.of("estado", "Estado no válido."), errors(request(List.of(ID_ONE), "activo")));
     }
 
-    /**
-     * Un campo que no está en el contrato se rechaza (RG-04)
+        /**
+     * A field that is not in the contract is rejected (RG-04)
      */
     @Test
     void unknownField_isRejected() {
@@ -137,8 +137,8 @@ class ChangeStatusRequestValidationTest {
         assertEquals(Map.of("rol", "El campo no está permitido."), errors(request));
     }
 
-    /**
-     * Los campos de texto se recortan (RG-01)
+        /**
+     * The text fields are trimmed (RG-01)
      */
     @Test
     void textFields_areTrimmed() {
@@ -149,8 +149,8 @@ class ChangeStatusRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * La conversión a identificadores conserva el orden de la petición y elimina repetidos
+        /**
+     * The conversion to identifiers keeps the order of the request and removes repeated ones
      */
     @Test
     void toUserIds_keepsTheRequestOrderAndRemovesDuplicates() {
@@ -161,8 +161,8 @@ class ChangeStatusRequestValidationTest {
         assertEquals(List.of(UUID.fromString(ID_TWO), UUID.fromString(ID_ONE)), List.copyOf(ids));
     }
 
-    /**
-     * La conversión del estado devuelve el valor del catálogo
+        /**
+     * The conversion of the status returns the value of the catalog
      */
     @Test
     void toState_returnsTheCatalogValue() {

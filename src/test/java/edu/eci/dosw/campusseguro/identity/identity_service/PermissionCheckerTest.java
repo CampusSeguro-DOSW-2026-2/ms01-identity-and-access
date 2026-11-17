@@ -10,36 +10,34 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.PermissionChecker;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * La autorización se decide por permisos y nunca por nombres de rol (Estándares de Seguridad y Contratos de
- * Integración)
+ * The authorization is decided by permissions and never by role names (Security Standards and Integration Contracts)
  */
 class PermissionCheckerTest {
 
     private static final UUID USER_ID = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
 
-    /**
-     * Un solicitante que tiene el permiso pasa la verificación
+        /**
+     * A requester that has the permission passes the verification
      */
     @Test
     void require_withThePermission_doesNothing() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, Set.of(UserRole.ADMIN));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ADMIN");
 
         assertDoesNotThrow(() -> PermissionChecker.require(requester, Permission.MS01_USER_STATUS));
     }
 
-    /**
-     * Un solicitante sin el permiso recibe el mensaje del catálogo de errores
+        /**
+     * A requester without the permission receives the message of the error catalog
      */
     @Test
     void require_withoutThePermission_throwsForbiddenWithTheCatalogMessage() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, Set.of(UserRole.ESTUDIANTE));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ESTUDIANTE");
 
         ForbiddenOperationException exception = assertThrows(ForbiddenOperationException.class,
                 () -> PermissionChecker.require(requester, Permission.MS01_USER_STATUS));
@@ -47,13 +45,28 @@ class PermissionCheckerTest {
         assertEquals(ErrorCode.FORBIDDEN.getMessage(), exception.getMessage());
     }
 
-    /**
-     * Con varios roles basta que uno de ellos otorgue el permiso
+        /**
+     * The permission decides and not the name of the role: ADMIN without the permission is rejected and a custom role
+     * with the permission passes
+     */
+    @Test
+    void require_dependsOnThePermissionAndNotOnTheRoleName() {
+        RequesterIdentity adminWithoutPermission = TestIdentities.withPermissions(USER_ID, Set.of("ADMIN"),
+                "ms01:user:read");
+        RequesterIdentity customWithPermission = TestIdentities.withPermissions(USER_ID, Set.of("SOPORTE"),
+                "ms01:role:manage");
+
+        assertThrows(ForbiddenOperationException.class,
+                () -> PermissionChecker.require(adminWithoutPermission, Permission.MS01_ROLE_MANAGE));
+        assertDoesNotThrow(() -> PermissionChecker.require(customWithPermission, Permission.MS01_ROLE_MANAGE));
+    }
+
+        /**
+     * With several roles it is enough that one of them grants the permission
      */
     @Test
     void require_withSeveralRoles_acceptsThePermissionOfAnyOfThem() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID,
-                Set.of(UserRole.ESTUDIANTE, UserRole.ADMIN));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "ESTUDIANTE", "ADMIN");
 
         assertDoesNotThrow(() -> PermissionChecker.require(requester, Permission.MS01_USER_ROLES));
     }

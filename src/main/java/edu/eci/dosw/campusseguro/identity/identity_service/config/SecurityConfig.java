@@ -17,26 +17,26 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHead
 import edu.eci.dosw.campusseguro.identity.identity_service.security.UnauthenticatedEntryPoint;
 
 /**
- * Configuración de seguridad de MS01 (RN-MS01-23, RNF-MS01-03, RNF-MS01-09), MS01 nunca recibe ni valida
- * el JWT: confía en las cabeceras de identidad que inyecta el API Gateway y no configura CORS
+ * Security configuration of MS01 (RN-MS01-23, RNF-MS01-03, RNF-MS01-09), MS01 never receives or validates the JWT: it
+ * trusts the identity headers injected by the API Gateway and does not configure CORS
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    /**
-     * Cadena de filtros HTTP, solo las rutas publicas exactas del estandar de integracion son
-     * publicas y el resto exige la identidad de las cabeceras X-User-Id y X-User-Role
-     * que inyecta el API Gateway (RN-MS01-23)
+        /**
+     * HTTP filter chain, only the exact public routes of the integration standard are public and everything else
+     * requires the identity of the headers X-User-Id, X-User-Role and X-User-Permission injected by the API Gateway
+     * (RN-MS01-23)
      *
-     * Si falta se responde 401 con el cuerpo ErrorResponse
+     * If it is missing, 401 is answered with the ErrorResponse body
      *
-     * La autorizacion (403) la decide cada servicio con la matriz Rol-Permiso
+     * The authorization (403) is decided by each service with the permissions of X-User-Permission
      *
-     * @param http constructor de la configuracion de seguridad HTTP
-     * @param swaggerEnabled indica si la documentacion OpenAPI esta habilitada (solo en desarrollo local)
-     * @return la cadena de filtros configurada
-     * @throws Exception si la configuracion no se puede construir
+     * @param http builder of the HTTP security configuration
+     * @param swaggerEnabled tells whether the OpenAPI documentation is enabled (only in local development)
+     * @return the configured filter chain
+     * @throws Exception if the configuration cannot be built
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
@@ -69,9 +69,9 @@ public class SecurityConfig {
     }
 
     /**
-     * Codificador con el que se guardan las contrasenas (RN-MS01-04)
+     * Encoder with which the passwords are stored (RN-MS01-04)
      *
-     * @return codificador BCrypt
+     * @return BCrypt encoder
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
