@@ -78,6 +78,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoun
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.PasswordResetCodeRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
+import edu.eci.dosw.campusseguro.identity.identity_service.service.AfterCommitMailer;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.EmailService;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.PasswordServiceImpl;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
@@ -152,7 +153,7 @@ class PasswordServiceTest {
         PasswordServiceImpl created = new PasswordServiceImpl(userRepository, codeRepository, passwordEncoder,
                 emailService, new AuditRecorder(auditPublisher, Clock.fixed(NOW, ZoneOffset.UTC)),
                 new RequestValidator(Validation.buildDefaultValidatorFactory().getValidator()),
-                Clock.fixed(NOW, ZoneOffset.UTC), policy, executor);
+                Clock.fixed(NOW, ZoneOffset.UTC), policy, new AfterCommitMailer(executor));
         clearInvocations(passwordEncoder);
         return created;
     }

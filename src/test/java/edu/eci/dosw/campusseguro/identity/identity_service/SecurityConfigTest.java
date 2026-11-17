@@ -144,7 +144,7 @@ class SecurityConfigTest {
     }
 
         /**
-     * The four public routes of the standard pass the security without headers, in this test their controller does not
+     * The six public routes of the standard pass the security without headers, in this test their controller does not
      * exist, so the response is the normalized 404 and not a 401
      *
      * @param path public route of the standard
@@ -153,6 +153,8 @@ class SecurityConfigTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "/api/v1/auth/register",
+            "/api/v1/auth/register/verify",
+            "/api/v1/auth/register/resend",
             "/api/v1/auth/login",
             "/api/v1/auth/password/forgot",
             "/api/v1/auth/password/reset" })
@@ -172,6 +174,7 @@ class SecurityConfigTest {
     @ValueSource(strings = {
             "/api/v1/auth/logout",
             "/api/v1/auth/otra",
+            "/api/v1/auth/register/otra",
             "/api/v1/auth/password/otra" })
     void otherAuthRoutes_areNotPublic(String path) throws Exception {
         mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))

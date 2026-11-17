@@ -7,11 +7,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.BatchUsersRespons
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangeStatusResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
-import edu.eci.dosw.campusseguro.identity.identity_service.exception.EmailAlreadyExistsException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.UserNotFoundException;
@@ -19,21 +16,10 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFou
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * User registration (RF-MS01-01), management of the own profile (RF-MS01-06) and user administration: query and
- * activation or deactivation (RF-MS01-07)
+ * Management of the own profile (RF-MS01-06) and user administration: query and activation or deactivation
+ * (RF-MS01-07), the registration is in RegistrationService (RF-MS01-01)
  */
 public interface UserService {
-
-        /**
-     * Registers an institutional user (RF-MS01-01), every attempt, successful or failed, is audited in MS08
-     *
-     * @param request data of the registration form
-     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
-     * @return the created user with its id, email, roles and status
-     * @throws InvalidRequestException if the data breaks form F-01
-     * @throws EmailAlreadyExistsException if the email is already registered
-     */
-    UserResponse create(UserCreateRequest request, String correlationId);
 
         /**
      * Queries the profile of the requester themselves (RF-MS01-03, RF-MS01-06)

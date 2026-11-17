@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Sending of MS01 emails by SMTP, the credentials and the server are configured with environment variables
- * (RNF-MS01-06) and the recovery code is never written to the logs
+ * (RNF-MS01-06) and the codes are never written to the logs
  *
  * MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD SMTP server and its credentials MAIL_FROM sender of the messages
  */
@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class EmailServiceImpl implements EmailService {
 
     public static final String RECOVERY_SUBJECT = "Código de recuperación de contraseña de CampusSeguro";
+    public static final String REGISTRATION_SUBJECT = "Código de verificación del registro en CampusSeguro";
 
     private final JavaMailSender mailSender;
     private final String from;
@@ -60,10 +61,46 @@ public class EmailServiceImpl implements EmailService {
     private String buildBody(String code, int validMinutes) {
         StringBuilder body = new StringBuilder();
         body.append("Hola,\n\n");
-        body.append("Recibimos una solicitud para restablecer la contraseña de tu cuenta de CampusSeguro.\n\n");
-        body.append("Tu código de recuperación es: ").append(code).append("\n\n");
+        body.append("Recibimos una solicitud para restablecer la contraseña de su cuenta de CampusSeguro.\n\n");
+        body.append("Su código de recuperación es: ").append(code).append("\n\n");
         body.append("El código vence en ").append(validMinutes).append(" minutos y solo se puede usar una vez.\n\n");
-        body.append("Si no hiciste esta solicitud, puedes ignorar este mensaje.");
+        body.append("Si no hizo esta solicitud, ignore este mensaje.");
+        return body.toString();
+    }
+
+        /**
+     * Sends the verification code of the registration to the email that is being registered
+     *
+     * @param to email to which the code is sent
+     * @param code verification code in clear text, it only exists in memory and in the message
+     * @param validMinutes minutes during which the code remains valid
+     * @throws MailException if the mail server rejects the message or is not available
+     */
+    @Override
+    public void sendRegistrationCode(String to, String code, int validMinutes) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(to);
+        message.setSubject(REGISTRATION_SUBJECT);
+        message.setText(buildRegistrationBody(code, validMinutes));
+        mailSender.send(message);
+    }
+
+        /**
+     * Builds the text of the message with the verification code
+     *
+     * @param code verification code
+     * @param validMinutes minutes of validity
+     * @return body of the message
+     */
+    private String buildRegistrationBody(String code, int validMinutes) {
+        StringBuilder body = new StringBuilder();
+        body.append("Hola,\n\n");
+        body.append("Recibimos una solicitud para crear una cuenta de CampusSeguro con este correo.\n\n");
+        body.append("Su código de verificación es: ").append(code).append("\n\n");
+        body.append("El código vence en ").append(validMinutes).append(" minutos. ");
+        body.append("La cuenta solo se crea cuando ingrese este código.\n\n");
+        body.append("Si no hizo esta solicitud, ignore este mensaje: no se creará ninguna cuenta.");
         return body.toString();
     }
 }

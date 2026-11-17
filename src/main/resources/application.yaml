@@ -13,8 +13,8 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
-  # Real email through Gmail (RF-MS01-08): SMTP with STARTTLS on 587 and the account of the project. The password is an
-  # Google application password and it only arrives through MAIL_PASSWORD (never in the repository)
+  # Real email through Gmail (RF-MS01-01 and RF-MS01-08): SMTP with STARTTLS on 587 and the account of the project.
+  # The password is an Google application password and it only arrives through MAIL_PASSWORD (never in the repository)
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -46,7 +46,7 @@ management:
     health:
       show-details: never
       show-components: never
-  # The health reflects MS01 and its DB: a failure of the external SMTP only affects the password recovery
+  # The health reflects MS01 and its DB: a failure of the external SMTP only affects the emails with codes
   health:
     mail:
       enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}
@@ -74,6 +74,13 @@ internal:
 
 identity:
   institutional-domains: ${INSTITUTIONAL_EMAIL_DOMAINS:escuelaing.edu.co,mail.escuelaing.edu.co}
+
+registration:
+  code-ttl-minutes: ${REGISTRATION_CODE_TTL_MINUTES:15}
+  max-attempts: ${REGISTRATION_MAX_ATTEMPTS:5}
+  resend-cooldown-seconds: ${REGISTRATION_RESEND_COOLDOWN_SECONDS:60}
+  max-codes-per-day: ${REGISTRATION_MAX_CODES_PER_DAY:5}
+  cleanup-interval-minutes: ${REGISTRATION_CLEANUP_INTERVAL_MINUTES:60}
 
 recovery:
   code-ttl-minutes: ${RECOVERY_CODE_TTL_MINUTES:15}

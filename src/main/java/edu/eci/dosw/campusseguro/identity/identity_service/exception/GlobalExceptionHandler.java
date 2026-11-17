@@ -81,6 +81,21 @@ public class GlobalExceptionHandler {
     }
 
         /**
+     * RF-MS01-01: incorrect or expired verification code of the registration, or an email without a pending
+     * registration, the system answers 400 with code CODIGO_INVALIDO and a generic message that does not reveal the
+     * cause
+     *
+     * @param ex exception with the message of form F-14
+     * @param request request, from which the correlation id is taken
+     * @return 400 with the normalized error body
+     */
+    @ExceptionHandler(InvalidVerificationCodeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidVerificationCode(InvalidVerificationCodeException ex,
+            HttpServletRequest request) {
+        return build(ErrorCode.INVALID_CODE, ex.getMessage(), List.of(), request);
+    }
+
+        /**
      * RN-MS01-23: the identity of the caller could not be established (the headers X-User-Id / X-User-Role /
      * X-User-Permission are missing or their value is not valid), the system answers 401 with code NO_AUTENTICADO
      *

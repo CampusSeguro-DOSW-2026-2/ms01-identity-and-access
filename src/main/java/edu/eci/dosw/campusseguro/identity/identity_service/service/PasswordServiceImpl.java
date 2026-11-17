@@ -8,23 +8,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
-import edu.eci.dosw.campusseguro.identity.identity_service.config.PasswordRecoveryConfig;
 import edu.eci.dosw.campusseguro.identity.identity_service.config.RecoveryPolicy;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
@@ -87,7 +80,7 @@ public class PasswordServiceImpl implements PasswordService {
     private final RequestValidator requestValidator;
     private final Clock clock;
     private final RecoveryPolicy policy;
-    private final Executor mailExecutor;
+    private final AfterCommitMailer mailer;
     private final SecureRandom secureRandom = new SecureRandom();
 
         /**
@@ -109,12 +102,12 @@ public class PasswordServiceImpl implements PasswordService {
      * @param requestValidator validator of the request bodies
      * @param clock UTC clock with which the codes are dated and expire
      * @param policy validity, maximum attempts and wait between requests of the codes
-     * @param mailExecutor executor with which the emails are sent outside the request thread
+     * @param mailer sender of the email after the commit and outside the request thread
      */
     public PasswordServiceImpl(UserRepository userRepository, PasswordResetCodeRepository codeRepository,
             PasswordEncoder passwordEncoder, EmailService emailService, AuditRecorder auditRecorder,
             RequestValidator requestValidator, Clock clock, RecoveryPolicy policy,
-            @Qualifier(PasswordRecoveryConfig.MAIL_EXECUTOR) Executor mailExecutor) {
+            AfterCommitMailer mailer) {
         this.userRepository = userRepository;
         this.codeRepository = codeRepository;
         this.passwordEncoder = passwordEncoder;
@@ -123,7 +116,7 @@ public class PasswordServiceImpl implements PasswordService {
         this.requestValidator = requestValidator;
         this.clock = clock;
         this.policy = policy;
-        this.mailExecutor = mailExecutor;
+        this.mailer = mailer;
         this.dummyHash = passwordEncoder.encode(dummyPassword);
     }
 
@@ -320,7 +313,9 @@ public class PasswordServiceImpl implements PasswordService {
         entity.setExpiresAt(now.plus(policy.codeTtl()));
         codeRepository.saveAndFlush(entity);
 
-        scheduleEmail(user.getId(), user.getEmail(), code, corr);
+        String email = user.getEmail();
+        mailer.sendAfterCommit("recovery code of user " + user.getId(),
+                () -> emailService.sendRecoveryCode(email, code, policy.codeTtlMinutes()), corr);
         log.info("Recovery code generated. user={}", user.getId());
     }
 
@@ -368,86 +363,6 @@ public class PasswordServiceImpl implements PasswordService {
                     code.getUserId());
         }
         codeRepository.saveAndFlush(code);
-    }
-
-        /**
-     * Schedules the sending of the email for after the transaction is committed, so a code that was not stored is never
-     * sent, if there is no active transaction it is sent immediately
-     *
-     * @param userId id of the recipient user
-     * @param email email of the recipient
-     * @param code code in clear text that is sent
-     * @param corr correlation id of the request
-     */
-    private void scheduleEmail(UUID userId, String email, String code, String corr) {
-        Runnable delivery = new Runnable() {
-            @Override
-            public void run() {
-                deliver(userId, email, code, corr);
-            }
-        };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            dispatch(delivery, userId);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                dispatch(delivery, userId);
-            }
-        });
-    }
-
-        /**
-     * Hands the sending to the email executor, if the queue is full the sending is discarded and logged
-     *
-     * @param delivery task that sends the email
-     * @param userId id of the recipient user
-     */
-    private void dispatch(Runnable delivery, UUID userId) {
-        try {
-            mailExecutor.execute(delivery);
-        } catch (RejectedExecutionException e) {
-            log.error("Sending of the recovery code discarded: the mail queue is full. user={}",
-                    userId);
-        }
-    }
-
-        /**
-     * Sends the email with the code, a failure of the mail server is logged without the code or the email and never
-     * reaches the client
-     *
-     * @param userId id of the recipient user
-     * @param email email of the recipient
-     * @param code code in clear text that is sent
-     * @param corr correlation id of the request, it is placed in the logging context of the sending thread
-     */
-    private void deliver(UUID userId, String email, String code, String corr) {
-        MDC.put(CorrelationIds.MDC_KEY, corr);
-        try {
-            emailService.sendRecoveryCode(email, code, policy.codeTtlMinutes());
-            log.info("Recovery code sent. user={}", userId);
-        } catch (RuntimeException e) {
-            log.error("The recovery code could not be sent. user={} cause={}", userId,
-                    rootCauseName(e));
-        } finally {
-            MDC.remove(CorrelationIds.MDC_KEY);
-        }
-    }
-
-        /**
-     * Gets the class name of the root cause of an error, without its message because it may contain the email of the
-     * recipient
-     *
-     * @param error error from which the root cause is obtained
-     * @return the simple name of the class of the root cause
-     */
-    private String rootCauseName(Throwable error) {
-        Throwable root = error;
-        while (root.getCause() != null && root.getCause() != root) {
-            root = root.getCause();
-        }
-        return root.getClass().getSimpleName();
     }
 
         /**

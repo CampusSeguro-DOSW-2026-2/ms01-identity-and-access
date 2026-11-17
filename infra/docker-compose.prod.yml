@@ -48,9 +48,9 @@ services:
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       SWAGGER_ENABLED: "false"
-      # The health reflects MS01 and its DB: a failure of the external SMTP only affects the password recovery.
+      # The health reflects MS01 and its DB: a failure of the external SMTP only affects the emails with codes.
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
-    # Optional variables of the environment (e.g. INTERNAL_ALLOWED_SERVICES, RECOVERY_*), if there are any.
+    # Optional variables of the environment (e.g. INTERNAL_ALLOWED_SERVICES, REGISTRATION_*, RECOVERY_*), if there are any.
     env_file:
       - path: extra.env
         required: false
