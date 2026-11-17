@@ -6,8 +6,8 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * Nombres de rol de CampusSeguro: los dos roles de sistema que el código necesita conocer, el nombre
- * reservado, el formato de un nombre guardado y la normalización de un nombre recibido (RG-08)
+ * Role names of CampusSeguro: the two system roles that the code needs to know, the reserved name, the format of a
+ * stored name and the normalization of a received name (RG-08)
  */
 public final class RoleNames {
 
@@ -18,40 +18,40 @@ public final class RoleNames {
     private static final Pattern STORED_FORMAT = Pattern.compile("^[A-Z][A-Z0-9_]{1,29}$");
     private static final Pattern ENTRY_FORMAT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]{1,29}$");
 
-    /**
-     * Clase de utilidad, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private RoleNames() {
     }
 
-    /**
-     * Indica si un nombre tiene el formato de un rol guardado, el mismo de la tabla roles y de la cabecera
-     * X-User-Role: mayúsculas, dígitos y guion bajo, de 2 a 30 caracteres y empezando con una letra
+        /**
+     * Tells whether a name has the format of a stored role, the same as the roles table and the X-User-Role header:
+     * uppercase letters, digits and underscore, from 2 to 30 characters and starting with a letter
      *
-     * @param name nombre a comprobar, puede ser null
-     * @return true si el nombre es un nombre de rol con formato válido, sin importar si existe
+     * @param name name to check, may be null
+     * @return true if the name is a role name with a valid format, whether it exists or not
      */
     public static boolean hasStoredFormat(String name) {
         return name != null && STORED_FORMAT.matcher(name).matches();
     }
 
-    /**
-     * Indica si un nombre está reservado y no puede darse a un rol, es el segmento fijo de la ruta de
-     * consulta del detalle de los roles
+        /**
+     * Tells whether a name is reserved and cannot be given to a role, it is the fixed segment of the route that queries
+     * the detail of the roles
      *
-     * @param name nombre ya normalizado, puede ser null
-     * @return true si el nombre es el reservado
+     * @param name already normalized name, may be null
+     * @return true if the name is the reserved one
      */
     public static boolean isReserved(String name) {
         return RESERVED.equals(name);
     }
 
-    /**
-     * Normaliza el nombre de un rol recibido en una ruta o en un cuerpo (RG-08): recorta los espacios, valida el
-     * formato de entrada y lo pasa a mayúsculas
+        /**
+     * Normalizes the name of a role received in a route or in a body (RG-08): trims the spaces, validates the input
+     * format and converts it to uppercase
      *
-     * @param raw nombre recibido, puede ser null
-     * @return el nombre en mayúsculas, o null si es null o no tiene un formato válido
+     * @param raw name received, may be null
+     * @return the name in uppercase, or null if it is null or does not have a valid format
      */
     public static String normalize(String raw) {
         if (raw == null) {
@@ -64,11 +64,11 @@ public final class RoleNames {
         return trimmed.toUpperCase(Locale.ROOT);
     }
 
-    /**
-     * Ordena nombres de rol alfabéticamente
+        /**
+     * Sorts role names alphabetically
      *
-     * @param roles nombres de rol
-     * @return lista nueva con los nombres en orden alfabético
+     * @param roles role names
+     * @return new list with the names in alphabetical order
      */
     public static List<String> sorted(Collection<String> roles) {
         return roles.stream()

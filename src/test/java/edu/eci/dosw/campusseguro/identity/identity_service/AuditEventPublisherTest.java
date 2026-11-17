@@ -30,8 +30,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisherImpl;
 
 /**
- * Publicación asíncrona de eventos de auditoría hacia MS08 a través del Gateway (RNF-MS01-10), contra un
- * servidor HTTP local de pruebas
+ * Asynchronous publication of audit events to MS08 through the Gateway (RNF-MS01-10), against a local HTTP test server
  */
 class AuditEventPublisherTest {
 
@@ -41,17 +40,17 @@ class AuditEventPublisherTest {
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
     private static final String SERVICE_KEY = "clave-de-servicio";
 
-    /**
-     * Petición HTTP que recibió el servidor local de pruebas
+        /**
+     * HTTP request received by the local test server
      *
-     * @param method método HTTP
-     * @param path ruta solicitada
-     * @param contentType tipo de contenido
-     * @param correlationId valor de la cabecera de correlación
-     * @param serviceKey valor de la cabecera de llave de servicio
-     * @param userId valor de la cabecera de identificador de usuario
-     * @param userRole valor de la cabecera de roles
-     * @param body cuerpo recibido
+     * @param method HTTP method
+     * @param path requested path
+     * @param contentType content type
+     * @param correlationId value of the correlation header
+     * @param serviceKey value of the service key header
+     * @param userId value of the user identifier header
+     * @param userRole value of the roles header
+     * @param body body received
      */
     private record Received(String method, String path, String contentType, String correlationId,
             String serviceKey, String userId, String userRole, String body) {
@@ -64,10 +63,10 @@ class AuditEventPublisherTest {
     private volatile CountDownLatch gate;
     private final CountDownLatch responded = new CountDownLatch(1);
 
-    /**
-     * Arranca un servidor HTTP local que hace de API Gateway y guarda las peticiones recibidas
+        /**
+     * Starts a local HTTP server that acts as the API Gateway and stores the received requests
      *
-     * @throws IOException si no se puede abrir el puerto local
+     * @throws IOException if the local port cannot be opened
      */
     @BeforeEach
     void startServer() throws IOException {
@@ -86,13 +85,13 @@ class AuditEventPublisherTest {
                         new String(body, StandardCharsets.UTF_8));
                 CountDownLatch latch = gate;
                 if (latch != null) {
-                    // Respuesta retenida: la peticion se publica antes para que el test pueda observarla.
+                    // Held response: the request is published beforehand so the test can observe it.
                     received.add(request);
                     latch.await(10, TimeUnit.SECONDS);
                     exchange.sendResponseHeaders(responseStatus, -1);
                 } else {
-                    // Se responde primero y se publica despues: cuando el test ve la peticion, la
-                    // respuesta ya salio y cerrar el servidor no corta el intercambio.
+                    // The response is sent first and the request is published afterwards: when the test sees the
+                    // request, the response has already gone out and closing the server does not cut the exchange.
                     exchange.sendResponseHeaders(responseStatus, -1);
                     received.add(request);
                 }
@@ -106,8 +105,8 @@ class AuditEventPublisherTest {
         server.start();
     }
 
-    /**
-     * Detiene el servidor HTTP local
+        /**
+     * Stops the local HTTP server
      */
     @AfterEach
     void stopServer() {
@@ -121,21 +120,21 @@ class AuditEventPublisherTest {
         }
     }
 
-    /**
-     * Obtiene la URL base del servidor local
+        /**
+     * Gets the base URL of the local server
      *
-     * @return la URL base sin barra final
+     * @return the base URL without a trailing slash
      */
     private String baseUrl() {
         return "http://127.0.0.1:" + server.getAddress().getPort();
     }
 
-    /**
-     * Crea el publicador apuntando a una URL del gateway
+        /**
+     * Creates the publisher pointing to a gateway URL
      *
-     * @param gatewayUrl URL del gateway, puede estar vacía
-     * @param serviceKey llave de servicio, puede estar vacía
-     * @return el publicador de eventos
+     * @param gatewayUrl gateway URL, may be empty
+     * @param serviceKey service key, may be empty
+     * @return the event publisher
      */
     private AuditEventPublisherImpl publisher(String gatewayUrl, String serviceKey) {
         HttpClient client = HttpClient.newBuilder()
@@ -145,11 +144,11 @@ class AuditEventPublisherTest {
         return new AuditEventPublisherImpl(client, gatewayUrl, serviceKey, Duration.ofSeconds(2));
     }
 
-    /**
-     * Espera la siguiente petición recibida por el servidor local
+        /**
+     * Waits for the next request received by the local server
      *
-     * @return la petición recibida
-     * @throws InterruptedException si se interrumpe la espera
+     * @return the received request
+     * @throws InterruptedException if the wait is interrupted
      */
     private Received awaitRequest() throws InterruptedException {
         Received request = received.poll(5, TimeUnit.SECONDS);
@@ -157,20 +156,20 @@ class AuditEventPublisherTest {
         return request;
     }
 
-    /**
-     * Construye un evento de éxito de un usuario autenticado
+        /**
+     * Builds a success event of an authenticated user
      *
-     * @return el evento de auditoría
+     * @return the audit event
      */
     private AuditEvent success() {
         return new AuditEvent(AuditAction.LOGIN, AuditResult.EXITO, USER_ID, null, null, CORRELATION_ID, NOW,
                 "usuario:" + USER_ID);
     }
 
-    /**
-     * El evento se envía por POST con el cuerpo del contrato y las cabeceras de servicio
+        /**
+     * The event is sent by POST with the body of the contract and the service headers
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_sendsAPostWithTheContractBodyAndTheServiceHeaders() throws Exception {
@@ -188,10 +187,10 @@ class AuditEventPublisherTest {
                 + "\"detalle\":null}", request.body());
     }
 
-    /**
-     * Una acción sin usuario autenticado no propaga las cabeceras de identidad
+        /**
+     * An action without an authenticated user does not propagate the identity headers
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_actionWithoutAuthenticatedUser_doesNotPropagateTheIdentityHeaders() throws Exception {
@@ -202,10 +201,10 @@ class AuditEventPublisherTest {
         assertNull(request.userRole());
     }
 
-    /**
-     * Una acción de un usuario autenticado propaga sin cambios las cabeceras de identidad
+        /**
+     * An action of an authenticated user propagates the identity headers unchanged
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_actionByAnAuthenticatedUser_propagatesTheIdentityHeadersUnchanged() throws Exception {
@@ -223,10 +222,10 @@ class AuditEventPublisherTest {
                 request.body());
     }
 
-    /**
-     * Un intento fallido sin usuario envía nulos explícitos y el motivo
+        /**
+     * A failed attempt without a user sends explicit nulls and the reason
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_failedAttemptWithoutUser_sendsExplicitNullsAndTheReason() throws Exception {
@@ -242,10 +241,10 @@ class AuditEventPublisherTest {
         assertTrue(body.contains("\"recurso_afectado\":null"), body);
     }
 
-    /**
-     * El evento nunca incluye contraseñas, hashes, tokens ni correos
+        /**
+     * The event never includes passwords, hashes, tokens or emails
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_neverSendsPasswordsHashesTokensOrEmails() throws Exception {
@@ -257,10 +256,10 @@ class AuditEventPublisherTest {
         }
     }
 
-    /**
-     * Sin llave de servicio se omite la cabecera
+        /**
+     * Without a service key the header is omitted
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_withoutServiceKey_omitsTheHeader() throws Exception {
@@ -269,10 +268,10 @@ class AuditEventPublisherTest {
         assertNull(awaitRequest().serviceKey());
     }
 
-    /**
-     * Se tolera una barra final en la URL del gateway
+        /**
+     * A trailing slash in the gateway URL is tolerated
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_toleratesATrailingSlashInTheGatewayUrl() throws Exception {
@@ -281,10 +280,10 @@ class AuditEventPublisherTest {
         assertEquals(PATH, awaitRequest().path());
     }
 
-    /**
-     * La publicación no espera la respuesta de MS08
+        /**
+     * The publication does not wait for the response of MS08
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_doesNotWaitForMs08ToAnswer() throws Exception {
@@ -301,10 +300,10 @@ class AuditEventPublisherTest {
         assertTrue(responded.await(5, TimeUnit.SECONDS));
     }
 
-    /**
-     * Sin URL del gateway solo se registra en el log y no se envía nada
+        /**
+     * Without a gateway URL it is only logged and nothing is sent
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_withoutGatewayUrl_onlyLogsAndSendsNothing() throws Exception {
@@ -315,10 +314,10 @@ class AuditEventPublisherTest {
         assertNull(received.poll(300, TimeUnit.MILLISECONDS));
     }
 
-    /**
-     * Si MS08 responde con un error no se lanza excepción
+        /**
+     * If MS08 answers with an error no exception is thrown
      *
-     * @throws Exception si falla el envío o la lectura de la petición recibida
+     * @throws Exception if sending fails or reading the received request fails
      */
     @Test
     void publish_whenMs08RespondsWithAnError_doesNotThrow() throws Exception {
@@ -329,8 +328,8 @@ class AuditEventPublisherTest {
         awaitRequest();
     }
 
-    /**
-     * Si MS08 no es alcanzable no se lanza excepción
+        /**
+     * If MS08 is not reachable no exception is thrown
      */
     @Test
     void publish_whenMs08IsUnreachable_doesNotThrow() {

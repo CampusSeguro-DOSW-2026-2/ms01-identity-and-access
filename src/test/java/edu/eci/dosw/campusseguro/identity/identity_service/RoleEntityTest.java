@@ -19,12 +19,12 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 
 /**
- * Entidad de la tabla roles y corte de sesión de la entidad de usuario
+ * Entity of the roles table and session cut of the user entity
  */
 class RoleEntityTest {
 
-    /**
-     * Un rol nuevo no es de sistema, no tiene permisos, ni corte, ni fechas
+        /**
+     * A new role is not a system role, has no permissions, no cut and no dates
      */
     @Test
     void newRole_hasSafeDefaults() {
@@ -37,8 +37,8 @@ class RoleEntityTest {
         assertNull(role.getUpdatedAt());
     }
 
-    /**
-     * Los datos del rol se guardan y se devuelven
+        /**
+     * The data of the role is stored and returned
      */
     @Test
     void setters_storeTheValues() {
@@ -59,8 +59,8 @@ class RoleEntityTest {
         assertEquals(cut, role.getValidFrom());
     }
 
-    /**
-     * Cambiar el conjunto que se entregó no cambia los permisos guardados
+        /**
+     * Changing the set that was delivered does not change the stored permissions
      */
     @Test
     void setPermissions_copiesTheSet() {
@@ -75,8 +75,8 @@ class RoleEntityTest {
         assertEquals(Set.of(checkin), role.getPermissions());
     }
 
-    /**
-     * Asignar permisos conserva la misma colección y solo cambia lo necesario
+        /**
+     * Assigning permissions keeps the same collection and only changes what is necessary
      */
     @Test
     void setPermissions_keepsTheSameCollectionInstance() {
@@ -93,8 +93,8 @@ class RoleEntityTest {
         assertEquals(Set.of(read, write), role.getPermissions());
     }
 
-    /**
-     * Asignar null deja al rol sin permisos
+        /**
+     * Assigning null leaves the role without permissions
      */
     @Test
     void setPermissions_null_leavesNoPermissions() {
@@ -105,8 +105,8 @@ class RoleEntityTest {
         assertTrue(role.getPermissions().isEmpty());
     }
 
-    /**
-     * Asignar su propia colección no la vacía
+        /**
+     * Assigning its own collection does not empty it
      */
     @Test
     void setPermissions_withItsOwnCollection_keepsThePermissions() {
@@ -117,8 +117,8 @@ class RoleEntityTest {
         assertEquals(2, role.getPermissions().size());
     }
 
-    /**
-     * Una entidad de permiso guarda su código y su descripción
+        /**
+     * A permission entity stores its code and its description
      */
     @Test
     void permissionEntity_storesNameAndDescription() {
@@ -132,8 +132,8 @@ class RoleEntityTest {
         assertEquals("Registrar el check-in", permission.getDescription());
     }
 
-    /**
-     * El corte de sesión de un rol se puede quitar
+        /**
+     * The session cut of a role can be removed
      */
     @Test
     void validFrom_canBeCleared() {
@@ -145,8 +145,8 @@ class RoleEntityTest {
         assertNull(role.getValidFrom());
     }
 
-    /**
-     * Un usuario nuevo no tiene corte de sesión y se puede escribir y quitar
+        /**
+     * A new user has no session cut and one can be written and removed
      */
     @Test
     void userValidFrom_defaultsToNullAndCanBeSet() {

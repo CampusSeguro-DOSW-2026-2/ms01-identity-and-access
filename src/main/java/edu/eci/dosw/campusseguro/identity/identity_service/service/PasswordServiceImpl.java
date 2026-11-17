@@ -47,25 +47,24 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * RF-MS01-08 Recuperación y cambio de contraseña
+ * RF-MS01-08 Password recovery and change
  *
- * Flujo base A (restablecer): solicitar el código -> generar un código de 6 dígitos, guardar solo su hash y
- * enviarlo por correo -> validar correo, código y nueva contraseña -> actualizar la contraseña, invalidar el
- * código y auditar RECUPERACION
+ * Base flow A (reset): request the code -> generate a 6-digit code, store only its hash and send it by email ->
+ * validate email, code and new password -> update the password, invalidate the code and audit RECUPERACION
  *
- * Flujo base B (cambiar): validar la contraseña actual, la política y que la nueva sea distinta de la
- * actual -> actualizar la contraseña y auditar CAMBIO_CONTRASENA
+ * Base flow B (change): validate the current password, the policy and that the new one is different from the current
+ * one -> update the password and audit CAMBIO_CONTRASENA
  *
- * RN-MS01-20: La respuesta de la solicitud de código no revela si el correo existe, ni por el contenido ni
- * por el tiempo de respuesta: el correo se envía fuera del hilo de la petición y las ramas que no generan un
- * código gastan el mismo tiempo de hash que la que sí lo genera
- * RN-MS01-21: El código es de un solo uso, de vigencia corta y configurable, y solo hay un código vigente por
- * usuario, además se invalida tras un número máximo de intentos fallidos y entre dos solicitudes debe pasar
- * un tiempo mínimo
- * RN-MS01-22: La nueva contraseña cumple la política y se guarda como hash BCrypt
+ * RN-MS01-20: The response to the code request does not reveal whether the email exists, neither by its content nor by
+ * the response time: the email is sent outside the request thread and the branches that do not generate a code spend
+ * the same hashing time as the one that does generate it
+ * RN-MS01-21: The code is single-use, has a short and configurable validity, and there is only one valid code per user,
+ * in addition it is invalidated after a maximum number of failed attempts and a minimum time must pass between two
+ * requests
+ * RN-MS01-22: The new password meets the policy and is stored as a BCrypt hash
  *
- * RNF-MS01-10: Se audita el restablecimiento y el cambio, exitosos y fallidos, la auditoría nunca incluye
- * contraseñas, hashes, códigos ni correos y un fallo al auditar no cambia la respuesta
+ * RNF-MS01-10: The reset and the change are audited, successful and failed, the audit never includes passwords, hashes,
+ * codes or emails and a failure when auditing does not change the response
  */
 @Service
 public class PasswordServiceImpl implements PasswordService {
@@ -91,26 +90,26 @@ public class PasswordServiceImpl implements PasswordService {
     private final Executor mailExecutor;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    /**
-     * Por seguridad se usa una contraseña y un hash de relleno contra los que se calcula un hash cuando la
-     * solicitud no genera un código o el código recibido no corresponde a ninguna cuenta, esto iguala el
-     * tiempo de respuesta de todas las ramas y evita revelar por tiempo si un correo está registrado
+        /**
+     * For security a padding password and hash are used against which a hash is computed when the request does not
+     * generate a code or the received code does not correspond to any account, this equalizes the response time of all
+     * the branches and avoids revealing through timing whether an email is registered
      */
     private final String dummyPassword = UUID.randomUUID().toString();
     private final String dummyHash;
 
-    /**
-     * Crea el servicio con sus dependencias
+        /**
+     * Creates the service with its dependencies
      *
-     * @param userRepository repositorio de acceso a los usuarios
-     * @param codeRepository repositorio de acceso a los códigos de recuperación
-     * @param passwordEncoder codificador con el que se guardan y verifican las contraseñas y los códigos
-     * @param emailService servicio de envío del código por correo
-     * @param auditRecorder registrador de los eventos de auditoría de MS08
-     * @param requestValidator validador de los cuerpos de las peticiones
-     * @param clock reloj UTC con el que se fechan y vencen los códigos
-     * @param policy vigencia, intentos máximos y espera entre solicitudes de los códigos
-     * @param mailExecutor ejecutor con el que se envían los correos fuera del hilo de la petición
+     * @param userRepository repository to access the users
+     * @param codeRepository repository to access the recovery codes
+     * @param passwordEncoder encoder with which the passwords and the codes are stored and verified
+     * @param emailService service that sends the code by email
+     * @param auditRecorder recorder of the audit events of MS08
+     * @param requestValidator validator of the request bodies
+     * @param clock UTC clock with which the codes are dated and expire
+     * @param policy validity, maximum attempts and wait between requests of the codes
+     * @param mailExecutor executor with which the emails are sent outside the request thread
      */
     public PasswordServiceImpl(UserRepository userRepository, PasswordResetCodeRepository codeRepository,
             PasswordEncoder passwordEncoder, EmailService emailService, AuditRecorder auditRecorder,
@@ -128,14 +127,14 @@ public class PasswordServiceImpl implements PasswordService {
         this.dummyHash = passwordEncoder.encode(dummyPassword);
     }
 
-    /**
-     * Solicita el código de recuperación de contraseña (RF-MS01-08, flujo A), el código se genera y se envía
-     * solo si el correo corresponde a una cuenta activa y pasó la espera desde el código anterior, pero la
-     * respuesta es la misma en todos los casos (RN-MS01-20)
+        /**
+     * Requests the password recovery code (RF-MS01-08, flow A), the code is generated and sent only if the email
+     * corresponds to an active account and the wait since the previous code has passed, but the response is the same in
+     * all cases (RN-MS01-20)
      *
-     * @param request correo de la cuenta que se quiere recuperar
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @throws InvalidRequestException si el correo incumple el formulario F-04
+     * @param request email of the account to be recovered
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @throws InvalidRequestException if the email breaks form F-04
      */
     @Override
     @Transactional
@@ -146,37 +145,36 @@ public class PasswordServiceImpl implements PasswordService {
         Optional<UserEntity> candidate = userRepository.findByEmail(request.getEmail());
         if (candidate.isEmpty()) {
             spendHashingTime();
-            log.info("Solicitud de código de recuperación sin cuenta asociada");
+            log.info("Recovery code request without an associated account");
             return;
         }
 
         UserEntity user = candidate.get();
         if (user.getState() != UserState.ACTIVO) {
             spendHashingTime();
-            log.info("Solicitud de código de recuperación de una cuenta inactiva. usuario={}", user.getId());
+            log.info("Recovery code request of an inactive account. user={}", user.getId());
             return;
         }
 
         Instant now = clock.instant();
         if (isWithinCooldown(user.getId(), now)) {
             spendHashingTime();
-            log.info("Solicitud de código de recuperación dentro de la espera mínima. usuario={}", user.getId());
+            log.info("Recovery code request within the minimum wait. user={}", user.getId());
             return;
         }
 
         issueCode(user, now, corr);
     }
 
-    /**
-     * Restablece la contraseña con el código recibido por correo (RF-MS01-08, flujo A), el código es de un
-     * solo uso y cada intento, exitoso o fallido, queda auditado, los intentos fallidos con un código
-     * vigente se cuentan aunque la petición se rechace
+        /**
+     * Resets the password with the code received by email (RF-MS01-08, flow A), the code is single-use and every
+     * attempt, successful or failed, is audited, the failed attempts with a valid code are counted even if the request
+     * is rejected
      *
-     * @param request correo, código y nueva contraseña con su confirmación
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @throws InvalidRequestException si los datos incumplen el formulario F-05 o la nueva contraseña es igual
-     *         a la actual
-     * @throws InvalidResetCodeException si el código es incorrecto, venció o ya se usó
+     * @param request email, code and new password with its confirmation
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @throws InvalidRequestException if the data breaks form F-05 or the new password is equal to the current one
+     * @throws InvalidResetCodeException if the code is incorrect, expired or already used
      */
     @Override
     @Transactional(noRollbackFor = InvalidResetCodeException.class)
@@ -187,7 +185,7 @@ public class PasswordServiceImpl implements PasswordService {
         if (!errors.isEmpty()) {
             auditRecorder.recordAnonymous(AuditAction.RECUPERACION, AuditResult.FALLO, null, null,
                     REASON_VALIDATION, corr);
-            log.warn("Recuperación rechazada por datos inválidos");
+            log.warn("Recovery rejected because of invalid data");
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, errors);
         }
 
@@ -220,7 +218,7 @@ public class PasswordServiceImpl implements PasswordService {
         if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
             auditRecorder.recordAnonymous(AuditAction.RECUPERACION, AuditResult.FALLO, user.getId(),
                     AuditRecorder.userResource(user.getId()), REASON_SAME_AS_CURRENT, corr);
-            log.warn("Recuperación rechazada: la nueva contraseña es igual a la actual. usuario={}",
+            log.warn("Recovery rejected: the new password is equal to the current one. user={}",
                     user.getId());
             throw sameAsCurrent();
         }
@@ -234,20 +232,20 @@ public class PasswordServiceImpl implements PasswordService {
 
         auditRecorder.recordAnonymous(AuditAction.RECUPERACION, AuditResult.EXITO, user.getId(),
                 AuditRecorder.userResource(user.getId()), null, corr);
-        log.info("Contraseña restablecida con código. usuario={}", user.getId());
+        log.info("Password reset with a code. user={}", user.getId());
     }
 
-    /**
-     * Cambia la contraseña del usuario autenticado (RF-MS01-08, flujo B), cada intento, exitoso o fallido,
-     * queda auditado
+        /**
+     * Changes the password of the authenticated user (RF-MS01-08, flow B), every attempt, successful or failed, is
+     * audited
      *
-     * @param requester identidad de quien cambia su contraseña
-     * @param request contraseña actual, nueva contraseña y su confirmación
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws InvalidRequestException si los datos incumplen el formulario F-06, la contraseña actual es
-     *         incorrecta o la nueva es igual a la actual
-     * @throws UserNotFoundException si el usuario ya no existe
+     * @param requester identity of whoever changes their password
+     * @param request current password, new password and its confirmation
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws InvalidRequestException if the data breaks form F-06, the current password is incorrect or the new one is
+     *         equal to the current one
+     * @throws UserNotFoundException if the user no longer exists
      */
     @Override
     @Transactional
@@ -259,7 +257,7 @@ public class PasswordServiceImpl implements PasswordService {
         if (!requester.hasPermission(Permission.MS01_PASSWORD_CHANGE)) {
             auditRecorder.recordAs(AuditAction.CAMBIO_CONTRASENA, AuditResult.FALLO, requester, resource,
                     REASON_NOT_ALLOWED, corr);
-            log.warn("Cambio de contraseña rechazado: el solicitante {} no tiene el permiso requerido",
+            log.warn("Password change rejected: the requester {} does not have the required permission",
                     requester.userId());
             throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
         }
@@ -268,7 +266,7 @@ public class PasswordServiceImpl implements PasswordService {
         if (!errors.isEmpty()) {
             auditRecorder.recordAs(AuditAction.CAMBIO_CONTRASENA, AuditResult.FALLO, requester, resource,
                     REASON_VALIDATION, corr);
-            log.warn("Cambio de contraseña rechazado por datos inválidos. usuario={}", requester.userId());
+            log.warn("Password change rejected because of invalid data. user={}", requester.userId());
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, errors);
         }
 
@@ -278,7 +276,7 @@ public class PasswordServiceImpl implements PasswordService {
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             auditRecorder.recordAs(AuditAction.CAMBIO_CONTRASENA, AuditResult.FALLO, requester, resource,
                     REASON_WRONG_CURRENT, corr);
-            log.warn("Cambio de contraseña rechazado: la contraseña actual es incorrecta. usuario={}",
+            log.warn("Password change rejected: the current password is incorrect. user={}",
                     user.getId());
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, List.of(
                     new ErrorResponse.ErrorDetail("contrasena_actual",
@@ -288,7 +286,7 @@ public class PasswordServiceImpl implements PasswordService {
         if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
             auditRecorder.recordAs(AuditAction.CAMBIO_CONTRASENA, AuditResult.FALLO, requester, resource,
                     REASON_SAME_AS_CURRENT, corr);
-            log.warn("Cambio de contraseña rechazado: la nueva contraseña es igual a la actual. usuario={}",
+            log.warn("Password change rejected: the new password is equal to the current one. user={}",
                     user.getId());
             throw sameAsCurrent();
         }
@@ -298,16 +296,16 @@ public class PasswordServiceImpl implements PasswordService {
 
         auditRecorder.recordAs(AuditAction.CAMBIO_CONTRASENA, AuditResult.EXITO, requester, resource, null,
                 corr);
-        log.info("Contraseña cambiada. usuario={}", user.getId());
+        log.info("Password changed. user={}", user.getId());
     }
 
-    /**
-     * Genera un código nuevo para la cuenta, invalida los anteriores y programa el envío del correo para
-     * después de confirmar la transacción
+        /**
+     * Generates a new code for the account, invalidates the previous ones and schedules the sending of the email for
+     * after the transaction is committed
      *
-     * @param user cuenta activa que solicitó el código
-     * @param now instante de la solicitud
-     * @param corr correlation id de la petición
+     * @param user active account that requested the code
+     * @param now instant of the request
+     * @param corr correlation id of the request
      */
     private void issueCode(UserEntity user, Instant now, String corr) {
         String code = generateCode();
@@ -323,24 +321,24 @@ public class PasswordServiceImpl implements PasswordService {
         codeRepository.saveAndFlush(entity);
 
         scheduleEmail(user.getId(), user.getEmail(), code, corr);
-        log.info("Código de recuperación generado. usuario={}", user.getId());
+        log.info("Recovery code generated. user={}", user.getId());
     }
 
-    /**
-     * Genera un código de seis dígitos con un generador criptográficamente seguro
+        /**
+     * Generates a six-digit code with a cryptographically secure generator
      *
-     * @return el código con ceros a la izquierda si hace falta
+     * @return the code with leading zeros if needed
      */
     private String generateCode() {
         return String.format(Locale.ROOT, "%06d", secureRandom.nextInt(CODE_BOUND));
     }
 
-    /**
-     * Indica si todavía no pasó la espera mínima desde el último código generado al usuario
+        /**
+     * Tells whether the minimum wait since the last code generated for the user has not yet passed
      *
-     * @param userId id del usuario que solicita el código
-     * @param now instante de la solicitud
-     * @return true si la espera está activa y no se debe generar otro código
+     * @param userId id of the user that requests the code
+     * @param now instant of the request
+     * @return true if the wait is active and another code must not be generated
      */
     private boolean isWithinCooldown(UUID userId, Instant now) {
         Duration cooldown = policy.resendCooldown();
@@ -355,31 +353,31 @@ public class PasswordServiceImpl implements PasswordService {
         return allowedAt.isAfter(now);
     }
 
-    /**
-     * Cuenta un intento fallido del código y lo invalida cuando se alcanza el máximo de intentos
+        /**
+     * Counts a failed attempt of the code and invalidates it when the maximum number of attempts is reached
      *
-     * @param code código vigente contra el que falló la verificación
-     * @param now instante del intento
+     * @param code valid code against which the verification failed
+     * @param now instant of the attempt
      */
     private void registerFailedAttempt(PasswordResetCodeEntity code, Instant now) {
         int attempts = code.getAttempts() + 1;
         code.setAttempts(attempts);
         if (attempts >= policy.maxAttempts()) {
             code.setUsedAt(now);
-            log.warn("Código de recuperación invalidado por exceder los intentos permitidos. usuario={}",
+            log.warn("Recovery code invalidated for exceeding the allowed attempts. user={}",
                     code.getUserId());
         }
         codeRepository.saveAndFlush(code);
     }
 
-    /**
-     * Programa el envío del correo para después de confirmar la transacción, así nunca se envía un código
-     * que no quedó guardado, si no hay una transacción activa se envía de inmediato
+        /**
+     * Schedules the sending of the email for after the transaction is committed, so a code that was not stored is never
+     * sent, if there is no active transaction it is sent immediately
      *
-     * @param userId id del usuario destinatario
-     * @param email correo del destinatario
-     * @param code código en claro que se envía
-     * @param corr correlation id de la petición
+     * @param userId id of the recipient user
+     * @param email email of the recipient
+     * @param code code in clear text that is sent
+     * @param corr correlation id of the request
      */
     private void scheduleEmail(UUID userId, String email, String code, String corr) {
         Runnable delivery = new Runnable() {
@@ -400,49 +398,49 @@ public class PasswordServiceImpl implements PasswordService {
         });
     }
 
-    /**
-     * Entrega el envío al ejecutor de correos, si la cola está llena el envío se descarta y se registra
+        /**
+     * Hands the sending to the email executor, if the queue is full the sending is discarded and logged
      *
-     * @param delivery tarea que envía el correo
-     * @param userId id del usuario destinatario
+     * @param delivery task that sends the email
+     * @param userId id of the recipient user
      */
     private void dispatch(Runnable delivery, UUID userId) {
         try {
             mailExecutor.execute(delivery);
         } catch (RejectedExecutionException e) {
-            log.error("Envío del código de recuperación descartado: la cola de correo está llena. usuario={}",
+            log.error("Sending of the recovery code discarded: the mail queue is full. user={}",
                     userId);
         }
     }
 
-    /**
-     * Envía el correo con el código, un fallo del servidor de correo se registra sin el código ni el
-     * correo y nunca llega al cliente
+        /**
+     * Sends the email with the code, a failure of the mail server is logged without the code or the email and never
+     * reaches the client
      *
-     * @param userId id del usuario destinatario
-     * @param email correo del destinatario
-     * @param code código en claro que se envía
-     * @param corr correlation id de la petición, se coloca en el contexto de logs del hilo de envío
+     * @param userId id of the recipient user
+     * @param email email of the recipient
+     * @param code code in clear text that is sent
+     * @param corr correlation id of the request, it is placed in the logging context of the sending thread
      */
     private void deliver(UUID userId, String email, String code, String corr) {
         MDC.put(CorrelationIds.MDC_KEY, corr);
         try {
             emailService.sendRecoveryCode(email, code, policy.codeTtlMinutes());
-            log.info("Código de recuperación enviado. usuario={}", userId);
+            log.info("Recovery code sent. user={}", userId);
         } catch (RuntimeException e) {
-            log.error("No se pudo enviar el código de recuperación. usuario={} causa={}", userId,
+            log.error("The recovery code could not be sent. user={} cause={}", userId,
                     rootCauseName(e));
         } finally {
             MDC.remove(CorrelationIds.MDC_KEY);
         }
     }
 
-    /**
-     * Obtiene el nombre de la clase de la causa raíz de un error, sin su mensaje porque puede contener el
-     * correo del destinatario
+        /**
+     * Gets the class name of the root cause of an error, without its message because it may contain the email of the
+     * recipient
      *
-     * @param error error del que se obtiene la causa raíz
-     * @return el nombre simple de la clase de la causa raíz
+     * @param error error from which the root cause is obtained
+     * @return the simple name of the class of the root cause
      */
     private String rootCauseName(Throwable error) {
         Throwable root = error;
@@ -452,31 +450,31 @@ public class PasswordServiceImpl implements PasswordService {
         return root.getClass().getSimpleName();
     }
 
-    /**
-     * Calcula un hash de relleno para igualar el tiempo de las ramas que no generan ni verifican un código
+        /**
+     * Computes a padding hash to equalize the time of the branches that neither generate nor verify a code
      */
     private void spendHashingTime() {
         passwordEncoder.matches(dummyPassword, dummyHash);
     }
 
-    /**
-     * Audita y registra el rechazo del código, devuelve la excepción para que el llamador la lance
+        /**
+     * Audits and logs the rejection of the code, returns the exception so that the caller throws it
      *
-     * @param corr correlation id de la petición
-     * @param userId id del usuario, null si el correo no corresponde a ninguna cuenta
-     * @return la excepción genérica de código inválido
+     * @param corr correlation id of the request
+     * @param userId id of the user, null if the email does not correspond to any account
+     * @return the generic exception of invalid code
      */
     private InvalidResetCodeException rejectedCode(String corr, UUID userId) {
         auditRecorder.recordAnonymous(AuditAction.RECUPERACION, AuditResult.FALLO, userId,
                 AuditRecorder.userResource(userId), REASON_INVALID_CODE, corr);
-        log.warn("Recuperación rechazada. motivo={} usuario={}", REASON_INVALID_CODE, userId);
+        log.warn("Recovery rejected. reason={} user={}", REASON_INVALID_CODE, userId);
         return new InvalidResetCodeException();
     }
 
-    /**
-     * Construye el rechazo de una nueva contraseña igual a la actual, con el mensaje del formulario F-06
+        /**
+     * Builds the rejection of a new password equal to the current one, with the message of form F-06
      *
-     * @return la excepción con el error del campo de la nueva contraseña
+     * @return the exception with the error of the new password field
      */
     private InvalidRequestException sameAsCurrent() {
         return new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, List.of(

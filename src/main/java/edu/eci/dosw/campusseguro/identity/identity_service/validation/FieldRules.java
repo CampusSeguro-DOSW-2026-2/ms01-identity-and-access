@@ -1,9 +1,8 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.validation;
 
 /**
- * Reglas y mensajes de validación compartidos por los formularios de MS01 (2_forms-inputs.md), están
- * en un solo lugar para que el registro, el perfil y los futuros flujos de contraseña usen exactamente la
- * misma definición
+ * Validation rules and messages shared by the forms of MS01 (2_forms-inputs.md), they are in a single place so that the
+ * registration, the profile and the future password flows use exactly the same definition
  */
 public final class FieldRules {
 
@@ -32,8 +31,8 @@ public final class FieldRules {
             "La contraseña debe tener 8 a 64 caracteres, con mayúscula, minúscula, número y carácter especial.";
     public static final String PASSWORDS_MISMATCH_MESSAGE = "Las contraseñas no coinciden.";
 
-    /**
-     * No se instancia
+        /**
+     * It is not instantiated
      */
     private FieldRules() {
     }

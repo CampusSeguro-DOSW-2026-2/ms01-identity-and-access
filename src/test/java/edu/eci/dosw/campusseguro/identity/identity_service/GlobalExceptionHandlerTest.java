@@ -35,9 +35,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Errores tecnicos normalizados (RNF-MS01-04, estandares de integracion 4 y 5): una falla no controlada
- * responde 500 ERROR_INTERNO sin exponer detalles internos, un tipo de contenido no admitido responde 415 y
- * las excepciones que ya traen su estado HTTP conservan ese estado
+ * Normalized technical errors (RNF-MS01-04, integration standards 4 and 5): an uncontrolled failure answers 500
+ * ERROR_INTERNO without exposing internal details, an unsupported content type answers 415 and the exceptions that
+ * already carry their HTTP status keep that status
  */
 @WebMvcTest(RoleController.class)
 @Import(SecurityConfig.class)
@@ -53,10 +53,10 @@ class GlobalExceptionHandlerTest {
     @MockitoBean
     private RoleService roleService;
 
-    /**
-     * Una falla no controlada responde 500 con el cuerpo normalizado y sin el texto de la excepcion
+        /**
+     * An uncontrolled failure answers 500 with the normalized body and without the text of the exception
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void unexpectedFailure_returns500WithoutLeakingTheException() throws Exception {
@@ -77,10 +77,10 @@ class GlobalExceptionHandlerTest {
         assertFalse(result.getResponse().getContentAsString().contains(INTERNAL_DETAIL));
     }
 
-    /**
-     * El correlation id recibido se devuelve en el header y en el cuerpo del 500
+        /**
+     * The received correlation id is returned in the header and in the body of the 500
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void unexpectedFailure_returnsTheCorrelationIdInHeaderAndBody() throws Exception {
@@ -96,10 +96,10 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.correlation_id").value(CORRELATION_ID));
     }
 
-    /**
-     * El detalle de la falla queda en el log con el correlation id en el MDC y no se devuelve al cliente
+        /**
+     * The detail of the failure stays in the log with the correlation id in the MDC and is not returned to the client
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void unexpectedFailure_isLoggedWithTheCorrelationIdInTheMdc() throws Exception {
@@ -119,7 +119,7 @@ class GlobalExceptionHandlerTest {
 
             assertEquals(1, appender.list.size());
             ILoggingEvent logged = appender.list.get(0);
-            assertEquals("Error no controlado", logged.getFormattedMessage());
+            assertEquals("Uncontrolled error", logged.getFormattedMessage());
             assertEquals(CORRELATION_ID, logged.getMDCPropertyMap().get(CorrelationIds.MDC_KEY));
             assertEquals(INTERNAL_DETAIL, logged.getThrowableProxy().getMessage());
         } finally {
@@ -127,10 +127,10 @@ class GlobalExceptionHandlerTest {
         }
     }
 
-    /**
-     * Una excepcion que ya trae su estado HTTP lo conserva y no se convierte en 500
+        /**
+     * An exception that already carries its HTTP status keeps it and is not converted into 500
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void responseStatusException_keepsItsOwnStatus() throws Exception {
@@ -143,10 +143,10 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isConflict());
     }
 
-    /**
-     * Un cuerpo con tipo de contenido no admitido responde 415 con el cuerpo normalizado
+        /**
+     * A body with an unsupported content type answers 415 with the normalized body
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void unsupportedMediaType_returns415WithTheNormalizedBody() throws Exception {
@@ -166,10 +166,10 @@ class GlobalExceptionHandlerTest {
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * Un cuerpo JSON mal formado responde 400 VALIDACION y no llega al servicio
+        /**
+     * A malformed JSON body answers 400 VALIDACION and does not reach the service
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void malformedJson_returns400AndDoesNotReachTheService() throws Exception {
@@ -185,10 +185,10 @@ class GlobalExceptionHandlerTest {
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * Una ruta que no existe responde 404 NO_ENCONTRADO con el cuerpo normalizado
+        /**
+     * A route that does not exist answers 404 NO_ENCONTRADO with the normalized body
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void unknownRoute_returns404WithTheNormalizedBody() throws Exception {
@@ -203,10 +203,10 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.correlation_id").isNotEmpty());
     }
 
-    /**
-     * Un método HTTP no permitido responde 405 con la cabecera Allow y el cuerpo normalizado
+        /**
+     * A not allowed HTTP method answers 405 with the Allow header and the normalized body
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void methodNotAllowed_returns405WithAllowHeader() throws Exception {
@@ -220,10 +220,10 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.codigo").value("METODO_NO_PERMITIDO"));
     }
 
-    /**
-     * Un cuerpo con las claves en un tipo que no corresponde responde 400 VALIDACION
+        /**
+     * A body with keys of a type that does not correspond answers 400 VALIDACION
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void bodyWithWrongTypes_returns400() throws Exception {

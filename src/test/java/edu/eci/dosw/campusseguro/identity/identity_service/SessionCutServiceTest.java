@@ -27,7 +27,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.SessionCutSer
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 
 /**
- * RF-MS01-11: instantánea de los cortes de sesión de usuarios y roles dentro de la ventana de vigencia
+ * RF-MS01-11: snapshot of the session cuts of users and roles within the validity window
  */
 @ExtendWith(MockitoExtension.class)
 class SessionCutServiceTest {
@@ -44,20 +44,20 @@ class SessionCutServiceTest {
 
     private SessionCutServiceImpl service;
 
-    /**
-     * Crea el servicio con un reloj fijo
+        /**
+     * Creates the service with a fixed clock
      */
     @BeforeEach
     void setUp() {
         service = new SessionCutServiceImpl(userRepository, roleRepository, FixedDatabaseTime.at(NOW));
     }
 
-    /**
-     * Corte de usuario como lo entrega el repositorio
+        /**
+     * User cut as delivered by the repository
      *
-     * @param id id del usuario
-     * @param validFrom instante del corte
-     * @return la proyección
+     * @param id id of the user
+     * @param validFrom instant of the cut
+     * @return the projection
      */
     private UserRepository.UserSessionCut userCut(UUID id, Instant validFrom) {
         UserRepository.UserSessionCut cut = mock(UserRepository.UserSessionCut.class);
@@ -66,12 +66,12 @@ class SessionCutServiceTest {
         return cut;
     }
 
-    /**
-     * Rol con corte
+        /**
+     * Role with a cut
      *
-     * @param name nombre del rol
-     * @param validFrom instante del corte
-     * @return el rol
+     * @param name name of the role
+     * @param validFrom instant of the cut
+     * @return the role
      */
     private RoleEntity roleCut(String name, Instant validFrom) {
         RoleEntity role = new RoleEntity();
@@ -80,17 +80,17 @@ class SessionCutServiceTest {
         return role;
     }
 
-    /**
-     * La ventana es la vigencia del token más la tolerancia de reloj y el margen: 3700 segundos
+        /**
+     * The window is the token validity plus the clock tolerance and the margin: 3700 seconds
      */
     @Test
     void window_isThirtySevenHundredSeconds() {
         assertEquals(3700, GlobalValues.SESSION_CUT_WINDOW_SECONDS);
     }
 
-    /**
-     * La instantánea lleva la hora de MS01 sin fracción, la ventana, y los cortes en ISO 8601 UTC con la forma
-     * del contrato
+        /**
+     * The snapshot carries the MS01 time without a fraction, the window, and the cuts in ISO 8601 UTC with the shape of
+     * the contract
      */
     @Test
     void currentCuts_returnsTheSnapshotInTheContractShape() {
@@ -114,9 +114,8 @@ class SessionCutServiceTest {
         assertEquals("2026-11-11T11:45:10Z", response.roles().get(0).validFrom());
     }
 
-    /**
-     * Los cortes se piden desde 3700 segundos antes de ahora, medidos con el reloj de MS01 y en segundos
-     * enteros
+        /**
+     * The cuts are requested from 3700 seconds before now, measured with the MS01 clock and in whole seconds
      */
     @Test
     void currentCuts_asksForTheCutsOfTheLastThirtySevenHundredSeconds() {
@@ -134,8 +133,8 @@ class SessionCutServiceTest {
         assertEquals(expected, roles.getValue());
     }
 
-    /**
-     * Sin cortes vigentes las dos listas salen vacías, no nulas
+        /**
+     * Without current cuts both lists come out empty, not null
      */
     @Test
     void currentCuts_withoutCuts_returnsEmptyLists() {
@@ -149,10 +148,10 @@ class SessionCutServiceTest {
         assertEquals("2026-11-11T12:00:00Z", response.generatedAt());
     }
 
-    /**
-     * La consulta corre en una transacción de solo lectura
+        /**
+     * The query runs in a read-only transaction
      *
-     * @throws NoSuchMethodException si el método no existe
+     * @throws NoSuchMethodException if the method does not exist
      */
     @Test
     void currentCuts_runsInAReadOnlyTransaction() throws NoSuchMethodException {

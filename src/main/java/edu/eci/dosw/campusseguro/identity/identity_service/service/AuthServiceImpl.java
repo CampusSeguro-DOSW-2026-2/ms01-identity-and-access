@@ -28,16 +28,16 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.PermissionCodes;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestValidator;
 
 /**
- * RF-MS01-02 Autenticar usuario (login)
+ * RF-MS01-02 Authenticate user (login)
  *
- * Flujo base: buscar por correo -> verificar contrasena contra el hash (BCrypt) -> verificar estado
- * ACTIVO -> leer los permisos de sus roles (rol_permiso y permisos) -> emitir JWT -> auditar LOGIN/EXITO -> responder token,
- * expiracion y datos basicos
+ * Base flow: look up by email -> verify password against the hash (BCrypt) -> verify ACTIVO status -> read the
+ * permissions of its roles (role_permissions and permissions) -> issue JWT -> audit LOGIN/EXITO -> respond token,
+ * expiration and basic data
  *
- * RN-MS01-05: Ante credenciales inválidas no se revela si falló el correo o la contraseña
- * RN-MS01-06: Una cuenta INACTIVA nunca inicia sesión, aunque las credenciales sean correctas
+ * RN-MS01-05: With invalid credentials it is not revealed whether the email or the password failed RN-MS01-06: An
+ * INACTIVA account never logs in, even if the credentials are correct
  *
- * RNF-MS01-10: Se audita logeo exitoso, credenciales invalidas, y cuenta inactiva
+ * RNF-MS01-10: Successful login, invalid credentials and inactive account are audited
  */
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -54,21 +54,21 @@ public class AuthServiceImpl implements AuthService {
     private final AuditRecorder auditRecorder;
     private final RequestValidator requestValidator;
 
-    /**
-     * Por seguridad se usa un hash de relleno, contra el que se compara la contraseña ingresada
-     * cuando un correo no existe, esto simula el tiempo que tarda el servidor y backend en
-     * buscar un correo, evitando revelar por tiempo, si el correo ingresado si esta registrado o no
+        /**
+     * For security a padding hash is used, against which the entered password is compared when an email does not exist,
+     * this simulates the time the server and backend take to look up an email, avoiding revealing through timing
+     * whether the entered email is registered or not
      */
     private final String dummyHash;
 
-    /**
-     * Crea el servicio con sus dependencias
+        /**
+     * Creates the service with its dependencies
      *
-     * @param userRepository repositorio de acceso a los usuarios, sus roles y los permisos de cada rol
-     * @param passwordEncoder codificador con el que se verifican las contraseñas
-     * @param jwtService emisor del JWT
-     * @param auditRecorder registrador de los eventos de auditoría de MS08
-     * @param requestValidator validador de los cuerpos de las peticiones
+     * @param userRepository repository to access the users, their roles and the permissions of each role
+     * @param passwordEncoder encoder with which the passwords are verified
+     * @param jwtService JWT issuer
+     * @param auditRecorder recorder of the audit events of MS08
+     * @param requestValidator validator of the request bodies
      */
     public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
             AuditRecorder auditRecorder, RequestValidator requestValidator) {
@@ -80,16 +80,16 @@ public class AuthServiceImpl implements AuthService {
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
-    /**
-     * Autentica con correo y contraseña (RF-MS01-02) y emite el JWT (RF-MS01-03)
+        /**
+     * Authenticates with email and password (RF-MS01-02) and issues the JWT (RF-MS01-03)
      *
-     * @param request contiene las credenciales; correo y contraseña
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return LoginResponse que contiene token, tipo, expiración y datos básicos del usuario
-     * @throws edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException si el cuerpo
-     *         no cumple el formulario F-02
-     * @throws InvalidCredentialsException si el correo no existe o la contraseña no coincide
-     * @throws InactiveAccountException si las credenciales son correctas pero la cuenta está inactiva
+     * @param request contains the credentials; email and password
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return LoginResponse containing token, type, expiration and basic data of the user
+     * @throws edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException if the body does
+     *         not meet form F-02
+     * @throws InvalidCredentialsException if the email does not exist or the password does not match
+     * @throws InactiveAccountException if the credentials are correct but the account is inactive
      */
     @Override
     @Transactional(readOnly = true)
@@ -122,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (RuntimeException e) {
             auditRecorder.recordAnonymous(AuditAction.LOGIN, AuditResult.FALLO, user.getId(),
                     AuditRecorder.userResource(user.getId()), REASON_INTERNAL, corr);
-            log.error("Login fallido: no fue posible emitir el JWT del usuario {}", user.getId(), e);
+            log.error("Login failed: the JWT of user {} could not be issued", user.getId(), e);
             throw e;
         }
 
@@ -134,18 +134,18 @@ public class AuthServiceImpl implements AuthService {
                 token.token(),
                 LoginResponse.TOKEN_TYPE,
                 DateTimeFormatter.ISO_INSTANT.format(token.expiresAt()),
-                new LoginResponse.UsuarioResumen(user.getId(), user.getEmail(), roles));
+                new LoginResponse.UserSummary(user.getId(), user.getEmail(), roles));
     }
 
-    /**
-     * Audita y registra el intento fallido, devuelve la excepción para que el llamador la lance
+        /**
+     * Audits and records the failed attempt, returns the exception so that the caller throws it
      *
-     * @param corr correlation id de la petición
-     * @param userId id del usuario, null si el correo no corresponde a ninguna cuenta
-     * @param reason motivo del fallo que se deja en el detalle del evento
-     * @param exception excepción que se lanzará al cliente
-     * @param <E> tipo de la excepción
-     * @return la excepción recibida
+     * @param corr correlation id of the request
+     * @param userId id of the user, null if the email does not correspond to any account
+     * @param reason reason of the failure that is left in the detail of the event
+     * @param exception exception that will be thrown to the client
+     * @param <E> type of the exception
+     * @return the received exception
      */
     private <E extends RuntimeException> E rejected(String corr, UUID userId, String reason, E exception) {
         auditRecorder.recordAnonymous(AuditAction.LOGIN, AuditResult.FALLO, userId,

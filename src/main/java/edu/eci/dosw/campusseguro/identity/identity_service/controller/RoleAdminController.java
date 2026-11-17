@@ -24,7 +24,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Administración de roles y del catálogo de permisos (RF-MS01-10)
+ * Administration of roles and of the permission catalog (RF-MS01-10)
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -34,65 +34,65 @@ public class RoleAdminController {
 
     private final RoleAdminService roleAdminService;
 
-    /**
-     * Crea el controlador con su servicio
+        /**
+     * Creates the controller with its service
      *
-     * @param roleAdminService servicio de administración de roles y permisos
+     * @param roleAdminService role and permission administration service
      */
     public RoleAdminController(RoleAdminService roleAdminService) {
         this.roleAdminService = roleAdminService;
     }
 
-    /**
-     * GET /api/v1/roles/details: lista los roles con su detalle (RF-MS01-10)
+        /**
+     * GET /api/v1/roles/details: lists the roles with their detail (RF-MS01-10)
      *
-     * 200 roles ordenados por nombre, 401 identidad ausente o inválida, 403 sin permiso
+     * 200 roles sorted by name, 401 missing or invalid identity, 403 no permission
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @return los roles con su descripción, sus permisos y la marca de sistema
+     * @param requester identity of the requester taken from the headers
+     * @return the roles with their description, their permissions and the system flag
      */
     @GetMapping("/roles/details")
     public ResponseEntity<List<RoleDetailResponse>> listRoles(RequesterIdentity requester) {
         return ResponseEntity.ok(roleAdminService.listRoles(requester));
     }
 
-    /**
-     * GET /api/v1/roles/{rol}: consulta un rol (RF-MS01-10)
+        /**
+     * GET /api/v1/roles/{rol}: queries a role (RF-MS01-10)
      *
-     * 200 el rol, 400 nombre con formato inválido, 401 identidad ausente, 403 sin permiso, 404 rol inexistente
+     * 200 the role, 400 name with an invalid format, 401 missing identity, 403 no permission, 404 non-existent role
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param rol nombre del rol, se normaliza
-     * @return el detalle del rol
+     * @param requester identity of the requester taken from the headers
+     * @param rol name of the role, it is normalized
+     * @return the detail of the role
      */
     @GetMapping("/roles/{rol}")
     public ResponseEntity<RoleDetailResponse> getRole(RequesterIdentity requester, @PathVariable("rol") String rol) {
         return ResponseEntity.ok(roleAdminService.getRole(requester, rol));
     }
 
-    /**
-     * GET /api/v1/permissions: catálogo de permisos (RF-MS01-10)
+        /**
+     * GET /api/v1/permissions: permission catalog (RF-MS01-10)
      *
-     * 200 permisos ordenados por código, 401 identidad ausente, 403 sin permiso
+     * 200 permissions sorted by code, 401 missing identity, 403 no permission
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @return cada permiso con su descripción
+     * @param requester identity of the requester taken from the headers
+     * @return each permission with its description
      */
     @GetMapping("/permissions")
     public ResponseEntity<List<PermissionItemResponse>> listPermissions(RequesterIdentity requester) {
         return ResponseEntity.ok(roleAdminService.listPermissions(requester));
     }
 
-    /**
-     * POST /api/v1/roles: crea un rol (RF-MS01-10, formulario F-10)
+        /**
+     * POST /api/v1/roles: creates a role (RF-MS01-10, form F-10)
      *
-     * 201 rol creado con su ruta en Location, 400 datos inválidos o campo no permitido, 401 identidad
-     * ausente, 403 sin permiso, 409 el nombre ya existe, 422 incluye ms01:role:manage
+     * 201 role created with its path in Location, 400 invalid data or field not allowed, 401 missing identity, 403 no
+     * permission, 409 the name already exists, 422 includes ms01:role:manage
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param request nombre, descripción y permisos del rol
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el rol creado
+     * @param requester identity of the requester taken from the headers
+     * @param request name, description and permissions of the role
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the created role
      */
     @PostMapping("/roles")
     public ResponseEntity<RoleDetailResponse> createRole(
@@ -104,17 +104,17 @@ public class RoleAdminController {
         return ResponseEntity.created(URI.create(ROLES_PATH + created.rol())).body(created);
     }
 
-    /**
-     * PUT /api/v1/roles/{rol}: cambia el nombre y la descripción de un rol (RF-MS01-10, formulario F-11)
+        /**
+     * PUT /api/v1/roles/{rol}: changes the name and the description of a role (RF-MS01-10, form F-11)
      *
-     * 200 rol actualizado, 400 datos inválidos o campo no permitido, 401 identidad ausente, 403 sin permiso,
-     * 404 rol inexistente, 409 nombre repetido o rol de sistema renombrado
+     * 200 role updated, 400 invalid data or field not allowed, 401 missing identity, 403 no permission, 404
+     * non-existent role, 409 repeated name or system role renamed
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param rol nombre actual del rol, se normaliza
-     * @param request nombre y descripción nuevos
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el rol actualizado
+     * @param requester identity of the requester taken from the headers
+     * @param rol current name of the role, it is normalized
+     * @param request new name and description
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the updated role
      */
     @PutMapping("/roles/{rol}")
     public ResponseEntity<RoleDetailResponse> updateRole(
@@ -126,17 +126,17 @@ public class RoleAdminController {
                 CorrelationIds.current(httpRequest)));
     }
 
-    /**
-     * PUT /api/v1/roles/{rol}/permissions: reemplaza los permisos de un rol (RF-MS01-10, formulario F-12)
+        /**
+     * PUT /api/v1/roles/{rol}/permissions: replaces the permissions of a role (RF-MS01-10, form F-12)
      *
-     * 200 rol actualizado, 400 lista inválida o campo no permitido, 401 identidad ausente, 403 sin permiso,
-     * 404 rol inexistente, 422 incumple la regla de ms01:role:manage
+     * 200 role updated, 400 invalid list or field not allowed, 401 missing identity, 403 no permission, 404
+     * non-existent role, 422 breaks a rule about the mandatory permissions or about ms01:role:manage
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param rol nombre del rol, se normaliza
-     * @param request lista completa de permisos
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el rol actualizado
+     * @param requester identity of the requester taken from the headers
+     * @param rol name of the role, it is normalized
+     * @param request complete list of permissions
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the updated role
      */
     @PutMapping("/roles/{rol}/permissions")
     public ResponseEntity<RoleDetailResponse> updatePermissions(
@@ -148,16 +148,16 @@ public class RoleAdminController {
                 CorrelationIds.current(httpRequest)));
     }
 
-    /**
-     * DELETE /api/v1/roles/{rol}: borra un rol (RF-MS01-10, formulario F-13)
+        /**
+     * DELETE /api/v1/roles/{rol}: deletes a role (RF-MS01-10, form F-13)
      *
-     * 204 rol borrado sin cuerpo, 400 nombre con formato inválido, 401 identidad ausente, 403 sin permiso,
-     * 404 rol inexistente, 409 rol de sistema
+     * 204 role deleted without a body, 400 name with an invalid format, 401 missing identity, 403 no permission, 404
+     * non-existent role, 409 system role
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param rol nombre del rol, se normaliza
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return respuesta vacía
+     * @param requester identity of the requester taken from the headers
+     * @param rol name of the role, it is normalized
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return empty response
      */
     @DeleteMapping("/roles/{rol}")
     public ResponseEntity<Void> deleteRole(

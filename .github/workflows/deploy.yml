@@ -1,20 +1,20 @@
 name: Desplegar
 
-# Workflow reutilizable: despliega una imagen ya publicada en la VM de MS01, con el runner self-hosted de etiqueta
-# "ms01" y las variables y secretos del Environment ms01-<entorno>. Lo llaman ci.yml (test) y deploy-prod.yml.
+# Reusable workflow: deploys an already published image on the MS01 VM, with the self-hosted runner labeled
+# "ms01" and the variables and secrets of the ms01-<environment> Environment. It is called by ci.yml (test) and deploy-prod.yml.
 on:
   workflow_call:
     inputs:
       entorno:
-        description: test o prod
+        description: test or prod
         type: string
         required: true
       ref:
-        description: Commit del que se toman los archivos de infra/ y database/
+        description: Commit from which the files of infra/ and database/ are taken
         type: string
         required: true
       tag:
-        description: Imagen a desplegar (sha-xxxxxxx). Vacía = la del commit de ref.
+        description: Image to deploy (sha-xxxxxxx). Empty = the one of the ref commit.
         type: string
         required: false
         default: ''
@@ -35,7 +35,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Desplegar y verificar
+      - name: Deploy and verify
         run: infra/deploy.sh
         env:
           ENTORNO: ${{ inputs.entorno }}

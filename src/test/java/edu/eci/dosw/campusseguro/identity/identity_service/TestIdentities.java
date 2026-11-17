@@ -9,21 +9,21 @@ import java.util.UUID;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Arma identidades de prueba con los permisos que tendrían los roles de una base recién creada
+ * Builds test identities with the permissions that the roles of a freshly created database would have
  */
 public final class TestIdentities {
 
-    /**
-     * Clase de utilidades, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private TestIdentities() {
     }
 
-    /**
-     * Calcula la unión de los permisos de los roles indicados
+        /**
+     * Computes the union of the permissions of the indicated roles
      *
-     * @param roles nombres de roles sembrados
-     * @return códigos de permiso de la unión, vacío si ningún rol está sembrado
+     * @param roles names of seeded roles
+     * @return permission codes of the union, empty if no role is seeded
      */
     public static Set<String> permissionsOf(String... roles) {
         Set<String> permissions = new TreeSet<>();
@@ -33,11 +33,11 @@ public final class TestIdentities {
         return permissions;
     }
 
-    /**
-     * Arma el valor de la cabecera X-User-Permission con la unión de los permisos de los roles sembrados
+        /**
+     * Builds the value of the X-User-Permission header with the union of the permissions of the seeded roles
      *
-     * @param rolesCsv nombres de roles sembrados separados por coma, se ignoran los espacios
-     * @return códigos de permiso separados por coma, vacío si ningún rol está sembrado
+     * @param rolesCsv names of seeded roles separated by comma, spaces are ignored
+     * @return permission codes separated by comma, empty if no role is seeded
      */
     public static String permissionHeader(String rolesCsv) {
         String[] roles = rolesCsv.split(",");
@@ -47,24 +47,24 @@ public final class TestIdentities {
         return String.join(",", permissionsOf(roles));
     }
 
-    /**
-     * Crea una identidad cuyos permisos son la unión de los permisos de los roles indicados
+        /**
+     * Creates an identity whose permissions are the union of the permissions of the indicated roles
      *
-     * @param userId identificador del usuario
-     * @param roles nombres de roles sembrados
-     * @return identidad con esos roles y la unión de sus permisos
+     * @param userId identifier of the user
+     * @param roles names of seeded roles
+     * @return identity with those roles and the union of their permissions
      */
     public static RequesterIdentity of(UUID userId, String... roles) {
         return new RequesterIdentity(userId, new TreeSet<>(Arrays.asList(roles)), permissionsOf(roles));
     }
 
-    /**
-     * Crea una identidad con los roles indicados y exactamente los permisos indicados
+        /**
+     * Creates an identity with the indicated roles and exactly the indicated permissions
      *
-     * @param userId identificador del usuario
-     * @param roles roles de la identidad
-     * @param permissions códigos de permiso de la identidad
-     * @return identidad con esos roles y esos permisos
+     * @param userId identifier of the user
+     * @param roles roles of the identity
+     * @param permissions permission codes of the identity
+     * @return identity with those roles and those permissions
      */
     public static RequesterIdentity withPermissions(UUID userId, Set<String> roles, String... permissions) {
         return new RequesterIdentity(userId, roles, new TreeSet<>(Arrays.asList(permissions)));

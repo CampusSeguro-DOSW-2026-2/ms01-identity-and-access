@@ -8,22 +8,21 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.PermissionEnti
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 
 /**
- * Fábrica de entidades de prueba: permisos del catálogo y roles con sus permisos, tal como los devolvería la base
- * de datos
+ * Factory of test entities: catalog permissions and roles with their permissions, as the database would return them
  */
 public final class TestEntities {
 
-    /**
-     * Clase de utilidades, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private TestEntities() {
     }
 
-    /**
-     * Crea un permiso del catálogo con una descripción fija
+        /**
+     * Creates a catalog permission with a fixed description
      *
-     * @param code código del permiso
-     * @return la entidad
+     * @param code code of the permission
+     * @return the entity
      */
     public static PermissionEntity permission(String code) {
         PermissionEntity permission = new PermissionEntity();
@@ -32,11 +31,11 @@ public final class TestEntities {
         return permission;
     }
 
-    /**
-     * Crea el conjunto de permisos de un rol a partir de sus códigos, los códigos repetidos dan un solo permiso
+        /**
+     * Creates the set of permissions of a role from their codes, the repeated codes give a single permission
      *
-     * @param codes códigos de permiso
-     * @return los permisos, sin repetidos
+     * @param codes permission codes
+     * @return the permissions, without repeated ones
      */
     public static Set<PermissionEntity> permissions(String... codes) {
         Set<String> distinct = new HashSet<>(List.of(codes));
@@ -47,12 +46,12 @@ public final class TestEntities {
         return permissions;
     }
 
-    /**
-     * Crea un rol que no es de sistema con los permisos indicados
+        /**
+     * Creates a non-system role with the indicated permissions
      *
-     * @param name nombre del rol
-     * @param codes códigos de los permisos del rol
-     * @return la entidad
+     * @param name name of the role
+     * @param codes codes of the permissions of the role
+     * @return the entity
      */
     public static RoleEntity role(String name, String... codes) {
         RoleEntity role = new RoleEntity();
@@ -62,11 +61,11 @@ public final class TestEntities {
         return role;
     }
 
-    /**
-     * Crea un conjunto de roles de prueba a partir de sus nombres, cada uno con el permiso ms01:profile:read
+        /**
+     * Creates a set of test roles from their names, each one with the ms01:profile:read permission
      *
-     * @param names nombres de los roles
-     * @return los roles, sin repetidos por instancia
+     * @param names names of the roles
+     * @return the roles, without repeated ones per instance
      */
     public static Set<RoleEntity> roles(String... names) {
         Set<RoleEntity> roles = new HashSet<>();

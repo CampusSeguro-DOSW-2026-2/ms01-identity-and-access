@@ -58,12 +58,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * Registro de usuarios (RF-MS01-01), perfil propio (RF-MS01-06) y administración de usuarios
- * (RF-MS01-07)
+ * User registration (RF-MS01-01), own profile (RF-MS01-06) and user administration (RF-MS01-07)
  *
- * La autorización de cada operación la decide el permiso que recibe el solicitante en X-User-Permission y
- * nunca el nombre de un rol, el registro y el cambio de estado se auditan en MS08 (RNF-MS01-10), el cambio de
- * estado también registra el corte de sesión de cada usuario (RF-MS01-11)
+ * The authorization of each operation is decided by the permission that the requester receives in X-User-Permission and
+ * never by the name of a role, the registration and the status change are audited in MS08 (RNF-MS01-10), the status
+ * change also records the session cut of each user (RF-MS01-11)
  */
 @Service
 public class UserServiceImpl implements UserService {
@@ -89,17 +88,17 @@ public class UserServiceImpl implements UserService {
     private final DatabaseTimeService timeService;
     private final Set<String> institutionalDomains;
 
-    /**
-     * Crea el servicio con sus dependencias
+        /**
+     * Creates the service with its dependencies
      *
-     * @param userRepository repositorio de acceso a los usuarios y sus roles
-     * @param roleRepository repositorio de acceso a los roles
-     * @param passwordEncoder codificador con el que se guardan las contraseñas
-     * @param auditRecorder registrador de los eventos de auditoría de MS08
-     * @param requestValidator validador de los cuerpos de las peticiones
-     * @param timeService reloj único de la base de datos con el que se fijan los cortes de sesión
-     * @param institutionalDomains dominios de correo institucional configurados, sin la arroba, se ignoran
-     *        los espacios, las mayúsculas y los valores vacíos
+     * @param userRepository repository to access the users and their roles
+     * @param roleRepository repository to access the roles
+     * @param passwordEncoder encoder with which the passwords are stored
+     * @param auditRecorder recorder of the audit events of MS08
+     * @param requestValidator validator of the request bodies
+     * @param timeService single database clock with which the session cuts are set
+     * @param institutionalDomains configured institutional email domains, without the at sign, spaces, uppercase and
+     *        empty values are ignored
      */
     public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
             PasswordEncoder passwordEncoder, AuditRecorder auditRecorder, RequestValidator requestValidator,
@@ -118,14 +117,14 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    /**
-     * Registra un usuario institucional (RF-MS01-01), cada intento, exitoso o fallido, se audita en MS08
+        /**
+     * Registers an institutional user (RF-MS01-01), every attempt, successful or failed, is audited in MS08
      *
-     * @param request datos del formulario de registro
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return el usuario creado con su id, correo, roles y estado
-     * @throws InvalidRequestException si los datos incumplen el formulario F-01
-     * @throws EmailAlreadyExistsException si el correo ya está registrado
+     * @param request data of the registration form
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the created user with its id, email, roles and status
+     * @throws InvalidRequestException if the data breaks form F-01
+     * @throws EmailAlreadyExistsException if the email is already registered
      */
     @Override
     @Transactional
@@ -136,7 +135,7 @@ public class UserServiceImpl implements UserService {
         if (!errors.isEmpty()) {
             auditRecorder.recordAnonymous(AuditAction.REGISTRO, AuditResult.FALLO, null, null, REASON_VALIDATION,
                     corr);
-            log.warn("Registro rechazado por datos inválidos");
+            log.warn("Registration rejected because of invalid data");
             throw new InvalidRequestException(ValidationErrors.INVALID_DATA_MESSAGE, errors);
         }
 
@@ -153,7 +152,7 @@ public class UserServiceImpl implements UserService {
         entity.setEmail(email);
         entity.setPassword(passwordEncoder.encode(request.getPassword()));
         RoleEntity studentRole = roleRepository.findByName(RoleNames.STUDENT).orElseThrow(
-                () -> new IllegalStateException("El rol de sistema " + RoleNames.STUDENT + " no existe"));
+                () -> new IllegalStateException("The system role " + RoleNames.STUDENT + " does not exist"));
         entity.setRoles(Set.of(studentRole));
         entity.setState(UserState.ACTIVO);
 
@@ -161,7 +160,7 @@ public class UserServiceImpl implements UserService {
         try {
             saved = userRepository.saveAndFlush(entity);
         } catch (DataIntegrityViolationException e) {
-            log.warn("Registro rechazado por restricción de unicidad: {}", e.getClass().getSimpleName());
+            log.warn("Registration rejected by a uniqueness constraint: {}", e.getClass().getSimpleName());
             throw emailConflict(corr);
         }
 
@@ -171,13 +170,13 @@ public class UserServiceImpl implements UserService {
         return UserResponse.fromEntity(saved);
     }
 
-    /**
-     * Consulta el perfil del propio solicitante (RF-MS01-03, RF-MS01-06)
+        /**
+     * Queries the profile of the requester themselves (RF-MS01-03, RF-MS01-06)
      *
-     * @param requester identidad de quien consulta
-     * @return los datos del usuario identificado por la cabecera de identidad
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws UserNotFoundException si el usuario ya no existe
+     * @param requester identity of whoever queries
+     * @return the data of the user identified by the identity header
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws UserNotFoundException if the user no longer exists
      */
     @Override
     @Transactional(readOnly = true)
@@ -187,15 +186,15 @@ public class UserServiceImpl implements UserService {
         return UserProfileResponse.fromEntity(entity);
     }
 
-    /**
-     * Actualiza el perfil propio (RF-MS01-06), la actualización reemplaza el perfil completo
+        /**
+     * Updates the own profile (RF-MS01-06), the update replaces the complete profile
      *
-     * @param requester identidad de quien actualiza
-     * @param request nombres y apellidos nuevos
-     * @return el perfil actualizado
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws InvalidRequestException si los datos incumplen el formulario F-03
-     * @throws UserNotFoundException si el usuario ya no existe
+     * @param requester identity of whoever updates
+     * @param request new names and lastnames
+     * @return the updated profile
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws InvalidRequestException if the data breaks form F-03
+     * @throws UserNotFoundException if the user no longer exists
      */
     @Override
     @Transactional
@@ -213,14 +212,14 @@ public class UserServiceImpl implements UserService {
         return UserProfileResponse.fromEntity(updated);
     }
 
-    /**
-     * Consulta un usuario por su id (RF-MS01-05, RF-MS01-07)
+        /**
+     * Queries a user by their id (RF-MS01-05, RF-MS01-07)
      *
-     * @param requester identidad de quien consulta
-     * @param id id del usuario consultado
-     * @return los datos del usuario
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws UserNotFoundException si el usuario no existe
+     * @param requester identity of whoever queries
+     * @param id id of the queried user
+     * @return the data of the user
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws UserNotFoundException if the user does not exist
      */
     @Override
     @Transactional(readOnly = true)
@@ -230,19 +229,19 @@ public class UserServiceImpl implements UserService {
         return UserProfileResponse.fromEntity(entity);
     }
 
-    /**
-     * Lista y busca usuarios con paginación y filtros opcionales (RF-MS01-07, formulario F-07), el
-     * orden es por fecha de registro descendente y luego por id
+        /**
+     * Lists and searches users with pagination and optional filters (RF-MS01-07, form F-07), the order is by
+     * registration date descending and then by id
      *
-     * @param requester identidad de quien consulta
-     * @param correo búsqueda parcial por correo, puede ser null
-     * @param estado filtro de estado, puede ser null
-     * @param rol filtro de rol, puede ser null
-     * @param page número de página recibido como texto, null equivale a 0
-     * @param size tamaño de página recibido como texto, null equivale a 20
-     * @return la página de usuarios con sus roles completos
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
-     * @throws InvalidRequestException si algún parámetro incumple el formulario F-07 o el rol no existe
+     * @param requester identity of whoever queries
+     * @param correo partial search by email, may be null
+     * @param estado status filter, may be null
+     * @param rol role filter, may be null
+     * @param page page number received as text, null is equivalent to 0
+     * @param size page size received as text, null is equivalent to 20
+     * @return the page of users with their complete roles
+     * @throws ForbiddenOperationException if the requester does not have the required permission
+     * @throws InvalidRequestException if any parameter breaks form F-07 or the role does not exist
      */
     @Override
     @Transactional(readOnly = true)
@@ -264,18 +263,17 @@ public class UserServiceImpl implements UserService {
         return PageResponse.from(result.map(UserProfileResponse::fromEntity));
     }
 
-    /**
-     * Activa o inactiva a uno o varios usuarios en una sola operación atómica (RF-MS01-07, formulario
-     * F-08), cada usuario procesado se audita en MS08
+        /**
+     * Activates or deactivates one or several users in a single atomic operation (RF-MS01-07, form F-08), every
+     * processed user is audited in MS08
      *
-     * @param requester identidad de quien solicita
-     * @param request usuarios objetivo y nuevo estado
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return el estado anterior y el nuevo de cada usuario
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido o se incluye a sí
-     *         mismo
-     * @throws InvalidRequestException si el cuerpo incumple el formulario F-08
-     * @throws UsersNotFoundException si algún usuario objetivo no existe
+     * @param requester identity of whoever requests
+     * @param request target users and new status
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the previous and the new status of each user
+     * @throws ForbiddenOperationException if the requester does not have the required permission or includes themselves
+     * @throws InvalidRequestException if the body breaks form F-08
+     * @throws UsersNotFoundException if any target user does not exist
      */
     @Override
     @Transactional
@@ -286,7 +284,7 @@ public class UserServiceImpl implements UserService {
         if (!requester.hasPermission(Permission.MS01_USER_STATUS)) {
             auditRecorder.recordAs(AuditAction.CAMBIO_ESTADO, AuditResult.FALLO, requester, null,
                     REASON_NOT_ALLOWED, corr);
-            log.warn("Cambio de estado rechazado: el solicitante {} no tiene el permiso requerido",
+            log.warn("Status change rejected: the requester {} does not have the required permission",
                     requester.userId());
             throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
         }
@@ -298,7 +296,7 @@ public class UserServiceImpl implements UserService {
         if (targetIds.contains(requester.userId())) {
             auditRecorder.recordAs(AuditAction.CAMBIO_ESTADO, AuditResult.FALLO, requester,
                     AuditRecorder.userResource(requester.userId()), REASON_SELF_CHANGE, corr);
-            log.warn("Cambio de estado rechazado: el administrador {} intenta cambiar su propio estado",
+            log.warn("Status change rejected: the administrator {} tries to change their own status",
                     requester.userId());
             throw new ForbiddenOperationException(SELF_STATUS_CHANGE_MESSAGE);
         }
@@ -323,18 +321,18 @@ public class UserServiceImpl implements UserService {
             auditRecorder.recordAs(AuditAction.CAMBIO_ESTADO, AuditResult.EXITO, requester,
                     AuditRecorder.userResource(id), stateChangeDetail(previous, user.getState()), corr);
         }
-        log.info("Estado actualizado por el administrador {}: {} usuario(s) procesado(s)", requester.userId(),
+        log.info("Status updated by administrator {}: {} user(s) processed", requester.userId(),
                 results.size());
         return ChangeStatusResponse.fromEntity(results);
     }
 
-    /**
-     * Consulta interna de varios usuarios por id (RF-MS01-09), la autoriza la cadena de seguridad interna
-     * por el servicio que llama y no se audita
+        /**
+     * Internal query of several users by id (RF-MS01-09), it is authorized by the internal security chain through the
+     * calling service and is not audited
      *
-     * @param request ids de los usuarios, de 1 a 100
-     * @return los usuarios encontrados en el orden pedido, sin repetidos, y los ids que no existen
-     * @throws InvalidRequestException si la lista falta, tiene más de 100 ids o algún id no es UUID
+     * @param request ids of the users, from 1 to 100
+     * @return the users found in the requested order, without repeated ones, and the ids that do not exist
+     * @throws InvalidRequestException if the list is missing, has more than 100 ids or any id is not a UUID
      */
     @Override
     @Transactional(readOnly = true)
@@ -359,16 +357,16 @@ public class UserServiceImpl implements UserService {
         return new BatchUsersResponse(found, missing);
     }
 
-    /**
-     * Consulta interna de los usuarios que tienen un rol (RF-MS01-09), ordenados por id, la autoriza la
-     * cadena de seguridad interna por el servicio que llama y no se audita
+        /**
+     * Internal query of the users that have a role (RF-MS01-09), sorted by id, it is authorized by the internal
+     * security chain through the calling service and is not audited
      *
-     * @param rol rol obligatorio
-     * @param creadoAntes instante de corte en ISO 8601, puede ser null
-     * @param page número de página recibido como texto, null equivale a 0
-     * @param size tamaño de página recibido como texto, null equivale a 20
-     * @return la página de usuarios con ese rol, activos e inactivos
-     * @throws InvalidRequestException si algún parámetro no es válido o el rol no existe
+     * @param rol required role
+     * @param creadoAntes cut-off instant in ISO 8601, may be null
+     * @param page page number received as text, null is equivalent to 0
+     * @param size page size received as text, null is equivalent to 20
+     * @return the page of users with that role, active and inactive
+     * @throws InvalidRequestException if any parameter is not valid or the role does not exist
      */
     @Override
     @Transactional(readOnly = true)
@@ -389,15 +387,15 @@ public class UserServiceImpl implements UserService {
         return PageResponse.from(result.map(UserProfileResponse::fromEntity));
     }
 
-    /**
-     * Comprueba que todos los ids pedidos correspondan a un usuario existente, si falta alguno audita un
-     * FALLO por cada id inexistente y lanza 404 sin haber cambiado nada
+        /**
+     * Checks that all the requested ids correspond to an existing user, if any is missing it audits a FALLO for each
+     * non-existent id and throws 404 without having changed anything
      *
-     * @param requester identidad de quien solicita
-     * @param targetIds ids pedidos
-     * @param usersById usuarios encontrados en la base de datos indexados por id
-     * @param corr correlation id de la petición
-     * @throws UsersNotFoundException si algún id pedido no corresponde a un usuario
+     * @param requester identity of whoever requests
+     * @param targetIds requested ids
+     * @param usersById users found in the database indexed by id
+     * @param corr correlation id of the request
+     * @throws UsersNotFoundException if any requested id does not correspond to a user
      */
     private void verifyAllUsersExist(RequesterIdentity requester, Set<UUID> targetIds,
             Map<UUID, UserEntity> usersById, String corr) {
@@ -414,20 +412,20 @@ public class UserServiceImpl implements UserService {
             auditRecorder.recordAs(AuditAction.CAMBIO_ESTADO, AuditResult.FALLO, requester,
                     AuditRecorder.userResource(id), REASON_USER_NOT_FOUND, corr);
         }
-        log.warn("Cambio de estado rechazado: {} usuario(s) inexistente(s)", missing.size());
+        log.warn("Status change rejected: {} non-existent user(s)", missing.size());
         throw new UsersNotFoundException(missing);
     }
 
-    /**
-     * Asigna el nuevo estado a los usuarios y lo confirma en la base de datos, si la escritura falla audita
-     * el fallo de cada usuario, no se aplica ningún cambio y se propaga el error
+        /**
+     * Assigns the new status to the users and commits it to the database, if the write fails it audits the failure of
+     * each user, no change is applied and the error is propagated
      *
-     * @param requester identidad de quien solicita
-     * @param targetIds ids de los usuarios a modificar
-     * @param users usuarios cargados con bloqueo de escritura
-     * @param newState estado que se asigna a todos
-     * @param cut instante del corte de sesión de cada usuario, truncado a segundos
-     * @param corr correlation id de la petición
+     * @param requester identity of whoever requests
+     * @param targetIds ids of the users to modify
+     * @param users users loaded with a write lock
+     * @param newState status that is assigned to all
+     * @param cut instant of the session cut of each user, truncated to seconds
+     * @param corr correlation id of the request
      */
     private void applyState(RequesterIdentity requester, Set<UUID> targetIds, List<UserEntity> users,
             UserState newState, Instant cut, String corr) {
@@ -442,16 +440,16 @@ public class UserServiceImpl implements UserService {
                 auditRecorder.recordAs(AuditAction.CAMBIO_ESTADO, AuditResult.FALLO, requester,
                         AuditRecorder.userResource(id), REASON_INTERNAL, corr);
             }
-            log.error("Cambio de estado fallido: no fue posible guardar los cambios", e);
+            log.error("Status change failed: the changes could not be saved", e);
             throw e;
         }
     }
 
-    /**
-     * Indexa una lista de usuarios por su id
+        /**
+     * Indexes a list of users by their id
      *
-     * @param users usuarios cargados
-     * @return mapa de id a usuario
+     * @param users loaded users
+     * @return map from id to user
      */
     private static Map<UUID, UserEntity> indexById(List<UserEntity> users) {
         Map<UUID, UserEntity> index = new HashMap<>();
@@ -461,23 +459,23 @@ public class UserServiceImpl implements UserService {
         return index;
     }
 
-    /**
-     * Construye el detalle de auditoría de un cambio de estado
+        /**
+     * Builds the audit detail of a status change
      *
-     * @param previous estado que tenía el usuario
-     * @param current estado que tiene el usuario después del cambio
-     * @return texto con el estado anterior y el nuevo
+     * @param previous status that the user had
+     * @param current status that the user has after the change
+     * @return text with the previous and the new status
      */
     private static String stateChangeDetail(UserState previous, UserState current) {
         return "estado_anterior=" + previous + ";estado_nuevo=" + current;
     }
 
-    /**
-     * Reúne los errores del formulario de registro: los de formato y reglas de cada campo, y que el correo
-     * pertenezca al dominio institucional, sin indicar si el correo falló por dominio o por formato
+        /**
+     * Gathers the errors of the registration form: those of format and rules of each field, and that the email belongs
+     * to the institutional domain, without indicating whether the email failed because of the domain or the format
      *
-     * @param request datos del formulario de registro
-     * @return errores por campo, vacío si el formulario es válido
+     * @param request data of the registration form
+     * @return errors by field, empty if the form is valid
      */
     private List<ErrorResponse.ErrorDetail> collectRegistrationErrors(UserCreateRequest request) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(requestValidator.collectErrors(request));
@@ -493,11 +491,11 @@ public class UserServiceImpl implements UserService {
         return ValidationErrors.merge(errors);
     }
 
-    /**
-     * Indica si el correo pertenece a alguno de los dominios institucionales configurados
+        /**
+     * Tells whether the email belongs to any of the configured institutional domains
      *
-     * @param email correo ya normalizado a minúsculas
-     * @return true si la parte posterior a la arroba es igual a alguno de los dominios institucionales
+     * @param email email already normalized to lowercase
+     * @return true if the part after the at sign is equal to any of the institutional domains
      */
     private boolean belongsToInstitutionalDomain(String email) {
         if (email == null) {
@@ -510,24 +508,24 @@ public class UserServiceImpl implements UserService {
         return institutionalDomains.contains(email.substring(at + 1));
     }
 
-    /**
-     * Audita el rechazo por correo duplicado y crea la excepción que se lanza al cliente
+        /**
+     * Audits the rejection for a duplicated email and creates the exception that is thrown to the client
      *
-     * @param corr correlation id de la petición
-     * @return la excepción de correo ya registrado
+     * @param corr correlation id of the request
+     * @return the exception of an already registered email
      */
     private EmailAlreadyExistsException emailConflict(String corr) {
         auditRecorder.recordAnonymous(AuditAction.REGISTRO, AuditResult.FALLO, null, null, REASON_CONFLICT, corr);
-        log.warn("Registro rechazado: correo ya registrado");
+        log.warn("Registration rejected: email already registered");
         return new EmailAlreadyExistsException();
     }
 
-    /**
-     * Busca un usuario por id
+        /**
+     * Looks up a user by id
      *
-     * @param id id del usuario
-     * @return el usuario encontrado
-     * @throws UserNotFoundException si no existe
+     * @param id id of the user
+     * @return the user found
+     * @throws UserNotFoundException if it does not exist
      */
     private UserEntity findUser(UUID id) {
         return userRepository.findById(id)

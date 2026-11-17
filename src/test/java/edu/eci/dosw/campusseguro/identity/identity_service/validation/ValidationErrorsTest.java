@@ -20,16 +20,16 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 
 /**
- * Conversión de las violaciones de validación al detalle por campo del ErrorResponse, un error por campo,
- * con el nombre del campo del contrato y en orden estable
+ * Conversion of the validation violations into the detail by field of the ErrorResponse, one error per field, with the
+ * name of the contract field and in a stable order
  */
 class ValidationErrorsTest {
 
     private static ValidatorFactory factory;
     private static Validator validator;
 
-    /**
-     * Crea el validador que se comparte entre las pruebas
+        /**
+     * Creates the validator that is shared between the tests
      */
     @BeforeAll
     static void init() {
@@ -37,16 +37,16 @@ class ValidationErrorsTest {
         validator = factory.getValidator();
     }
 
-    /**
-     * Libera la fábrica de validadores
+        /**
+     * Releases the validator factory
      */
     @AfterAll
     static void close() {
         factory.close();
     }
 
-    /**
-     * La unión conserva el primer mensaje de cada campo y ordena por nombre
+        /**
+     * The union keeps the first message of each field and sorts by name
      */
     @Test
     void merge_keepsTheFirstMessagePerFieldSortedByName() {
@@ -60,16 +60,16 @@ class ValidationErrorsTest {
                 new ErrorResponse.ErrorDetail("rol", "segundo")), merged);
     }
 
-    /**
-     * La unión de una lista vacía es vacía
+        /**
+     * The union of an empty list is empty
      */
     @Test
     void merge_ofAnEmptyList_isEmpty() {
         assertTrue(ValidationErrors.merge(List.of()).isEmpty());
     }
 
-    /**
-     * El nombre del contrato se toma de la propiedad JSON del campo
+        /**
+     * The name of the contract is taken from the JSON property of the field
      */
     @Test
     void wireName_usesTheJsonPropertyOfTheField() {
@@ -78,8 +78,8 @@ class ValidationErrorsTest {
                 ValidationErrors.wireName(UserCreateRequest.class, "passwordConfirmation"));
     }
 
-    /**
-     * La ruta de un elemento de colección se reduce a su primer tramo
+        /**
+     * The path of a collection element is reduced to its first segment
      */
     @Test
     void wireName_ofAContainerElementPath_isTheFirstSegment() {
@@ -88,16 +88,16 @@ class ValidationErrorsTest {
         assertEquals("ids", ValidationErrors.wireName(ChangeStatusRequest.class, "ids.valor"));
     }
 
-    /**
-     * Una propiedad desconocida se devuelve tal cual
+        /**
+     * An unknown property is returned as it is
      */
     @Test
     void wireName_ofAnUnknownProperty_isReturnedAsIs() {
         assertEquals("otra", ValidationErrors.wireName(UserCreateRequest.class, "otra"));
     }
 
-    /**
-     * La conversión de violaciones usa los nombres del contrato y los ordena
+        /**
+     * The conversion of violations uses the names of the contract and sorts them
      */
     @Test
     void fromViolations_usesTheContractNamesAndSortsThem() {
@@ -119,8 +119,8 @@ class ValidationErrorsTest {
         assertEquals(fields.size(), fields.stream().distinct().count());
     }
 
-    /**
-     * La conversión de errores de campo usa los nombres del contrato y conserva el primer mensaje
+        /**
+     * The conversion of field errors uses the names of the contract and keeps the first message
      */
     @Test
     void fromFieldErrors_usesTheContractNamesAndKeepsTheFirstMessage() {

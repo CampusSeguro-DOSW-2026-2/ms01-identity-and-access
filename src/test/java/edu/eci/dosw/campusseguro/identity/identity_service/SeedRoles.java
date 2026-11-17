@@ -5,12 +5,12 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Permisos de los ocho roles que siembra el script de base de datos según la Matriz Rol-Permiso (RN-MS01-34), sirven para armar identidades de
- * prueba con los mismos permisos que tendrían en una base recién creada
+ * Permissions of the eight roles seeded by the database script according to the Role-Permission Matrix (RN-MS01-34),
+ * they are used to build test identities with the same permissions they would have in a freshly created database
  */
 public final class SeedRoles {
 
-    /** Roles sembrados con los códigos de permiso que tiene cada uno, ordenados por código */
+        /** Seeded roles with the permission codes that each one has, sorted by code */
     public static final Map<String, List<String>> PERMISSIONS = Map.of(
             "ESTUDIANTE", List.of(
                     "ms01:password:change",
@@ -194,16 +194,16 @@ public final class SeedRoles {
                     "ms08:indicators:read"));
 
 
-    /**
-     * Clase de utilidades, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private SeedRoles() {
     }
 
-    /**
-     * Entrega los nombres de los roles sembrados para las pruebas parametrizadas
+        /**
+     * Provides the names of the seeded roles for the parameterized tests
      *
-     * @return flujo con los nombres de los ocho roles sembrados, ordenados alfabéticamente
+     * @return stream with the names of the eight seeded roles, sorted alphabetically
      */
     public static Stream<String> names() {
         return PERMISSIONS.keySet().stream().sorted();

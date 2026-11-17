@@ -1,15 +1,15 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
 /**
- * No se pudo establecer la identidad de quien hace la peticion: faltan las cabeceras X-User-Id /
- * X-User-Role o su valor no es valido (RN-MS01-23). Se traduce a HTTP 401 con codigo NO_AUTENTICADO
+ * The identity of whoever makes the request could not be established: the headers X-User-Id / X-User-Role are missing
+ * or their value is not valid (RN-MS01-23). It is translated to HTTP 401 with code NO_AUTENTICADO
  */
 public class UnauthenticatedException extends RuntimeException {
 
-    /**
-     * Crea la excepcion con el motivo que se devolvera al cliente
+        /**
+     * Creates the exception with the reason that will be returned to the client
      *
-     * @param message motivo por el que no se pudo establecer la identidad
+     * @param message reason why the identity could not be established
      */
     public UnauthenticatedException(String message) {
         super(message);

@@ -10,16 +10,16 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
- * Identidad de quien hace la peticion, tal como la entrega el API Gateway en las cabeceras
+ * Identity of whoever makes the request, as delivered by the API Gateway in the headers
  *
- * @param userId id del usuario autenticado
- * @param roles nombres de los roles del usuario (X-User-Role)
- * @param permissions códigos de los permisos efectivos del usuario (X-User-Permission)
+ * @param userId id of the authenticated user
+ * @param roles names of the roles of the user (X-User-Role)
+ * @param permissions codes of the effective permissions of the user (X-User-Permission)
  */
 public record RequesterIdentity(UUID userId, Set<String> roles, Set<String> permissions) {
 
-    /**
-     * Valida los componentes y deja los roles y los permisos como conjuntos inmutables
+        /**
+     * Validates the components and leaves the roles and the permissions as immutable sets
      */
     public RequesterIdentity {
         Objects.requireNonNull(userId, "userId");
@@ -29,22 +29,22 @@ public record RequesterIdentity(UUID userId, Set<String> roles, Set<String> perm
         permissions = Collections.unmodifiableSet(new TreeSet<>(permissions));
     }
 
-    /**
-     * Indica si el solicitante tiene el permiso, la autorización se decide solo con los permisos de la cabecera
-     * X-User-Permission y nunca con el nombre de un rol
+        /**
+     * Tells whether the requester has the permission, the authorization is decided only with the permissions of the
+     * X-User-Permission header and never with the name of a role
      *
-     * @param permission permiso que se desea comprobar
-     * @return true si sus permisos contienen el permiso a comprobar, false en caso contrario
+     * @param permission permission to be checked
+     * @return true if its permissions contain the permission to be checked, false otherwise
      */
     public boolean hasPermission(Permission permission) {
         return permissions.contains(permission.getCode());
     }
 
-    /**
-     * Devuelve los roles del solicitante con el mismo formato de la cabecera X-User-Role, separados por
-     * coma, sin espacios y en orden alfabetico (Estandares de Integracion, seccion 4)
+        /**
+     * Returns the roles of the requester with the same format as the X-User-Role header, separated by comma, without
+     * spaces and in alphabetical order (Integration Standards, section 4)
      *
-     * @return los nombres de los roles separados por coma
+     * @return the names of the roles separated by comma
      */
     public String rolesHeader() {
         return String.join(",", RoleNames.sorted(roles));

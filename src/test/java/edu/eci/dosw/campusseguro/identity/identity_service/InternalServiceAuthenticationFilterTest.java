@@ -21,27 +21,27 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHead
 import edu.eci.dosw.campusseguro.identity.identity_service.security.InternalServiceAuthenticationFilter;
 
 /**
- * Pruebas del filtro que autentica las rutas internas por X-Service-Name (RF-MS01-09)
+ * Tests of the filter that authenticates the internal routes by X-Service-Name (RF-MS01-09)
  */
 class InternalServiceAuthenticationFilterTest {
 
     private final InternalServiceAuthenticationFilter filter =
             new InternalServiceAuthenticationFilter(" MS03 , ms05,, ");
 
-    /**
-     * Limpia el contexto de seguridad entre pruebas
+        /**
+     * Clears the security context between tests
      */
     @AfterEach
     void clearContext() {
         SecurityContextHolder.clearContext();
     }
 
-    /**
-     * Ejecuta el filtro con el valor de X-Service-Name indicado
+        /**
+     * Runs the filter with the indicated X-Service-Name value
      *
-     * @param serviceName valor de la cabecera, null para no enviarla
-     * @return la petición después del filtro
-     * @throws Exception si falla el filtro
+     * @param serviceName value of the header, null to not send it
+     * @return the request after the filter
+     * @throws Exception if the filter fails
      */
     private MockHttpServletRequest run(String serviceName) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/users/batch");
@@ -54,21 +54,21 @@ class InternalServiceAuthenticationFilterTest {
         return request;
     }
 
-    /**
-     * Devuelve los nombres de las autoridades de la autenticación actual
+        /**
+     * Returns the names of the authorities of the current authentication
      *
-     * @return los nombres de las autoridades
+     * @return the names of the authorities
      */
     private static List<String> authorities() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
     }
 
-    /**
-     * Sin la cabecera la petición queda sin autenticar y con el motivo para el 401
+        /**
+     * Without the header the request is left unauthenticated and with the reason for the 401
      *
-     * @param serviceName valor ausente o vacío
-     * @throws Exception si falla el filtro
+     * @param serviceName absent or empty value
+     * @throws Exception if the filter fails
      */
     @ParameterizedTest
     @ValueSource(strings = {"", "   "})
@@ -80,10 +80,10 @@ class InternalServiceAuthenticationFilterTest {
                 request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 
-    /**
-     * Sin la cabecera enviada en absoluto también queda el motivo para el 401
+        /**
+     * Without the header sent at all the reason for the 401 is also left
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void filter_withoutHeader_leavesTheReasonForThe401() throws Exception {
@@ -94,11 +94,11 @@ class InternalServiceAuthenticationFilterTest {
                 request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 
-    /**
-     * Un servicio autorizado recibe la autoridad interna, sin distinguir mayúsculas ni espacios
+        /**
+     * An authorized service receives the internal authority, regardless of case and spaces
      *
-     * @param serviceName servicio autorizado
-     * @throws Exception si falla el filtro
+     * @param serviceName authorized service
+     * @throws Exception if the filter fails
      */
     @ParameterizedTest
     @ValueSource(strings = {"ms03", " MS05 "})
@@ -108,10 +108,10 @@ class InternalServiceAuthenticationFilterTest {
         assertEquals(List.of(InternalServiceAuthenticationFilter.AUTHORITY), authorities());
     }
 
-    /**
-     * Un servicio no autorizado queda autenticado sin autoridades, lo que produce el 403
+        /**
+     * An unauthorized service is left authenticated without authorities, which produces the 403
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void filter_serviceNotAllowed_isAuthenticatedWithoutAuthorities() throws Exception {

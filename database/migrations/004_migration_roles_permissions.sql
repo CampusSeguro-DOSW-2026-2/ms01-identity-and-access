@@ -1,86 +1,126 @@
--- Migración de roles y permisos flexibles (MS01)
+-- Migration to flexible roles and permissions and to English object names (MS01)
 --
--- Lleva una base de MS01 ya desplegada, creada con los scripts 001, 002 y 003 anteriores a esta migración, al
--- esquema nuevo, que es el mismo que crean 001 y 002 en una base nueva:
---   * tablas permisos, roles y rol_permiso, con sus restricciones, funciones y triggers (protección de los roles
---     de sistema, reglas de los permisos de cada rol y actualizado_en)
---   * siembra del catálogo de 48 permisos, de los ocho roles iniciales y de la asignación de la Matriz Rol-Permiso
---   * columna usuarios.valido_desde (corte de sesión del usuario), estado VARCHAR(20), segundo nombre y segundo
---     apellido desde un carácter, CHECK de forma del correo y trigger de actualizado_en
---   * usuario_rol.rol (VARCHAR(20) con CHECK de ocho valores) pasa a usuario_rol.rol_id con clave foránea a roles(id)
---   * índices idx_usuario_rol_rol, idx_rol_permiso_permiso, idx_usuarios_valido_desde e idx_roles_valido_desde
+-- Takes a deployed MS01 database, created with the previous 001, 002 and 003 scripts, to the new schema, which is
+-- the same one that 001 and 002 create on a new database:
+--   * tables, columns, constraints and indexes renamed to English (usuarios -> users, usuario_rol -> user_roles,
+--     codigos_recuperacion -> password_reset_codes and their columns), the values stay as they are
+--   * tables permissions, roles and role_permissions, with their constraints, functions and triggers (system role
+--     protection, permission rules of each role and updated_at)
+--   * seed of the 48-permission catalog, of the eight initial roles and of the Role-Permission Matrix assignment
+--   * column users.valid_from (user session cut), status VARCHAR(20), second name and second lastname from one
+--     character, email format CHECK and updated_at trigger
+--   * the indexes of the status and of the email search (pg_trgm), created here when the database did not have them
+--   * user_roles.rol (VARCHAR(20) with an eight-value CHECK) becomes user_roles.role_id with a foreign key to
+--     roles(id)
+--   * table password_reset_codes, created here when the database does not have the old codigos_recuperacion
 --
--- No se usa en bases nuevas: 001 y 002 ya crean este esquema. Postgres no ejecuta los scripts de esta subcarpeta
--- al crear una base, se aplica a mano:
---   psql -h <host> -U <usuario> -d <base> -v ON_ERROR_STOP=1 -f database/migraciones/004_migracion_roles_permisos.sql
+-- It is not used on new databases: 001 and 002 already create this schema. Postgres does not run the scripts of
+-- this subfolder when it creates a database, it is applied by hand:
+--   psql -h <host> -U <user> -d <database> -v ON_ERROR_STOP=1 -f database/migrations/004_migration_roles_permissions.sql
 --
--- Corre en una sola transacción: si algo falla se revierte todo. Antes de aplicarla conviene guardar una copia:
---   pg_dump -h <host> -U <usuario> -Fc -f respaldo_antes_de_004.dump <base>
+-- It runs in a single transaction: if anything fails, everything is rolled back. Before applying it, take a backup:
+--   pg_dump -h <host> -U <user> -Fc -f backup_before_004.dump <database>
 
 BEGIN;
 
+-- Names in English for the tables, columns, constraints and indexes of the previous model
+ALTER TABLE usuarios RENAME TO users;
+ALTER TABLE users RENAME COLUMN primer_nombre TO first_name;
+ALTER TABLE users RENAME COLUMN segundo_nombre TO second_name;
+ALTER TABLE users RENAME COLUMN primer_apellido TO first_lastname;
+ALTER TABLE users RENAME COLUMN segundo_apellido TO second_lastname;
+ALTER TABLE users RENAME COLUMN correo TO email;
+ALTER TABLE users RENAME COLUMN estado TO status;
+ALTER TABLE users RENAME COLUMN creado_en TO created_at;
+ALTER TABLE users RENAME COLUMN actualizado_en TO updated_at;
+ALTER TABLE users RENAME CONSTRAINT usuarios_pkey TO users_pkey;
+ALTER TABLE users RENAME CONSTRAINT uq_users_correo TO uq_users_email;
+ALTER TABLE users RENAME CONSTRAINT chh_user_state TO chh_user_status;
+ALTER TABLE users RENAME CONSTRAINT chh_correo_user TO chh_user_email;
+ALTER INDEX IF EXISTS idx_usuarios_correo_trgm RENAME TO idx_users_email_trgm;
+ALTER INDEX IF EXISTS idx_usuarios_estado RENAME TO idx_users_status;
+
+ALTER TABLE usuario_rol RENAME TO user_roles;
+ALTER TABLE user_roles RENAME COLUMN usuario_id TO user_id;
+ALTER TABLE user_roles RENAME COLUMN asignado_en TO assigned_at;
+ALTER TABLE user_roles RENAME CONSTRAINT fk_rol TO fk_user_roles_users;
+
+-- The recovery code table exists only in databases created after the old 003 script
+ALTER TABLE IF EXISTS codigos_recuperacion RENAME TO password_reset_codes;
+ALTER TABLE IF EXISTS password_reset_codes RENAME COLUMN usuario_id TO user_id;
+ALTER TABLE IF EXISTS password_reset_codes RENAME COLUMN codigo_hash TO code_hash;
+ALTER TABLE IF EXISTS password_reset_codes RENAME COLUMN intentos TO attempts;
+ALTER TABLE IF EXISTS password_reset_codes RENAME COLUMN expira_en TO expires_at;
+ALTER TABLE IF EXISTS password_reset_codes RENAME COLUMN usado_en TO used_at;
+ALTER TABLE IF EXISTS password_reset_codes RENAME COLUMN creado_en TO created_at;
+ALTER TABLE IF EXISTS password_reset_codes RENAME CONSTRAINT codigos_recuperacion_pkey TO password_reset_codes_pkey;
+ALTER TABLE IF EXISTS password_reset_codes RENAME CONSTRAINT fk_codigos_usuario TO fk_password_reset_codes_users;
+ALTER TABLE IF EXISTS password_reset_codes
+    RENAME CONSTRAINT chh_codigos_intentos TO chh_password_reset_codes_attempts;
+ALTER INDEX IF EXISTS idx_codigos_usuario RENAME TO idx_password_reset_codes_user;
+
 CREATE FUNCTION set_updated_at() RETURNS TRIGGER AS $$
 BEGIN
-    NEW.actualizado_en = CURRENT_TIMESTAMP;
+    NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TABLE permisos (
+CREATE TABLE permissions (
 
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    nombre VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
 
-    descripcion VARCHAR(200) NOT NULL,
+    description VARCHAR(200) NOT NULL,
 
-    CONSTRAINT uq_permisos_nombre UNIQUE (nombre),
+    CONSTRAINT uq_permissions_name UNIQUE (name),
 
     CONSTRAINT chh_permission_name
-        CHECK (nombre ~ '^ms[0-9]{2}:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$')
+        CHECK (name ~ '^ms[0-9]{2}:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$')
 );
 
 CREATE TABLE roles (
 
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    nombre VARCHAR(30) NOT NULL,
+    name VARCHAR(30) NOT NULL,
 
-    descripcion VARCHAR(200) NOT NULL,
+    description VARCHAR(200) NOT NULL,
 
-    es_sistema BOOLEAN NOT NULL DEFAULT FALSE,
+    is_system BOOLEAN NOT NULL DEFAULT FALSE,
 
-    valido_desde TIMESTAMPTZ DEFAULT NULL,
+    valid_from TIMESTAMPTZ DEFAULT NULL,
 
-    creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT uq_roles_nombre UNIQUE (nombre),
+    CONSTRAINT uq_roles_name UNIQUE (name),
 
     CONSTRAINT chh_role_name
-        CHECK (nombre ~ '^[A-Z][A-Z0-9_]{1,29}$'),
+        CHECK (name ~ '^[A-Z][A-Z0-9_]{1,29}$'),
 
     CONSTRAINT chh_role_name_reserved
-        CHECK (nombre <> 'DETAILS'),
+        CHECK (name <> 'DETAILS'),
 
     CONSTRAINT chh_role_description
-        CHECK (char_length(descripcion) BETWEEN 3 AND 200)
+        CHECK (char_length(description) BETWEEN 3 AND 200)
 );
 
 CREATE FUNCTION protect_system_roles() RETURNS TRIGGER AS $$
 BEGIN
-    IF OLD.es_sistema THEN
+    IF OLD.is_system THEN
         IF TG_OP = 'DELETE' THEN
-            RAISE EXCEPTION 'El rol de sistema % no se puede eliminar', OLD.nombre
+            RAISE EXCEPTION 'System role % cannot be deleted', OLD.name
                 USING ERRCODE = '23S01';
         END IF;
-        IF NEW.nombre IS DISTINCT FROM OLD.nombre THEN
-            RAISE EXCEPTION 'El rol de sistema % no se puede renombrar', OLD.nombre
+        IF NEW.name IS DISTINCT FROM OLD.name THEN
+            RAISE EXCEPTION 'System role % cannot be renamed', OLD.name
                 USING ERRCODE = '23S01';
         END IF;
-        IF NEW.es_sistema IS DISTINCT FROM OLD.es_sistema THEN
-            RAISE EXCEPTION 'El rol de sistema % no puede cambiar su marca de sistema', OLD.nombre
+        IF NEW.is_system IS DISTINCT FROM OLD.is_system THEN
+            RAISE EXCEPTION 'System role % cannot change its system flag', OLD.name
                 USING ERRCODE = '23S01';
         END IF;
     END IF;
@@ -92,7 +132,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_protect_system_roles
-    BEFORE DELETE OR UPDATE OF nombre, es_sistema ON roles
+    BEFORE DELETE OR UPDATE OF name, is_system ON roles
     FOR EACH ROW
     EXECUTE FUNCTION protect_system_roles();
 
@@ -101,69 +141,72 @@ CREATE TRIGGER trg_roles_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
-CREATE TABLE rol_permiso (
+CREATE TABLE role_permissions (
 
-    rol_id UUID NOT NULL,
+    role_id UUID NOT NULL,
 
-    permiso_id UUID NOT NULL,
+    permission_id UUID NOT NULL,
 
-    CONSTRAINT pk_rol_permiso PRIMARY KEY (rol_id, permiso_id),
+    CONSTRAINT pk_role_permissions PRIMARY KEY (role_id, permission_id),
 
-    CONSTRAINT fk_rol_permiso_roles FOREIGN KEY (rol_id) REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_role_permissions_roles FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
 
-    CONSTRAINT fk_rol_permiso_permisos FOREIGN KEY (permiso_id) REFERENCES permisos(id) ON DELETE CASCADE
+    CONSTRAINT fk_role_permissions_permissions FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
 );
 
--- Reglas de los permisos de cada rol: al menos un permiso, ms01:role:manage solo en ADMIN (que nunca lo pierde)
--- y ms01:profile:read y ms01:profile:write siempre en ESTUDIANTE y ADMIN. Se evalúa al confirmar la transacción,
--- sobre el estado final de cada rol tocado
+-- Permission rules of each role, checked when the transaction commits on the final state of every touched role:
+--   * every role keeps ms01:profile:read and ms01:session:logout
+--   * ESTUDIANTE and ADMIN also keep ms01:profile:write
+--   * ms01:role:manage belongs only to ADMIN, which never loses it
 CREATE FUNCTION check_role_permissions() RETURNS TRIGGER AS $$
 DECLARE
     v_ids UUID[];
     v_id UUID;
-    v_nombre VARCHAR(30);
+    v_name VARCHAR(30);
 BEGIN
     IF TG_TABLE_NAME = 'roles' THEN
         v_ids := ARRAY[NEW.id];
     ELSIF TG_OP = 'INSERT' THEN
-        v_ids := ARRAY[NEW.rol_id];
+        v_ids := ARRAY[NEW.role_id];
     ELSIF TG_OP = 'DELETE' THEN
-        v_ids := ARRAY[OLD.rol_id];
+        v_ids := ARRAY[OLD.role_id];
     ELSE
-        v_ids := ARRAY[OLD.rol_id, NEW.rol_id];
+        v_ids := ARRAY[OLD.role_id, NEW.role_id];
     END IF;
 
     FOREACH v_id IN ARRAY v_ids LOOP
-        SELECT nombre INTO v_nombre FROM roles WHERE id = v_id;
+        SELECT name INTO v_name FROM roles WHERE id = v_id;
         IF NOT FOUND THEN
             CONTINUE;
         END IF;
 
-        IF NOT EXISTS (SELECT 1 FROM rol_permiso WHERE rol_id = v_id) THEN
-            RAISE EXCEPTION 'El rol % debe tener al menos un permiso', v_nombre
+        IF (SELECT count(*) FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id
+            WHERE rp.role_id = v_id AND p.name IN ('ms01:profile:read', 'ms01:session:logout')) < 2 THEN
+            RAISE EXCEPTION 'Role % must keep the permissions ms01:profile:read and ms01:session:logout', v_name
                 USING ERRCODE = '23S01';
         END IF;
 
-        IF v_nombre = 'ADMIN' THEN
+        IF v_name IN ('ESTUDIANTE', 'ADMIN') THEN
             IF NOT EXISTS (
-                SELECT 1 FROM rol_permiso rp JOIN permisos p ON p.id = rp.permiso_id
-                WHERE rp.rol_id = v_id AND p.nombre = 'ms01:role:manage') THEN
-                RAISE EXCEPTION 'El rol ADMIN debe conservar el permiso ms01:role:manage'
+                SELECT 1 FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id
+                WHERE rp.role_id = v_id AND p.name = 'ms01:profile:write') THEN
+                RAISE EXCEPTION 'Role % must keep the permission ms01:profile:write', v_name
+                    USING ERRCODE = '23S01';
+            END IF;
+        END IF;
+
+        IF v_name = 'ADMIN' THEN
+            IF NOT EXISTS (
+                SELECT 1 FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id
+                WHERE rp.role_id = v_id AND p.name = 'ms01:role:manage') THEN
+                RAISE EXCEPTION 'Role ADMIN must keep the permission ms01:role:manage'
                     USING ERRCODE = '23S01';
             END IF;
         ELSIF EXISTS (
-                SELECT 1 FROM rol_permiso rp JOIN permisos p ON p.id = rp.permiso_id
-                WHERE rp.rol_id = v_id AND p.nombre = 'ms01:role:manage') THEN
-            RAISE EXCEPTION 'El permiso ms01:role:manage es exclusivo del rol ADMIN y el rol % lo tiene', v_nombre
+                SELECT 1 FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id
+                WHERE rp.role_id = v_id AND p.name = 'ms01:role:manage') THEN
+            RAISE EXCEPTION 'The permission ms01:role:manage belongs only to the role ADMIN and the role % has it', v_name
                 USING ERRCODE = '23S01';
-        END IF;
-
-        IF v_nombre IN ('ESTUDIANTE', 'ADMIN') THEN
-            IF (SELECT count(*) FROM rol_permiso rp JOIN permisos p ON p.id = rp.permiso_id
-                WHERE rp.rol_id = v_id AND p.nombre IN ('ms01:profile:read', 'ms01:profile:write')) < 2 THEN
-                RAISE EXCEPTION 'El rol % debe conservar los permisos ms01:profile:read y ms01:profile:write', v_nombre
-                    USING ERRCODE = '23S01';
-            END IF;
         END IF;
     END LOOP;
 
@@ -178,18 +221,18 @@ CREATE CONSTRAINT TRIGGER trg_check_role_permissions
     EXECUTE FUNCTION check_role_permissions();
 
 CREATE CONSTRAINT TRIGGER trg_check_role_permissions
-    AFTER INSERT OR UPDATE OR DELETE ON rol_permiso
+    AFTER INSERT OR UPDATE OR DELETE ON role_permissions
     DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW
     EXECUTE FUNCTION check_role_permissions();
 
--- Los índices de roles y rol_permiso se crean antes de la siembra: Postgres no deja crear un índice sobre una tabla con
--- eventos de trigger pendientes en la misma transacción
-CREATE INDEX IF NOT EXISTS idx_roles_valido_desde ON roles (valido_desde) WHERE valido_desde IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_rol_permiso_permiso ON rol_permiso (permiso_id);
+-- The indexes of roles and role_permissions are created before the seed: Postgres does not allow creating an index on
+-- a table with pending trigger events in the same transaction
+CREATE INDEX IF NOT EXISTS idx_roles_valid_from ON roles (valid_from) WHERE valid_from IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_role_permissions_permission ON role_permissions (permission_id);
 
--- Catálogo de permisos, uno por cada permiso de la Matriz Rol-Permiso (siembra única)
-INSERT INTO permisos (nombre, descripcion) VALUES
+-- Permission catalog, one row per permission of the Role-Permission Matrix (one-time seed)
+INSERT INTO permissions (name, description) VALUES
     ('ms01:password:change', 'Cambiar la propia contraseña'),
     ('ms01:profile:read', 'Consultar el propio perfil'),
     ('ms01:profile:write', 'Actualizar el propio perfil (nombres y apellidos)'),
@@ -239,8 +282,8 @@ INSERT INTO permisos (nombre, descripcion) VALUES
     ('ms08:audit:read', 'Consultar la auditoría'),
     ('ms08:indicators:read', 'Consultar indicadores operativos e históricos');
 
--- Roles iniciales: solo ESTUDIANTE y ADMIN son de sistema
-INSERT INTO roles (nombre, descripcion, es_sistema) VALUES
+-- Initial roles, only ESTUDIANTE and ADMIN are system roles
+INSERT INTO roles (name, description, is_system) VALUES
     ('ESTUDIANTE', 'Estudiante de la comunidad universitaria', TRUE),
     ('PROFESOR', 'Profesor de la comunidad universitaria', FALSE),
     ('ADMINISTRATIVO', 'Personal administrativo de la comunidad universitaria', FALSE),
@@ -250,8 +293,8 @@ INSERT INTO roles (nombre, descripcion, es_sistema) VALUES
     ('ADMIN', 'Administrador del sistema: gestiona usuarios, roles, campus y contenidos', TRUE),
     ('AUDITOR', 'Auditor: consulta históricos, indicadores y auditoría (solo lectura)', FALSE);
 
--- Asignación inicial de permisos a cada rol, según la Matriz Rol-Permiso
-INSERT INTO rol_permiso (rol_id, permiso_id)
+-- Initial permissions of each role, as the Role-Permission Matrix says
+INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM (VALUES
     ('ESTUDIANTE',
@@ -442,55 +485,93 @@ FROM (VALUES
             'ms06:drill:read',
             'ms08:audit:read',
             'ms08:indicators:read'])
-) AS asignacion (rol, permisos)
-JOIN roles r ON r.nombre = asignacion.rol
-JOIN permisos p ON p.nombre = ANY (asignacion.permisos);
+) AS assignment (role_name, permission_names)
+JOIN roles r ON r.name = assignment.role_name
+JOIN permissions p ON p.name = ANY (assignment.permission_names);
 
--- usuarios: corte de sesión, segundo nombre y segundo apellido desde un carácter, forma del correo, estado y
--- actualizado_en
-ALTER TABLE usuarios ADD COLUMN valido_desde TIMESTAMPTZ DEFAULT NULL;
+-- users: session cut, second name and second lastname from one character, email format, status and updated_at
+ALTER TABLE users ADD COLUMN valid_from TIMESTAMPTZ DEFAULT NULL;
 
-ALTER TABLE usuarios DROP CONSTRAINT chh_user_second_name;
+ALTER TABLE users DROP CONSTRAINT chh_user_second_name;
 
-ALTER TABLE usuarios
-    ADD CONSTRAINT chh_user_second_name CHECK (char_length(segundo_nombre) BETWEEN 1 AND 30);
+ALTER TABLE users
+    ADD CONSTRAINT chh_user_second_name CHECK (char_length(second_name) BETWEEN 1 AND 30);
 
-ALTER TABLE usuarios DROP CONSTRAINT chh_user_second_lastname;
+ALTER TABLE users DROP CONSTRAINT chh_user_second_lastname;
 
-ALTER TABLE usuarios
-    ADD CONSTRAINT chh_user_second_lastname CHECK (char_length(segundo_apellido) BETWEEN 1 AND 30);
+ALTER TABLE users
+    ADD CONSTRAINT chh_user_second_lastname CHECK (char_length(second_lastname) BETWEEN 1 AND 30);
 
-ALTER TABLE usuarios
-    ADD CONSTRAINT chh_correo_user_format
-        CHECK (correo ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+ALTER TABLE users
+    ADD CONSTRAINT chh_user_email_format
+        CHECK (email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
-ALTER TABLE usuarios ALTER COLUMN estado TYPE VARCHAR(20);
+ALTER TABLE users ALTER COLUMN status TYPE VARCHAR(20);
 
 CREATE TRIGGER trg_users_updated_at
-    BEFORE UPDATE ON usuarios
+    BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- usuario_rol: los nombres de rol existentes pasan a la clave foránea hacia roles(id). Si algún usuario tuviera un
--- rol que no está en roles, rol_id queda nulo y la migración se revierte completa
-ALTER TABLE usuario_rol ADD COLUMN rol_id UUID;
+-- user_roles: the existing role names become the foreign key to roles(id). If any user had a role that is not in
+-- roles, role_id stays null and the whole migration is rolled back
+ALTER TABLE user_roles ADD COLUMN role_id UUID;
 
-UPDATE usuario_rol SET rol_id = roles.id FROM roles WHERE roles.nombre = usuario_rol.rol;
+UPDATE user_roles SET role_id = roles.id FROM roles WHERE roles.name = user_roles.rol;
 
-ALTER TABLE usuario_rol ALTER COLUMN rol_id SET NOT NULL;
+ALTER TABLE user_roles ALTER COLUMN role_id SET NOT NULL;
 
-ALTER TABLE usuario_rol DROP CONSTRAINT pk_rol;
+ALTER TABLE user_roles DROP CONSTRAINT pk_rol;
 
-ALTER TABLE usuario_rol DROP CONSTRAINT chh_user_rol;
+ALTER TABLE user_roles DROP CONSTRAINT chh_user_rol;
 
-ALTER TABLE usuario_rol DROP COLUMN rol;
+ALTER TABLE user_roles DROP COLUMN rol;
 
-ALTER TABLE usuario_rol ADD CONSTRAINT pk_rol PRIMARY KEY (usuario_id, rol_id);
+ALTER TABLE user_roles ADD CONSTRAINT pk_user_roles PRIMARY KEY (user_id, role_id);
 
-ALTER TABLE usuario_rol
-    ADD CONSTRAINT fk_usuario_rol_roles FOREIGN KEY (rol_id) REFERENCES roles(id);
+ALTER TABLE user_roles
+    ADD CONSTRAINT fk_user_roles_roles FOREIGN KEY (role_id) REFERENCES roles(id);
 
-CREATE INDEX IF NOT EXISTS idx_usuario_rol_rol ON usuario_rol (rol_id, usuario_id);
-CREATE INDEX IF NOT EXISTS idx_usuarios_valido_desde ON usuarios (valido_desde) WHERE valido_desde IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles (role_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_users_valid_from ON users (valid_from) WHERE valid_from IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_status ON users (status);
+
+-- The indexes of the previous model were renamed above; the email search index is created when the database did not
+-- have it. It only speeds up the search, so if pg_trgm cannot be installed the migration goes on without it
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    CREATE INDEX IF NOT EXISTS idx_users_email_trgm ON users USING gin (email gin_trgm_ops);
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'The index idx_users_email_trgm was not created (%): run 002_index_schema.sql when pg_trgm is available', SQLERRM;
+END;
+$$;
+
+
+-- Recovery code table for the databases that did not have it
+CREATE TABLE IF NOT EXISTS password_reset_codes (
+
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL,
+
+    code_hash VARCHAR(100) NOT NULL,
+
+    attempts INTEGER NOT NULL DEFAULT 0,
+
+    expires_at TIMESTAMPTZ NOT NULL,
+
+    used_at TIMESTAMPTZ DEFAULT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_password_reset_codes_users FOREIGN KEY (user_id) REFERENCES users(id),
+
+    CONSTRAINT chh_password_reset_codes_attempts
+        CHECK (attempts >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_codes_user ON password_reset_codes (user_id, expires_at);
 
 COMMIT;

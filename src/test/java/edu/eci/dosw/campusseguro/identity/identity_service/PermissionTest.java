@@ -13,21 +13,21 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.PermissionCodes;
 
 /**
- * Permisos de MS01 que define el código (RN-MS01-14): 10 códigos con el formato modulo:recurso:accion, sin
- * repetidos y con descripción
+ * MS01 permissions defined by the code (RN-MS01-14): 10 codes with the format module:resource:action, without repeated
+ * ones and with a description
  */
 class PermissionTest {
 
-    /**
-     * El código define solo los 10 permisos de MS01
+        /**
+     * The code defines only the 10 permissions of MS01
      */
     @Test
     void enum_hasTheTenMs01Permissions() {
         assertEquals(10, Permission.values().length);
     }
 
-    /**
-     * Todos los códigos tienen el formato modulo:recurso:accion, ninguno se repite y todos son de MS01
+        /**
+     * All the codes have the format module:resource:action, none is repeated and all belong to MS01
      */
     @Test
     void everyCode_hasTheFormatIsUniqueAndBelongsToMs01() {
@@ -39,8 +39,8 @@ class PermissionTest {
         }
     }
 
-    /**
-     * Todos los permisos tienen una descripción con contenido
+        /**
+     * All the permissions have a description with content
      */
     @Test
     void everyPermission_hasADescription() {
@@ -49,16 +49,16 @@ class PermissionTest {
         }
     }
 
-    /**
-     * El prefijo del enum es el del módulo de MS01
+        /**
+     * The prefix of the enum is the one of the MS01 module
      */
     @Test
     void prefix_isTheMs01Module() {
         assertEquals("ms01:", Permission.PREFIX);
     }
 
-    /**
-     * El permiso de gestión de roles y el de consulta completa existen con el código del contrato
+        /**
+     * The role management permission and the complete query one exist with the code of the contract
      */
     @Test
     void roleManagementPermissions_haveTheContractCodes() {
@@ -68,8 +68,8 @@ class PermissionTest {
         assertEquals("ms01:user:roles", Permission.MS01_USER_ROLES.getCode());
     }
 
-    /**
-     * Los permisos del perfil existen con el código del contrato
+        /**
+     * The profile permissions exist with the code of the contract
      */
     @Test
     void profilePermissions_haveTheContractCodes() {

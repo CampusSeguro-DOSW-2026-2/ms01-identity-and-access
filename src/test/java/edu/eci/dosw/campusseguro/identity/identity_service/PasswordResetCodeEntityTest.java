@@ -15,19 +15,19 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Table;
 
 /**
- * Entidad del código de recuperación (tabla codigos_recuperacion): vigencia y correspondencia con las columnas
- * del modelo de datos
+ * Entity of the recovery code (table password_reset_codes): validity and correspondence with the columns of the data
+ * model
  */
 class PasswordResetCodeEntityTest {
 
     private static final Instant NOW = Instant.parse("2026-10-27T15:00:00Z");
 
-    /**
-     * Construye un código con la expiración y el uso indicados
+        /**
+     * Builds a code with the indicated expiration and use
      *
-     * @param expiresAt instante de expiración
-     * @param usedAt instante de uso, null si no se ha usado
-     * @return el código construido
+     * @param expiresAt expiration instant
+     * @param usedAt instant of use, null if it has not been used
+     * @return the built code
      */
     private PasswordResetCodeEntity code(Instant expiresAt, Instant usedAt) {
         PasswordResetCodeEntity code = new PasswordResetCodeEntity();
@@ -36,40 +36,40 @@ class PasswordResetCodeEntityTest {
         return code;
     }
 
-    /**
-     * Un código sin usar cuya expiración es futura está vigente
+        /**
+     * An unused code whose expiration is in the future is valid
      */
     @Test
     void isActiveAt_unusedAndNotExpired_isActive() {
         assertTrue(code(NOW.plusSeconds(1), null).isActiveAt(NOW));
     }
 
-    /**
-     * Justo en el instante de expiración el código ya no está vigente
+        /**
+     * Right at the expiration instant the code is no longer valid
      */
     @Test
     void isActiveAt_atTheExpirationInstant_isNotActive() {
         assertFalse(code(NOW, null).isActiveAt(NOW));
     }
 
-    /**
-     * Un código vencido no está vigente
+        /**
+     * An expired code is not valid
      */
     @Test
     void isActiveAt_expired_isNotActive() {
         assertFalse(code(NOW.minusSeconds(1), null).isActiveAt(NOW));
     }
 
-    /**
-     * Un código usado o invalidado no está vigente aunque no haya expirado
+        /**
+     * A used or invalidated code is not valid even if it has not expired
      */
     @Test
     void isActiveAt_used_isNotActive() {
         assertFalse(code(NOW.plusSeconds(600), NOW.minusSeconds(1)).isActiveAt(NOW));
     }
 
-    /**
-     * Un código nuevo no tiene intentos ni uso
+        /**
+     * A new code has no attempts or use
      */
     @Test
     void newCode_hasNoAttemptsAndIsNotUsed() {
@@ -80,8 +80,8 @@ class PasswordResetCodeEntityTest {
         assertNull(code.getId());
     }
 
-    /**
-     * Los datos que se asignan se devuelven tal cual
+        /**
+     * The data that is assigned is returned as it is
      */
     @Test
     void setters_areReflectedByTheGetters() {
@@ -103,28 +103,28 @@ class PasswordResetCodeEntityTest {
         assertEquals(NOW.plusSeconds(10), code.getUsedAt());
     }
 
-    /**
-     * La entidad se mapea a la tabla y a las columnas del modelo de datos
+        /**
+     * The entity is mapped to the table and the columns of the data model
      *
-     * @throws NoSuchFieldException si falta un campo de la entidad
+     * @throws NoSuchFieldException if a field of the entity is missing
      */
     @Test
     void mapping_matchesTheTableAndColumnsOfTheDataModel() throws NoSuchFieldException {
-        assertEquals("codigos_recuperacion", PasswordResetCodeEntity.class.getAnnotation(Table.class).name());
-        assertEquals("usuario_id", column("userId"));
-        assertEquals("codigo_hash", column("codeHash"));
-        assertEquals("intentos", column("attempts"));
-        assertEquals("expira_en", column("expiresAt"));
-        assertEquals("usado_en", column("usedAt"));
-        assertEquals("creado_en", column("createdAt"));
+        assertEquals("password_reset_codes", PasswordResetCodeEntity.class.getAnnotation(Table.class).name());
+        assertEquals("user_id", column("userId"));
+        assertEquals("code_hash", column("codeHash"));
+        assertEquals("attempts", column("attempts"));
+        assertEquals("expires_at", column("expiresAt"));
+        assertEquals("used_at", column("usedAt"));
+        assertEquals("created_at", column("createdAt"));
     }
 
-    /**
-     * Obtiene el nombre de la columna de un campo de la entidad
+        /**
+     * Gets the column name of a field of the entity
      *
-     * @param field nombre del campo de la entidad
-     * @return el nombre de la columna
-     * @throws NoSuchFieldException si el campo no existe
+     * @param field name of the field of the entity
+     * @return the name of the column
+     * @throws NoSuchFieldException if the field does not exist
      */
     private String column(String field) throws NoSuchFieldException {
         return PasswordResetCodeEntity.class.getDeclaredField(field).getAnnotation(Column.class).name();

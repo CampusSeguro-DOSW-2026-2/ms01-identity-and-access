@@ -6,36 +6,35 @@ import java.time.temporal.ChronoUnit;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeService;
 
 /**
- * Reloj de la base de datos de las pruebas: devuelve siempre el mismo instante, truncado a segundos como lo
- * hace la base de datos real
+ * Database clock of the tests: it always returns the same instant, truncated to seconds as the real database does
  */
 final class FixedDatabaseTime implements DatabaseTimeService {
 
     private final Instant instant;
 
-    /**
-     * Crea el reloj con el instante que devolverá siempre
+        /**
+     * Creates the clock with the instant that it will always return
      *
-     * @param instant instante fijo, se trunca a segundos
+     * @param instant fixed instant, it is truncated to seconds
      */
     private FixedDatabaseTime(Instant instant) {
         this.instant = instant.truncatedTo(ChronoUnit.SECONDS);
     }
 
-    /**
-     * Crea un reloj fijo
+        /**
+     * Creates a fixed clock
      *
-     * @param instant instante que devolverá el reloj
-     * @return el reloj fijo
+     * @param instant instant that the clock will return
+     * @return the fixed clock
      */
     static DatabaseTimeService at(Instant instant) {
         return new FixedDatabaseTime(instant);
     }
 
-    /**
-     * Devuelve el instante fijo
+        /**
+     * Returns the fixed instant
      *
-     * @return el instante configurado, sin fracción de segundo
+     * @return the configured instant, without a fraction of a second
      */
     @Override
     public Instant now() {

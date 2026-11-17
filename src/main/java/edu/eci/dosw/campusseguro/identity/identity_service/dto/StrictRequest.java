@@ -10,9 +10,9 @@ import java.util.regex.Pattern;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 
 /**
- * Base de los cuerpos de petición que no admiten campos fuera del contrato (RG-04, additionalProperties
- * false en el OpenAPI), los campos desconocidos no hacen fallar la deserialización: se registran para que la
- * validación los rechace con HTTP 400 e indique cuáles son
+ * Base of the request bodies that do not accept fields outside the contract (RG-04, additionalProperties false in the
+ * OpenAPI), unknown fields do not make the deserialization fail: they are recorded so that the validation rejects them
+ * with HTTP 400 and says which ones they are
  */
 public abstract class StrictRequest {
 
@@ -24,42 +24,42 @@ public abstract class StrictRequest {
 
     private final Set<String> unknownFields = new LinkedHashSet<>();
 
-    /**
-     * Registra una propiedad recibida que el contrato no define, el valor se descarta
+        /**
+     * Records a received property that the contract does not define, the value is discarded
      *
-     * @param name nombre de la propiedad no definida en el contrato
-     * @param value valor recibido para esa propiedad
+     * @param name name of the property not defined in the contract
+     * @param value value received for that property
      */
     @JsonAnySetter
     public void registerUnknownField(String name, Object value) {
         unknownFields.add(name);
     }
 
-    /**
-     * Devuelve los nombres de las propiedades recibidas que el contrato no define
+        /**
+     * Returns the names of the received properties that the contract does not define
      *
-     * @return conjunto inmutable con los nombres, vacío si no se recibió ninguno
+     * @return immutable set with the names, empty if none was received
      */
     public Set<String> unknownFieldNames() {
         return Collections.unmodifiableSet(unknownFields);
     }
 
-    /**
-     * Mensaje de error de una propiedad no definida, las clases hijas pueden darle un mensaje propio a
-     * las propiedades que quieren explicar
+        /**
+     * Error message of an undefined property, the child classes can give their own message to the properties they want
+     * to explain
      *
-     * @param fieldName nombre de la propiedad no definida
-     * @return el mensaje de error de esa propiedad
+     * @param fieldName name of the undefined property
+     * @return the error message of that property
      */
     public String messageForUnknownField(String fieldName) {
         return UNKNOWN_FIELD_MESSAGE;
     }
 
-    /**
-     * Construye un error por cada propiedad no definida, si el nombre recibido no es seguro de
-     * devolver al cliente se reemplaza por un nombre genérico
+        /**
+     * Builds one error for each undefined property, if the received name is not safe to return to the client it is
+     * replaced by a generic name
      *
-     * @return errores por campo, vacío si no se recibió ninguna propiedad desconocida
+     * @return errors by field, empty if no unknown property was received
      */
     public List<ErrorResponse.ErrorDetail> unknownFieldErrors() {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();

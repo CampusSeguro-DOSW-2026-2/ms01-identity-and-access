@@ -14,8 +14,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import jakarta.servlet.RequestDispatcher;
 
 /**
- * Los errores que lanza el contenedor, como una ruta inexistente, también salen con el ErrorResponse
- * estándar
+ * The errors thrown by the container, such as a non-existent route, also come out with the standard ErrorResponse
  */
 class ErrorResponseControllerTest {
 
@@ -24,8 +23,8 @@ class ErrorResponseControllerTest {
     private ErrorResponseController controller;
     private MockHttpServletRequest request;
 
-    /**
-     * Prepara el controlador y una petición vacía
+        /**
+     * Prepares the controller and an empty request
      */
     @BeforeEach
     void setUp() {
@@ -33,8 +32,8 @@ class ErrorResponseControllerTest {
         request = new MockHttpServletRequest();
     }
 
-    /**
-     * Sin estado registrado por el contenedor se informa que el recurso no existe
+        /**
+     * Without a status registered by the container it is reported that the resource does not exist
      */
     @Test
     void handleError_withoutStatus_isNotFound() {
@@ -45,8 +44,8 @@ class ErrorResponseControllerTest {
         assertEquals("Recurso no encontrado.", response.getBody().mensaje());
     }
 
-    /**
-     * El estado registrado por el contenedor decide el código y el mensaje
+        /**
+     * The status registered by the container decides the code and the message
      */
     @Test
     void handleError_withRegisteredStatus_usesTheCatalog() {
@@ -60,8 +59,8 @@ class ErrorResponseControllerTest {
         assertEquals("Método HTTP no permitido.", response.getBody().mensaje());
     }
 
-    /**
-     * Un estado que no existe se informa como error interno
+        /**
+     * A status that does not exist is reported as an internal error
      */
     @Test
     void handleError_withUnknownStatus_isInternalError() {
@@ -73,8 +72,8 @@ class ErrorResponseControllerTest {
         assertEquals("ERROR_INTERNO", response.getBody().codigo());
     }
 
-    /**
-     * El correlation id de la petición se conserva en el cuerpo
+        /**
+     * The correlation id of the request is kept in the body
      */
     @Test
     void handleError_keepsTheCorrelationId() {

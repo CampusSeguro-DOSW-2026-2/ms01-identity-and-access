@@ -34,10 +34,10 @@ build/
 ### VS Code ###
 .vscode/
 
-### Entorno local ###
+### Local environment ###
 .env
 .opencode
-### Secretos del despliegue (llaves, certificados) ###
+### Deployment secrets (keys, certificates) ###
 *.pem
 *.key
 *.crt

@@ -30,9 +30,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Seguridad HTTP con la cadena de filtros real (estandares de integracion 1.3 y 2.3, RN-MS01-23): solo son
- * publicas las rutas exactas del estandar, el resto exige las cabeceras de identidad y responde 401 con el
- * ErrorResponse, y el X-Correlation-ID se devuelve siempre
+ * HTTP security with the real filter chain (integration standards 1.3 and 2.3, RN-MS01-23): only the exact routes of
+ * the standard are public, the rest require the identity headers and answer 401 with the ErrorResponse, and the
+ * X-Correlation-ID is always returned
  */
 @WebMvcTest(RoleController.class)
 @Import(SecurityConfig.class)
@@ -46,10 +46,10 @@ class SecurityConfigTest {
     @MockitoBean
     private RoleService roleService;
 
-    /**
-     * Una ruta protegida sin cabeceras responde 401 con el cuerpo normalizado
+        /**
+     * A protected route without headers answers 401 with the normalized body
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void protectedRoute_withoutIdentityHeaders_returns401WithErrorResponse() throws Exception {
@@ -64,10 +64,10 @@ class SecurityConfigTest {
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * El correlation id recibido se conserva en la respuesta 401, tanto en el header como en el cuerpo
+        /**
+     * The received correlation id is kept in the 401 response, both in the header and in the body
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void protectedRoute_withCorrelationId_returnsTheSameValueInHeaderAndBody() throws Exception {
@@ -77,10 +77,10 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.correlation_id").value("c19b472d-7a2a-4d3b-a12b-abcdef123456"));
     }
 
-    /**
-     * Sin correlation id en la peticion se genera uno y el header y el cuerpo llevan el mismo valor
+        /**
+     * Without a correlation id in the request one is generated and the header and the body carry the same value
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void protectedRoute_withoutCorrelationId_generatesOneForHeaderAndBody() throws Exception {
@@ -93,10 +93,10 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.correlation_id").value(generated));
     }
 
-    /**
-     * Un nombre de rol con formato inválido en X-User-Role responde 401 con el motivo
+        /**
+     * A role name with an invalid format in X-User-Role answers 401 with the reason
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void protectedRoute_withInvalidRoleFormat_returns401WithTheReason() throws Exception {
@@ -108,10 +108,10 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.mensaje").value(IdentityHeaderParser.INVALID_ROLE_MESSAGE));
     }
 
-    /**
-     * Con cabeceras validas la peticion llega al controlador
+        /**
+     * With valid headers the request reaches the controller
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void protectedRoute_withIdentityHeaders_reachesTheController() throws Exception {
@@ -127,10 +127,10 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$[0].rol").value("ESTUDIANTE"));
     }
 
-    /**
-     * El cambio de roles sin cabeceras responde 401 y no llega al servicio
+        /**
+     * The role change without headers answers 401 and does not reach the service
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void changeRoles_withoutIdentityHeaders_returns401AndDoesNotReachTheService() throws Exception {
@@ -143,12 +143,12 @@ class SecurityConfigTest {
         verifyNoInteractions(roleService);
     }
 
-    /**
-     * Las cuatro rutas publicas del estandar pasan la seguridad sin cabeceras, en este test no existe su
-     * controlador, por eso la respuesta es el 404 normalizado y no un 401
+        /**
+     * The four public routes of the standard pass the security without headers, in this test their controller does not
+     * exist, so the response is the normalized 404 and not a 401
      *
-     * @param path ruta publica del estandar
-     * @throws Exception si falla la peticion simulada
+     * @param path public route of the standard
+     * @throws Exception if the simulated request fails
      */
     @ParameterizedTest
     @ValueSource(strings = {
@@ -162,11 +162,11 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"));
     }
 
-    /**
-     * Las demas rutas bajo /auth no son publicas, el estandar prohibe los comodines publicos
+        /**
+     * The other routes under /auth are not public, the standard forbids public wildcards
      *
-     * @param path ruta que no esta en la lista publica
-     * @throws Exception si falla la peticion simulada
+     * @param path route that is not in the public list
+     * @throws Exception if the simulated request fails
      */
     @ParameterizedTest
     @ValueSource(strings = {
@@ -179,10 +179,10 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"));
     }
 
-    /**
-     * Una ruta publica solo lo es con su metodo exacto, GET /auth/login exige identidad
+        /**
+     * A public route is only public with its exact method, GET /auth/login requires identity
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void publicRoute_withAnotherMethod_isNotPublic() throws Exception {
@@ -190,10 +190,10 @@ class SecurityConfigTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    /**
-     * Las rutas de usuarios ya no son publicas
+        /**
+     * The user routes are no longer public
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void usersRoutes_areNotPublic() throws Exception {
@@ -203,10 +203,10 @@ class SecurityConfigTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    /**
-     * Con identidad valida una ruta inexistente responde el 404 normalizado
+        /**
+     * With a valid identity a non-existent route answers the normalized 404
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void unknownRoute_withIdentity_returnsTheNormalized404() throws Exception {
@@ -221,10 +221,10 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.correlation_id").isNotEmpty());
     }
 
-    /**
-     * Con identidad valida un metodo no admitido responde el 405 normalizado
+        /**
+     * With a valid identity an unsupported method answers the normalized 405
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void wrongMethod_withIdentity_returnsTheNormalized405() throws Exception {
@@ -237,11 +237,11 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.codigo").value("METODO_NO_PERMITIDO"));
     }
 
-    /**
-     * El health check es público para el Gateway y los orquestadores, en este test no existe el endpoint, por
-     * eso la respuesta es el 404 normalizado y no un 401
+        /**
+     * The health check is public for the Gateway and the orchestrators, in this test the endpoint does not exist, so
+     * the response is the normalized 404 and not a 401
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void healthEndpoint_isPublic() throws Exception {
@@ -250,10 +250,10 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"));
     }
 
-    /**
-     * Los demás endpoints de actuator no son públicos
+        /**
+     * The other actuator endpoints are not public
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void otherActuatorEndpoints_areNotPublic() throws Exception {
@@ -261,11 +261,11 @@ class SecurityConfigTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    /**
-     * Swagger solo es público en el desarrollo local, por defecto exige identidad
+        /**
+     * Swagger is only public in local development, by default it requires identity
      *
-     * @param path ruta de la documentación interactiva
-     * @throws Exception si falla la peticion simulada
+     * @param path route of the interactive documentation
+     * @throws Exception if the simulated request fails
      */
     @ParameterizedTest
     @ValueSource(strings = { "/swagger-ui/index.html", "/swagger-ui.html", "/v3/api-docs" })
@@ -274,10 +274,10 @@ class SecurityConfigTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    /**
-     * No se permite CORS en el microservicio, lo gestiona el Gateway
+        /**
+     * CORS is not allowed in the microservice, it is handled by the Gateway
      *
-     * @throws Exception si falla la peticion simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void cors_isNotConfiguredInTheMicroservice() throws Exception {

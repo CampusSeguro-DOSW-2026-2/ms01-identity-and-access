@@ -15,101 +15,100 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.RoleNotFoun
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Administración de roles y del catálogo de permisos (RF-MS01-10): consultar, crear, renombrar o describir,
- * cambiar los permisos y borrar roles
+ * Administration of roles and of the permission catalog (RF-MS01-10): query, create, rename or describe, change the
+ * permissions and delete roles
  */
 public interface RoleAdminService {
 
-    /**
-     * Lista todos los roles con su detalle, ordenados por nombre
+        /**
+     * Lists all the roles with their detail, sorted by name
      *
-     * @param requester identidad de quien consulta
-     * @return los roles con su descripción, sus permisos y la marca de sistema
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso de consulta de roles
+     * @param requester identity of whoever queries
+     * @return the roles with their description, their permissions and the system flag
+     * @throws ForbiddenOperationException if the requester does not have the role query permission
      */
     List<RoleDetailResponse> listRoles(RequesterIdentity requester);
 
-    /**
-     * Consulta un rol por su nombre
+        /**
+     * Queries a role by its name
      *
-     * @param requester identidad de quien consulta
-     * @param role nombre del rol recibido en la ruta, se normaliza
-     * @return el detalle del rol
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso de consulta de roles
-     * @throws InvalidRequestException si el nombre no tiene un formato válido
-     * @throws RoleNotFoundException si el rol no existe
+     * @param requester identity of whoever queries
+     * @param role name of the role received in the path, it is normalized
+     * @return the detail of the role
+     * @throws ForbiddenOperationException if the requester does not have the role query permission
+     * @throws InvalidRequestException if the name does not have a valid format
+     * @throws RoleNotFoundException if the role does not exist
      */
     RoleDetailResponse getRole(RequesterIdentity requester, String role);
 
-    /**
-     * Lista el catálogo de permisos ordenado por código
+        /**
+     * Lists the permission catalog sorted by code
      *
-     * @param requester identidad de quien consulta
-     * @return cada permiso con su descripción
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso de consulta de roles
+     * @param requester identity of whoever queries
+     * @return each permission with its description
+     * @throws ForbiddenOperationException if the requester does not have the role query permission
      */
     List<PermissionItemResponse> listPermissions(RequesterIdentity requester);
 
-    /**
-     * Crea un rol que no es de sistema y sin corte de sesión (formulario F-10), el intento se audita en MS08
+        /**
+     * Creates a role that is not a system role and without a session cut (form F-10), the attempt is audited in MS08
      *
-     * @param requester identidad de quien solicita
-     * @param request nombre, descripción y permisos del rol
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return el rol creado
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso de gestión de roles
-     * @throws InvalidRequestException si algún dato incumple el formulario F-10
-     * @throws BusinessRuleException si los permisos incluyen ms01:role:manage
-     * @throws ConflictException si ya existe un rol con ese nombre
+     * @param requester identity of whoever requests
+     * @param request name, description and permissions of the role
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the created role
+     * @throws ForbiddenOperationException if the requester does not have the role management permission
+     * @throws InvalidRequestException if any data breaks form F-10
+     * @throws BusinessRuleException if the permissions include ms01:role:manage
+     * @throws ConflictException if a role with that name already exists
      */
     RoleDetailResponse createRole(RequesterIdentity requester, CreateRoleRequest request, String correlationId);
 
-    /**
-     * Cambia el nombre y la descripción de un rol (formulario F-11), si el nombre cambia registra el corte de
-     * sesión de los usuarios que tienen el rol, el intento se audita en MS08
+        /**
+     * Changes the name and the description of a role (form F-11), if the name changes it records the session cut of the
+     * users that have the role, the attempt is audited in MS08
      *
-     * @param requester identidad de quien solicita
-     * @param role nombre actual del rol recibido en la ruta, se normaliza
-     * @param request nombre y descripción nuevos
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return el rol actualizado
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso de gestión de roles
-     * @throws InvalidRequestException si algún dato incumple el formulario F-11
-     * @throws RoleNotFoundException si el rol no existe
-     * @throws ConflictException si es un rol de sistema que cambia de nombre o el nombre nuevo ya existe
+     * @param requester identity of whoever requests
+     * @param role current name of the role received in the path, it is normalized
+     * @param request new name and description
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the updated role
+     * @throws ForbiddenOperationException if the requester does not have the role management permission
+     * @throws InvalidRequestException if any data breaks form F-11
+     * @throws RoleNotFoundException if the role does not exist
+     * @throws ConflictException if it is a system role whose name changes or the new name already exists
      */
     RoleDetailResponse updateRole(RequesterIdentity requester, String role, UpdateRoleRequest request,
             String correlationId);
 
-    /**
-     * Reemplaza los permisos de un rol (formulario F-12) y registra el corte de sesión del rol, el intento se
-     * audita en MS08
+        /**
+     * Replaces the permissions of a role (form F-12) and records the session cut of the role, the attempt is audited in
+     * MS08
      *
-     * @param requester identidad de quien solicita
-     * @param role nombre del rol recibido en la ruta, se normaliza
-     * @param request lista completa de permisos del rol
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return el rol actualizado
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso de gestión de roles
-     * @throws InvalidRequestException si algún dato incumple el formulario F-12
-     * @throws RoleNotFoundException si el rol no existe
-     * @throws BusinessRuleException si ms01:role:manage queda en un rol distinto de ADMIN o ADMIN lo pierde
+     * @param requester identity of whoever requests
+     * @param role name of the role received in the path, it is normalized
+     * @param request complete list of permissions of the role
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the updated role
+     * @throws ForbiddenOperationException if the requester does not have the role management permission
+     * @throws InvalidRequestException if any data breaks form F-12
+     * @throws RoleNotFoundException if the role does not exist
+     * @throws BusinessRuleException if ms01:role:manage stays in a role other than ADMIN or ADMIN loses it
      */
     RoleDetailResponse updatePermissions(RequesterIdentity requester, String role,
             UpdateRolePermissionsRequest request, String correlationId);
 
-    /**
-     * Borra un rol (formulario F-13): quienes tienen solo ese rol pasan a ESTUDIANTE, a los demás se les retira
-     * el rol y se registra el corte de sesión de cada uno, todo en una sola transacción, el intento se audita
-     * en MS08
+        /**
+     * Deletes a role (form F-13): those who have only that role move to ESTUDIANTE, the rest have the role removed and
+     * the session cut of each one is recorded, all in a single transaction, the attempt is audited in MS08
      *
-     * @param requester identidad de quien solicita
-     * @param role nombre del rol recibido en la ruta, se normaliza
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso de gestión de roles
-     * @throws InvalidRequestException si el nombre no tiene un formato válido
-     * @throws RoleNotFoundException si el rol no existe
-     * @throws ConflictException si el rol es de sistema
+     * @param requester identity of whoever requests
+     * @param role name of the role received in the path, it is normalized
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @throws ForbiddenOperationException if the requester does not have the role management permission
+     * @throws InvalidRequestException if the name does not have a valid format
+     * @throws RoleNotFoundException if the role does not exist
+     * @throws ConflictException if the role is a system role
      */
     void deleteRole(RequesterIdentity requester, String role, String correlationId);
 }

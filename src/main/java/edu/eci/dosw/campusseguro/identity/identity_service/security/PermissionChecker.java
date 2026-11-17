@@ -5,24 +5,24 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 
 /**
- * Comprueba que el solicitante tenga el permiso que exige una operación según la matriz Rol-Permiso
- * (Estándares de Integración, sección 6), la autorización la decide siempre el permiso y nunca el nombre de
- * un rol
+ * Checks that the requester has the permission that an operation requires according to the Role-Permission matrix
+ * (Integration Standards, section 6), the authorization is always decided by the permission and never by the name of a
+ * role
  */
 public final class PermissionChecker {
 
-    /**
-     * Clase de utilidad, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private PermissionChecker() {
     }
 
-    /**
-     * Exige que el solicitante tenga el permiso, si no lo tiene la operación se rechaza con HTTP 403
+        /**
+     * Requires that the requester has the permission, if it does not have it the operation is rejected with HTTP 403
      *
-     * @param requester identidad de quien solicita
-     * @param permission permiso que exige la operación
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso en X-User-Permission
+     * @param requester identity of whoever requests
+     * @param permission permission that the operation requires
+     * @throws ForbiddenOperationException if the requester does not have the permission in X-User-Permission
      */
     public static void require(RequesterIdentity requester, Permission permission) {
         if (!requester.hasPermission(permission)) {

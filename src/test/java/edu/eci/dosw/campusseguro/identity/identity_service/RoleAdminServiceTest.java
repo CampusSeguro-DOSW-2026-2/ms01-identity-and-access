@@ -63,8 +63,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleRequestVa
 import edu.eci.dosw.campusseguro.identity.identity_service.util.PermissionCodes;
 
 /**
- * RF-MS01-10: consulta, creación, edición, cambio de permisos y borrado de roles, las reglas RG-08 y RN-MS01-14,
- * la auditoría de cada operación y el corte de sesión de RF-MS01-11
+ * RF-MS01-10: query, creation, edition, permission change and deletion of roles, the rules RG-08 and RN-MS01-14, the
+ * audit of each operation and the session cut of RF-MS01-11
  */
 @ExtendWith(MockitoExtension.class)
 class RoleAdminServiceTest {
@@ -78,6 +78,7 @@ class RoleAdminServiceTest {
     private static final String PERM_B = "ms04:checkin:read_own";
     private static final String PERM_C = "ms01:profile:read";
     private static final String PROFILE_WRITE = "ms01:profile:write";
+    private static final String LOGOUT = "ms01:session:logout";
 
     @Mock
     private RoleRepository roleRepository;
@@ -93,8 +94,8 @@ class RoleAdminServiceTest {
 
     private RoleAdminServiceImpl service;
 
-    /**
-     * Crea el servicio con un reloj fijo para que la fecha de los eventos y de los cortes sea predecible
+        /**
+     * Creates the service with a fixed clock so the date of the events and of the cuts is predictable
      */
     @BeforeEach
     void setUp() {
@@ -102,37 +103,37 @@ class RoleAdminServiceTest {
         service = new RoleAdminServiceImpl(roleRepository, permissionRepository, userRepository,
                 new AuditRecorder(auditPublisher, clock), FixedDatabaseTime.at(NOW));
         List<PermissionEntity> catalog = new ArrayList<>();
-        for (String code : List.of(MANAGE, "ms01:role:read_all", PERM_C, PROFILE_WRITE, PERM_A, PERM_B)) {
+        for (String code : List.of(MANAGE, "ms01:role:read_all", PERM_C, PROFILE_WRITE, LOGOUT, PERM_A, PERM_B)) {
             catalog.add(TestEntities.permission(code));
         }
         lenient().when(permissionRepository.findAll()).thenReturn(catalog);
     }
 
-    /**
-     * Identidad con ms01:role:manage y ms01:role:read_all, la del rol ADMIN
+        /**
+     * Identity with ms01:role:manage and ms01:role:read_all, the one of the ADMIN role
      *
-     * @return la identidad del administrador
+     * @return the identity of the administrator
      */
     private RequesterIdentity admin() {
         return TestIdentities.of(ADMIN_ID, "ADMIN");
     }
 
-    /**
-     * Identidad sin los permisos de gestión de roles
+        /**
+     * Identity without the role management permissions
      *
-     * @return la identidad de un estudiante
+     * @return the identity of a student
      */
     private RequesterIdentity student() {
         return TestIdentities.of(ADMIN_ID, "ESTUDIANTE");
     }
 
-    /**
-     * Rol guardado
+        /**
+     * Stored role
      *
-     * @param name nombre del rol
-     * @param system true si es un rol de sistema
-     * @param permissions códigos de permiso del rol
-     * @return la entidad del rol
+     * @param name name of the role
+     * @param system true if it is a system role
+     * @param permissions permission codes of the role
+     * @return the entity of the role
      */
     private RoleEntity role(String name, boolean system, String... permissions) {
         RoleEntity entity = new RoleEntity();
@@ -143,13 +144,13 @@ class RoleAdminServiceTest {
         return entity;
     }
 
-    /**
-     * Cuerpo de creación de rol
+        /**
+     * Role creation body
      *
-     * @param name nombre del rol
-     * @param description descripción del rol
-     * @param permissions permisos del rol
-     * @return la petición
+     * @param name name of the role
+     * @param description description of the role
+     * @param permissions permissions of the role
+     * @return the request
      */
     private CreateRoleRequest createRequest(String name, String description, List<String> permissions) {
         CreateRoleRequest request = new CreateRoleRequest();
@@ -159,12 +160,12 @@ class RoleAdminServiceTest {
         return request;
     }
 
-    /**
-     * Cuerpo de edición de rol
+        /**
+     * Role edit body
      *
-     * @param name nombre del rol
-     * @param description descripción del rol
-     * @return la petición
+     * @param name name of the role
+     * @param description description of the role
+     * @return the request
      */
     private UpdateRoleRequest updateRequest(String name, String description) {
         UpdateRoleRequest request = new UpdateRoleRequest();
@@ -173,11 +174,11 @@ class RoleAdminServiceTest {
         return request;
     }
 
-    /**
-     * Cuerpo de cambio de permisos
+        /**
+     * Permission change body
      *
-     * @param permissions permisos del rol
-     * @return la petición
+     * @param permissions permissions of the role
+     * @return the request
      */
     private UpdateRolePermissionsRequest permissionsRequest(List<String> permissions) {
         UpdateRolePermissionsRequest request = new UpdateRolePermissionsRequest();
@@ -185,10 +186,10 @@ class RoleAdminServiceTest {
         return request;
     }
 
-    /**
-     * Captura el único evento de auditoría publicado
+        /**
+     * Captures the only audit event published
      *
-     * @return el evento
+     * @return the event
      */
     private AuditEvent singleEvent() {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -196,12 +197,12 @@ class RoleAdminServiceTest {
         return captor.getValue();
     }
 
-    /**
-     * Comprueba que se publicó un único evento FALLO con el motivo y el recurso indicados
+        /**
+     * Checks that a single FALLO event was published with the indicated reason and resource
      *
-     * @param action acción esperada
-     * @param resource recurso afectado esperado, null si no hay
-     * @param reason motivo esperado
+     * @param action expected action
+     * @param resource expected affected resource, null if there is none
+     * @param reason expected reason
      */
     private void assertSingleFailure(AuditAction action, String resource, String reason) {
         AuditEvent event = singleEvent();
@@ -213,10 +214,10 @@ class RoleAdminServiceTest {
         assertEquals(CORRELATION_ID, event.correlationId());
     }
 
-    // ------------------------------------------------------------------ consulta
+    // ------------------------------------------------------------------ query
 
-    /**
-     * Quien tiene ms01:role:read_all recibe todos los roles con su detalle
+        /**
+     * Whoever has ms01:role:read_all receives all the roles with their detail
      */
     @Test
     void listRoles_withReadAll_returnsEveryRoleWithItsDetail() {
@@ -235,8 +236,8 @@ class RoleAdminServiceTest {
         verifyNoInteractions(auditPublisher);
     }
 
-    /**
-     * Sin ms01:role:read_all la lista de roles se prohíbe
+        /**
+     * Without ms01:role:read_all the list of roles is forbidden
      */
     @Test
     void listRoles_withoutReadAll_isForbidden() {
@@ -245,8 +246,8 @@ class RoleAdminServiceTest {
         verifyNoInteractions(roleRepository);
     }
 
-    /**
-     * Un rol se consulta por su nombre normalizado
+        /**
+     * A role is queried by its normalized name
      */
     @Test
     void getRole_normalizesThePathName() {
@@ -259,8 +260,8 @@ class RoleAdminServiceTest {
         assertEquals(List.of(PERM_A), response.permisos());
     }
 
-    /**
-     * Los permisos del rol se entregan tal como están guardados, sin importar el módulo
+        /**
+     * The permissions of the role are delivered as they are stored, regardless of the module
      */
     @Test
     void getRole_returnsTheStoredPermissions() {
@@ -269,8 +270,8 @@ class RoleAdminServiceTest {
         assertEquals(List.of(PERM_A, "ms99:x:y"), service.getRole(admin(), "OTRO").permisos());
     }
 
-    /**
-     * Un rol inexistente responde 404
+        /**
+     * A non-existent role answers 404
      */
     @Test
     void getRole_unknownRole_isNotFound() {
@@ -283,8 +284,8 @@ class RoleAdminServiceTest {
         assertEquals("FANTASMA", error.getRoleName());
     }
 
-    /**
-     * Un nombre con formato inválido en la ruta responde 400 y no consulta la tabla
+        /**
+     * A name with an invalid format in the path answers 400 and does not query the table
      */
     @Test
     void getRole_invalidPathName_isRejected() {
@@ -296,16 +297,16 @@ class RoleAdminServiceTest {
         verifyNoInteractions(roleRepository);
     }
 
-    /**
-     * Sin ms01:role:read_all la consulta de un rol se prohíbe antes de validar la ruta
+        /**
+     * Without ms01:role:read_all the query of a role is forbidden before validating the path
      */
     @Test
     void getRole_withoutReadAll_isForbiddenBeforeValidatingThePath() {
         assertThrows(ForbiddenOperationException.class, () -> service.getRole(student(), "rol-con-guiones"));
     }
 
-    /**
-     * El catálogo de permisos sale de la base de datos, ordenado por código y con la descripción guardada
+        /**
+     * The permission catalog comes from the database, sorted by code and with the stored description
      */
     @Test
     void listPermissions_returnsTheDatabaseCatalogSortedByCode() {
@@ -322,19 +323,19 @@ class RoleAdminServiceTest {
         verifyNoInteractions(roleRepository, userRepository, auditPublisher);
     }
 
-    /**
-     * Sin ms01:role:read_all el catálogo de permisos se prohíbe
+        /**
+     * Without ms01:role:read_all the permission catalog is forbidden
      */
     @Test
     void listPermissions_withoutReadAll_isForbidden() {
         assertThrows(ForbiddenOperationException.class, () -> service.listPermissions(student()));
     }
 
-    // ------------------------------------------------------------------ creación
+    // ------------------------------------------------------------------ creation
 
     /**
-     * Crear un rol lo guarda como rol que no es de sistema, con nombre en mayúsculas y permisos ordenados, lo
-     * audita y no registra corte de sesión
+     * Creating a role saves it as a non-system role, with an uppercase name and sorted permissions, which include
+     * the two mandatory ones, audits it and sets no session cut
      */
     @Test
     void createRole_validRequest_savesAuditsAndSetsNoSessionCut() {
@@ -350,7 +351,7 @@ class RoleAdminServiceTest {
         RoleEntity saved = captor.getValue();
         assertEquals("MONITOR_EVACUACION", saved.getName());
         assertEquals("Apoya la evacuación", saved.getDescription());
-        assertEquals(List.of(PERM_C, PERM_B, PERM_A), PermissionCodes.ofRole(saved));
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_B, PERM_A), PermissionCodes.ofRole(saved));
         assertFalse(saved.isSystem());
         assertNull(saved.getValidFrom());
         assertEquals("MONITOR_EVACUACION", response.rol());
@@ -362,14 +363,59 @@ class RoleAdminServiceTest {
         assertEquals(AuditResult.EXITO, event.resultado());
         assertEquals(ADMIN_ID, event.usuarioId());
         assertEquals("rol:MONITOR_EVACUACION", event.recursoAfectado());
-        assertEquals("descripcion=Apoya la evacuación;permisos=" + PERM_C + "," + PERM_B + "," + PERM_A,
-                event.detalle());
+        assertEquals("descripcion=Apoya la evacuación;permisos=" + PERM_C + "," + LOGOUT + "," + PERM_B + ","
+                + PERM_A, event.detalle());
         assertEquals(CORRELATION_ID, event.correlationId());
         assertEquals(NOW, event.fecha());
     }
 
     /**
-     * Sin ms01:role:manage crear un rol responde 403, no toca la tabla y audita el rechazo sin recurso
+     * A role created with an empty permission list gets only the two mandatory permissions, without any error
+     */
+    @Test
+    void createRole_emptyPermissionList_getsOnlyTheMandatoryPermissions() {
+        when(roleRepository.existsByName("CUENTA_ESTATICA")).thenReturn(false);
+        when(roleRepository.saveAndFlush(any(RoleEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RoleDetailResponse response = service.createRole(admin(),
+                createRequest("cuenta_estatica", "Cuenta de uso ocasional", List.of()), CORRELATION_ID);
+
+        assertEquals(List.of(PERM_C, LOGOUT), response.permisos());
+        assertEquals("descripcion=Cuenta de uso ocasional;permisos=" + PERM_C + "," + LOGOUT,
+                singleEvent().detalle());
+    }
+
+    /**
+     * A role created without the permission list gets only the two mandatory permissions
+     */
+    @Test
+    void createRole_missingPermissionList_getsOnlyTheMandatoryPermissions() {
+        when(roleRepository.existsByName("CUENTA_ESTATICA")).thenReturn(false);
+        when(roleRepository.saveAndFlush(any(RoleEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RoleDetailResponse response = service.createRole(admin(),
+                createRequest("cuenta_estatica", "Cuenta de uso ocasional", null), CORRELATION_ID);
+
+        assertEquals(List.of(PERM_C, LOGOUT), response.permisos());
+    }
+
+    /**
+     * When the list brings only one of the mandatory permissions, the missing one is added and none is repeated
+     */
+    @Test
+    void createRole_oneMandatoryPermissionMissing_addsTheOtherOne() {
+        when(roleRepository.existsByName("MONITOR")).thenReturn(false);
+        when(roleRepository.saveAndFlush(any(RoleEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RoleDetailResponse response = service.createRole(admin(),
+                createRequest("monitor", "Monitor del campus", List.of(LOGOUT, PERM_A)), CORRELATION_ID);
+
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_A), response.permisos());
+    }
+
+        /**
+     * Without ms01:role:manage creating a role answers 403, does not touch the table and audits the rejection without a
+     * resource
      */
     @Test
     void createRole_withoutManage_isForbiddenAndAudited() {
@@ -382,8 +428,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, null, "SIN_PERMISO");
     }
 
-    /**
-     * Tener el nombre ADMIN no basta: lo que autoriza es el permiso ms01:role:manage
+        /**
+     * Having the name ADMIN is not enough: what authorizes is the ms01:role:manage permission
      */
     @Test
     void createRole_adminNameWithoutThePermission_isForbidden() {
@@ -396,8 +442,8 @@ class RoleAdminServiceTest {
         verifyNoInteractions(roleRepository);
     }
 
-    /**
-     * Lo que autoriza es el permiso y no el nombre del rol: una identidad con ms01:role:manage crea roles
+        /**
+     * What authorizes is the permission and not the name of the role: an identity with ms01:role:manage creates roles
      */
     @Test
     void createRole_anyIdentityWithManage_isAllowed() {
@@ -410,9 +456,9 @@ class RoleAdminServiceTest {
         assertEquals("NUEVO", response.rol());
     }
 
-    /**
-     * Un cuerpo inválido responde 400 con un error por campo, sin consultar la tabla, y audita el rechazo con el
-     * nombre normalizado
+        /**
+     * An invalid body answers 400 with one error per field, without querying the table, and audits the rejection with
+     * the normalized name
      */
     @Test
     void createRole_invalidBody_isRejectedAndAudited() {
@@ -427,8 +473,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, "rol:ROL", "VALIDACION");
     }
 
-    /**
-     * Si ni el nombre tiene un formato válido el rechazo se audita sin recurso
+        /**
+     * If not even the name has a valid format the rejection is audited without a resource
      */
     @Test
     void createRole_invalidName_isAuditedWithoutResource() {
@@ -439,9 +485,9 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, null, "VALIDACION");
     }
 
-    /**
-     * DETAILS está reservado para la ruta GET /roles/details: crear un rol con ese nombre responde 400 con el
-     * error en el campo rol, no guarda nada y audita el rechazo
+        /**
+     * DETAILS is reserved for the route GET /roles/details: creating a role with that name answers 400 with the error
+     * in the rol field, saves nothing and audits the rejection
      */
     @Test
     void createRole_reservedName_isRejectedAndAudited() {
@@ -456,8 +502,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, "rol:DETAILS", "VALIDACION");
     }
 
-    /**
-     * ms01:role:manage es exclusivo de ADMIN: pedirlo en un rol nuevo responde 422 y se audita
+        /**
+     * ms01:role:manage is exclusive to ADMIN: requesting it on a new role answers 422 and is audited
      */
     @Test
     void createRole_withManagePermission_isABusinessRuleError() {
@@ -470,8 +516,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, "rol:NUEVO", "REGLA_NEGOCIO");
     }
 
-    /**
-     * Un nombre que ya existe responde 409 y se audita
+        /**
+     * A name that already exists answers 409 and is audited
      */
     @Test
     void createRole_duplicatedName_isAConflict() {
@@ -486,12 +532,12 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, "rol:PROFESOR", "CONFLICTO");
     }
 
-    /**
-     * Si otra petición crea el mismo nombre a la vez, la restricción de la base de datos se traduce en 409
+        /**
+     * If another request creates the same name at the same time, the database constraint is translated into 409
      */
     @Test
     void createRole_uniqueViolationOnSave_isAConflict() {
-        when(roleRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicado"));
+        when(roleRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
 
         assertThrows(ConflictException.class,
                 () -> service.createRole(admin(), createRequest("NUEVO", "Descripción", List.of(PERM_A)),
@@ -500,12 +546,12 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, "rol:NUEVO", "CONFLICTO");
     }
 
-    /**
-     * Un fallo inesperado al guardar se audita y se propaga
+        /**
+     * An unexpected failure when saving is audited and propagated
      */
     @Test
     void createRole_unexpectedFailureOnSave_isAuditedAndPropagated() {
-        IllegalStateException failure = new IllegalStateException("base caída");
+        IllegalStateException failure = new IllegalStateException("database down");
         when(roleRepository.saveAndFlush(any())).thenThrow(failure);
 
         IllegalStateException thrown = assertThrows(IllegalStateException.class,
@@ -516,8 +562,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CREACION_ROL, "rol:NUEVO", "ERROR_INTERNO");
     }
 
-    /**
-     * Un campo no definido en el contrato se rechaza con el mensaje de los roles
+        /**
+     * A field not defined in the contract is rejected with the message of the roles
      */
     @Test
     void createRole_unknownField_isRejectedPerField() {
@@ -531,13 +577,13 @@ class RoleAdminServiceTest {
         assertEquals("Campo no permitido.", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un fallo de la auditoría no cambia la respuesta de la creación
+        /**
+     * A failure of the audit does not change the response of the creation
      */
     @Test
     void createRole_auditFailure_doesNotChangeTheResponse() {
         when(roleRepository.saveAndFlush(any(RoleEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        doThrow(new IllegalStateException("MS08 no disponible")).when(auditPublisher).publish(any());
+        doThrow(new IllegalStateException("MS08 unavailable")).when(auditPublisher).publish(any());
 
         RoleDetailResponse response = service.createRole(admin(),
                 createRequest("NUEVO", "Descripción", List.of(PERM_A)), CORRELATION_ID);
@@ -545,10 +591,10 @@ class RoleAdminServiceTest {
         assertEquals("NUEVO", response.rol());
     }
 
-    // ------------------------------------------------------------------ edición
+    // ------------------------------------------------------------------ edition
 
-    /**
-     * Cambiar solo la descripción no renombra ni registra corte de sesión, y audita los valores anterior y nuevo
+        /**
+     * Changing only the description neither renames nor records a session cut, and audits the previous and new values
      */
     @Test
     void updateRole_onlyDescription_keepsTheNameAndSetsNoSessionCut() {
@@ -573,9 +619,9 @@ class RoleAdminServiceTest {
                 + "descripcion_nueva=Nueva descripción", event.detalle());
     }
 
-    /**
-     * Renombrar un rol corta la sesión de los usuarios que lo tienen antes de cambiar el nombre y guarda el
-     * rol con el nombre nuevo
+        /**
+     * Renaming a role cuts the session of the users that have it before changing the name and saves the role with the
+     * new name
      */
     @Test
     void updateRole_rename_cutsTheUsersThenRenames() {
@@ -600,8 +646,8 @@ class RoleAdminServiceTest {
                 + "nombre_nuevo=MONITOR_NUEVO;descripcion_nueva=Nueva descripción", event.detalle());
     }
 
-    /**
-     * Un rol de sistema puede cambiar de descripción
+        /**
+     * A system role can change its description
      */
     @Test
     void updateRole_systemRoleDescription_isAllowed() {
@@ -616,8 +662,8 @@ class RoleAdminServiceTest {
         assertTrue(response.system());
     }
 
-    /**
-     * Un rol de sistema no se puede renombrar: responde 409 y se audita
+        /**
+     * A system role cannot be renamed: it answers 409 and is audited
      */
     @Test
     void updateRole_renamingASystemRole_isAConflict() {
@@ -632,8 +678,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, "rol:ADMIN", "ROL_DE_SISTEMA");
     }
 
-    /**
-     * Renombrar a un nombre que ya existe responde 409 y no registra cortes
+        /**
+     * Renaming to a name that already exists answers 409 and records no cuts
      */
     @Test
     void updateRole_renameToAnExistingName_isAConflict() {
@@ -649,14 +695,14 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, "rol:MONITOR", "CONFLICTO");
     }
 
-    /**
-     * Una violación de restricción de la base de datos al renombrar se traduce en 409
+        /**
+     * A database constraint violation when renaming is translated into 409
      */
     @Test
     void updateRole_renameRejectedByTheDatabase_isAConflict() {
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(role("MONITOR", false, PERM_A)));
         when(roleRepository.saveAndFlush(any()))
-                .thenThrow(new DataIntegrityViolationException("duplicado"));
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
 
         assertThrows(ConflictException.class,
                 () -> service.updateRole(admin(), "MONITOR", updateRequest("OTRO", "Descripción"), CORRELATION_ID));
@@ -664,13 +710,13 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, "rol:MONITOR", "CONFLICTO");
     }
 
-    /**
-     * Un fallo inesperado al editar se audita y se propaga
+        /**
+     * An unexpected failure when editing is audited and propagated
      */
     @Test
     void updateRole_unexpectedFailure_isAuditedAndPropagated() {
         RoleEntity current = role("MONITOR", false, PERM_A);
-        IllegalStateException failure = new IllegalStateException("base caída");
+        IllegalStateException failure = new IllegalStateException("database down");
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(current));
         when(roleRepository.saveAndFlush(current)).thenThrow(failure);
 
@@ -682,8 +728,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, "rol:MONITOR", "ERROR_INTERNO");
     }
 
-    /**
-     * Sin ms01:role:manage editar un rol responde 403 antes de validar nada
+        /**
+     * Without ms01:role:manage editing a role answers 403 before validating anything
      */
     @Test
     void updateRole_withoutManage_isForbiddenAndAudited() {
@@ -695,8 +741,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, null, "SIN_PERMISO");
     }
 
-    /**
-     * La ruta se valida antes que el rol y que el cuerpo: un nombre inválido responde 400 sin recurso
+        /**
+     * The path is validated before the role and the body: an invalid name answers 400 without a resource
      */
     @Test
     void updateRole_invalidPathName_isRejected() {
@@ -708,8 +754,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, null, "VALIDACION");
     }
 
-    /**
-     * Un rol inexistente responde 404 antes de validar el cuerpo
+        /**
+     * A non-existent role answers 404 before validating the body
      */
     @Test
     void updateRole_unknownRole_isNotFoundBeforeValidatingTheBody() {
@@ -721,8 +767,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, "rol:FANTASMA", "ROL_NO_ENCONTRADO");
     }
 
-    /**
-     * Un cuerpo inválido sobre un rol existente responde 400 y se audita con el rol de la ruta
+        /**
+     * An invalid body on an existing role answers 400 and is audited with the role of the path
      */
     @Test
     void updateRole_invalidBody_isRejectedAndAudited() {
@@ -735,9 +781,9 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, "rol:MONITOR", "VALIDACION");
     }
 
-    /**
-     * Renombrar un rol a DETAILS responde 400 con el error en el campo rol, no corta sesiones ni cambia la
-     * clave y audita el rechazo con el rol de la ruta
+        /**
+     * Renaming a role to DETAILS answers 400 with the error in the rol field, neither cuts sessions nor changes the key
+     * and audits the rejection with the role of the path
      */
     @Test
     void updateRole_renameToTheReservedName_isRejectedAndAudited() {
@@ -754,49 +800,51 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.EDICION_ROL, "rol:MONITOR", "VALIDACION");
     }
 
-    // ------------------------------------------------------------------ permisos
+    // ------------------------------------------------------------------ permissions
 
-    /**
-     * Cambiar los permisos reemplaza la lista, registra el corte del rol y audita lo agregado y lo retirado
+        /**
+     * Changing the permissions replaces the list, records the cut of the role and audits what was added and what was
+     * removed
      */
     @Test
     void updatePermissions_replacesTheListSetsTheRoleCutAndAudits() {
-        RoleEntity entity = role("MONITOR", false, PERM_A, PERM_B);
+        RoleEntity entity = role("MONITOR", false, PERM_C, LOGOUT, PERM_B);
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
         when(roleRepository.saveAndFlush(entity)).thenReturn(entity);
 
         RoleDetailResponse response = service.updatePermissions(admin(), "monitor",
-                permissionsRequest(List.of(PERM_C, PERM_A)), CORRELATION_ID);
+                permissionsRequest(List.of(PERM_C, LOGOUT, PERM_A)), CORRELATION_ID);
 
-        assertEquals(List.of(PERM_C, PERM_A), PermissionCodes.ofRole(entity));
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_A), PermissionCodes.ofRole(entity));
         assertEquals(CUT, entity.getValidFrom());
-        assertEquals(List.of(PERM_C, PERM_A), response.permisos());
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_A), response.permisos());
         verifyNoInteractions(userRepository);
 
         AuditEvent event = singleEvent();
         assertEquals(AuditAction.CAMBIO_PERMISOS_ROL, event.accion());
         assertEquals(AuditResult.EXITO, event.resultado());
         assertEquals("rol:MONITOR", event.recursoAfectado());
-        assertEquals("agregados=" + PERM_C + ";retirados=" + PERM_B, event.detalle());
+        assertEquals("agregados=" + PERM_A + ";retirados=" + PERM_B, event.detalle());
     }
 
-    /**
-     * Enviar la misma lista registra el corte del rol igual, y el detalle queda sin cambios
+        /**
+     * Sending the same list records the cut of the role all the same, and the detail is left unchanged
      */
     @Test
     void updatePermissions_sameList_stillSetsTheRoleCut() {
-        RoleEntity entity = role("MONITOR", false, PERM_A);
+        RoleEntity entity = role("MONITOR", false, PERM_C, LOGOUT, PERM_A);
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
         when(roleRepository.saveAndFlush(entity)).thenReturn(entity);
 
-        service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of(PERM_A)), CORRELATION_ID);
+        service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of(PERM_C, LOGOUT, PERM_A)),
+                CORRELATION_ID);
 
         assertEquals(CUT, entity.getValidFrom());
         assertEquals("agregados=;retirados=", singleEvent().detalle());
     }
 
-    /**
-     * ADMIN puede cambiar sus permisos mientras conserve ms01:role:manage
+        /**
+     * ADMIN can change its permissions as long as it keeps ms01:role:manage
      */
     @Test
     void updatePermissions_adminKeepingManage_isAllowed() {
@@ -805,32 +853,32 @@ class RoleAdminServiceTest {
         when(roleRepository.saveAndFlush(admin)).thenReturn(admin);
 
         RoleDetailResponse response = service.updatePermissions(admin(), "ADMIN",
-                permissionsRequest(List.of(MANAGE, PERM_C, PROFILE_WRITE)), CORRELATION_ID);
+                permissionsRequest(List.of(MANAGE, PERM_C, PROFILE_WRITE, LOGOUT)), CORRELATION_ID);
 
-        assertEquals(List.of(PERM_C, PROFILE_WRITE, MANAGE), response.permisos());
+        assertEquals(List.of(PERM_C, PROFILE_WRITE, MANAGE, LOGOUT), response.permisos());
     }
 
-    /**
-     * Un rol distinto de ADMIN no puede tener ms01:role:manage: responde 422 y no cambia nada
+        /**
+     * A role other than ADMIN cannot have ms01:role:manage: it answers 422 and changes nothing
      */
     @Test
     void updatePermissions_manageOnAnotherRole_isABusinessRuleError() {
-        RoleEntity entity = role("MONITOR", false, PERM_A);
+        RoleEntity entity = role("MONITOR", false, PERM_C, LOGOUT, PERM_A);
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
 
         BusinessRuleException error = assertThrows(BusinessRuleException.class,
-                () -> service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of(PERM_A, MANAGE)),
-                        CORRELATION_ID));
+                () -> service.updatePermissions(admin(), "MONITOR",
+                        permissionsRequest(List.of(PERM_C, LOGOUT, PERM_A, MANAGE)), CORRELATION_ID));
 
         assertEquals("El permiso ms01:role:manage es exclusivo del rol ADMIN.", error.getMessage());
-        assertEquals(List.of(PERM_A), PermissionCodes.ofRole(entity));
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_A), PermissionCodes.ofRole(entity));
         assertNull(entity.getValidFrom());
         verify(roleRepository, never()).saveAndFlush(any());
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:MONITOR", "REGLA_NEGOCIO");
     }
 
-    /**
-     * ADMIN no puede perder ms01:role:manage: responde 422 y no cambia nada
+        /**
+     * ADMIN cannot lose ms01:role:manage: it answers 422 and changes nothing
      */
     @Test
     void updatePermissions_adminLosingManage_isABusinessRuleError() {
@@ -847,76 +895,151 @@ class RoleAdminServiceTest {
     }
 
     /**
-     * Una lista inválida responde 400, no cambia nada y se audita
+     * A list with a repeated permission is answered with 400, changes nothing and is audited
      */
     @Test
-    void updatePermissions_invalidList_isRejectedAndAudited() {
-        RoleEntity entity = role("MONITOR", false, PERM_A);
+    void updatePermissions_repeatedPermission_isRejectedAndAudited() {
+        RoleEntity entity = role("MONITOR", false, PERM_C, LOGOUT, PERM_A);
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
-                () -> service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of()), CORRELATION_ID));
+                () -> service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of(PERM_A, PERM_A)),
+                        CORRELATION_ID));
 
         assertEquals("permisos", error.getErrors().get(0).campo());
-        assertEquals("Seleccione al menos un permiso.", error.getErrors().get(0).mensaje());
-        assertEquals(List.of(PERM_A), PermissionCodes.ofRole(entity));
+        assertEquals("Permiso repetido: " + PERM_A, error.getErrors().get(0).mensaje());
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_A), PermissionCodes.ofRole(entity));
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:MONITOR", "VALIDACION");
     }
 
     /**
-     * ESTUDIANTE no puede perder ms01:profile:read ni ms01:profile:write: responde 422 y no cambia nada
+     * A replacement list without ms01:profile:read or ms01:session:logout is answered with 422 and changes
+     * nothing, for any role
      */
     @Test
-    void updatePermissions_studentLosingAProfilePermission_isABusinessRuleError() {
-        RoleEntity student = role("ESTUDIANTE", true, PERM_C, PROFILE_WRITE, PERM_A);
+    void updatePermissions_missingMandatoryPermission_isABusinessRuleError() {
+        RoleEntity entity = role("MONITOR", false, PERM_C, LOGOUT, PERM_A);
+        when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
+
+        for (List<String> list : List.of(List.of(PERM_C, PERM_A), List.of(LOGOUT, PERM_A), List.of(PERM_A))) {
+            BusinessRuleException error = assertThrows(BusinessRuleException.class,
+                    () -> service.updatePermissions(admin(), "MONITOR", permissionsRequest(list), CORRELATION_ID));
+
+            assertEquals("El rol MONITOR debe conservar los permisos ms01:profile:read y ms01:session:logout.",
+                    error.getMessage());
+        }
+
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_A), PermissionCodes.ofRole(entity));
+        assertNull(entity.getValidFrom());
+        verify(roleRepository, never()).saveAndFlush(any());
+        verify(auditPublisher, times(3)).publish(any(AuditEvent.class));
+    }
+
+    /**
+     * An empty replacement list is answered with 422 because it lacks the mandatory permissions
+     */
+    @Test
+    void updatePermissions_emptyList_isABusinessRuleError() {
+        RoleEntity entity = role("MONITOR", false, PERM_C, LOGOUT, PERM_A);
+        when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
+
+        BusinessRuleException error = assertThrows(BusinessRuleException.class,
+                () -> service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of()), CORRELATION_ID));
+
+        assertEquals("El rol MONITOR debe conservar los permisos ms01:profile:read y ms01:session:logout.",
+                error.getMessage());
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_A), PermissionCodes.ofRole(entity));
+        assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:MONITOR", "REGLA_NEGOCIO");
+    }
+
+    /**
+     * ESTUDIANTE cannot lose ms01:profile:write: it is answered with 422 and nothing changes
+     */
+    @Test
+    void updatePermissions_studentLosingProfileWrite_isABusinessRuleError() {
+        RoleEntity student = role("ESTUDIANTE", true, PERM_C, PROFILE_WRITE, LOGOUT, PERM_A);
         when(roleRepository.findByName("ESTUDIANTE")).thenReturn(Optional.of(student));
 
         BusinessRuleException error = assertThrows(BusinessRuleException.class,
-                () -> service.updatePermissions(admin(), "ESTUDIANTE", permissionsRequest(List.of(PERM_C, PERM_A)),
-                        CORRELATION_ID));
+                () -> service.updatePermissions(admin(), "ESTUDIANTE",
+                        permissionsRequest(List.of(PERM_C, LOGOUT, PERM_A)), CORRELATION_ID));
 
-        assertEquals("El rol ESTUDIANTE debe conservar los permisos ms01:profile:read y ms01:profile:write.",
-                error.getMessage());
-        assertEquals(List.of(PERM_C, PROFILE_WRITE, PERM_A), PermissionCodes.ofRole(student));
+        assertEquals("El rol ESTUDIANTE debe conservar el permiso ms01:profile:write.", error.getMessage());
+        assertEquals(List.of(PERM_C, PROFILE_WRITE, LOGOUT, PERM_A), PermissionCodes.ofRole(student));
         verify(roleRepository, never()).saveAndFlush(any());
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:ESTUDIANTE", "REGLA_NEGOCIO");
     }
 
     /**
-     * ADMIN conserva ms01:role:manage pero tampoco puede perder los permisos del perfil
+     * ESTUDIANTE also cannot lose the permissions that all roles keep
      */
     @Test
-    void updatePermissions_adminLosingAProfilePermission_isABusinessRuleError() {
-        RoleEntity admin = role("ADMIN", true, MANAGE, PERM_C, PROFILE_WRITE);
+    void updatePermissions_studentLosingALogout_isABusinessRuleError() {
+        RoleEntity student = role("ESTUDIANTE", true, PERM_C, PROFILE_WRITE, LOGOUT, PERM_A);
+        when(roleRepository.findByName("ESTUDIANTE")).thenReturn(Optional.of(student));
+
+        BusinessRuleException error = assertThrows(BusinessRuleException.class,
+                () -> service.updatePermissions(admin(), "ESTUDIANTE",
+                        permissionsRequest(List.of(PERM_C, PROFILE_WRITE, PERM_A)), CORRELATION_ID));
+
+        assertEquals("El rol ESTUDIANTE debe conservar los permisos ms01:profile:read y ms01:session:logout.",
+                error.getMessage());
+        verify(roleRepository, never()).saveAndFlush(any());
+    }
+
+    /**
+     * ADMIN keeps ms01:role:manage but cannot lose ms01:profile:write either
+     */
+    @Test
+    void updatePermissions_adminLosingProfileWrite_isABusinessRuleError() {
+        RoleEntity admin = role("ADMIN", true, MANAGE, PERM_C, PROFILE_WRITE, LOGOUT);
         when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(admin));
 
         BusinessRuleException error = assertThrows(BusinessRuleException.class,
-                () -> service.updatePermissions(admin(), "ADMIN", permissionsRequest(List.of(MANAGE, PROFILE_WRITE)),
-                        CORRELATION_ID));
+                () -> service.updatePermissions(admin(), "ADMIN",
+                        permissionsRequest(List.of(MANAGE, PERM_C, LOGOUT)), CORRELATION_ID));
 
-        assertEquals("El rol ADMIN debe conservar los permisos ms01:profile:read y ms01:profile:write.",
+        assertEquals("El rol ADMIN debe conservar el permiso ms01:profile:write.", error.getMessage());
+        verify(roleRepository, never()).saveAndFlush(any());
+        assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:ADMIN", "REGLA_NEGOCIO");
+    }
+
+    /**
+     * ADMIN cannot lose ms01:profile:read: the rule of the permissions that all roles keep applies first
+     */
+    @Test
+    void updatePermissions_adminLosingProfileRead_isABusinessRuleError() {
+        RoleEntity admin = role("ADMIN", true, MANAGE, PERM_C, PROFILE_WRITE, LOGOUT);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(admin));
+
+        BusinessRuleException error = assertThrows(BusinessRuleException.class,
+                () -> service.updatePermissions(admin(), "ADMIN",
+                        permissionsRequest(List.of(MANAGE, PROFILE_WRITE, LOGOUT)), CORRELATION_ID));
+
+        assertEquals("El rol ADMIN debe conservar los permisos ms01:profile:read y ms01:session:logout.",
                 error.getMessage());
         verify(roleRepository, never()).saveAndFlush(any());
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:ADMIN", "REGLA_NEGOCIO");
     }
 
     /**
-     * Un rol personalizado puede quedarse sin los permisos del perfil: el mínimo solo aplica a ESTUDIANTE y ADMIN
+     * A custom role can lose ms01:profile:write, the minimum with that permission applies only to ESTUDIANTE and
+     * ADMIN
      */
     @Test
-    void updatePermissions_customRoleWithoutProfilePermissions_isAllowed() {
-        RoleEntity entity = role("MONITOR", false, PERM_A, PERM_C);
+    void updatePermissions_customRoleWithoutProfileWrite_isAllowed() {
+        RoleEntity entity = role("MONITOR", false, PERM_A, PERM_C, PROFILE_WRITE, LOGOUT);
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
         when(roleRepository.saveAndFlush(entity)).thenReturn(entity);
 
         RoleDetailResponse response = service.updatePermissions(admin(), "MONITOR",
-                permissionsRequest(List.of(PERM_B)), CORRELATION_ID);
+                permissionsRequest(List.of(PERM_B, PERM_C, LOGOUT)), CORRELATION_ID);
 
-        assertEquals(List.of(PERM_B), response.permisos());
+        assertEquals(List.of(PERM_C, LOGOUT, PERM_B), response.permisos());
     }
 
-    /**
-     * Un permiso que no está en el catálogo de la base de datos se rechaza con 400 y no cambia nada
+        /**
+     * A permission that is not in the database catalog is rejected with 400 and changes nothing
      */
     @Test
     void updatePermissions_permissionOutsideTheDatabaseCatalog_isRejected() {
@@ -924,8 +1047,8 @@ class RoleAdminServiceTest {
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
 
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
-                () -> service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of(PERM_A, "ms99:x:y")),
-                        CORRELATION_ID));
+                () -> service.updatePermissions(admin(), "MONITOR",
+                        permissionsRequest(List.of(PERM_C, LOGOUT, "ms99:x:y")), CORRELATION_ID));
 
         assertEquals("Permiso no válido: ms99:x:y", error.getErrors().get(0).mensaje());
         assertEquals(List.of(PERM_A), PermissionCodes.ofRole(entity));
@@ -933,25 +1056,26 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:MONITOR", "VALIDACION");
     }
 
-    /**
-     * Un permiso agregado a la base de datos después del arranque ya se puede asignar sin reiniciar MS01
+        /**
+     * A permission added to the database after startup can already be assigned without restarting MS01
      */
     @Test
     void updatePermissions_permissionAddedToTheDatabase_isAssignable() {
         RoleEntity entity = role("MONITOR", false, PERM_A);
         when(permissionRepository.findAll()).thenReturn(List.of(TestEntities.permission(PERM_A),
+                TestEntities.permission(PERM_C), TestEntities.permission(LOGOUT),
                 TestEntities.permission("ms09:nuevo:permiso")));
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
         when(roleRepository.saveAndFlush(entity)).thenReturn(entity);
 
         RoleDetailResponse response = service.updatePermissions(admin(), "MONITOR",
-                permissionsRequest(List.of("ms09:nuevo:permiso")), CORRELATION_ID);
+                permissionsRequest(List.of(PERM_C, LOGOUT, "ms09:nuevo:permiso")), CORRELATION_ID);
 
-        assertEquals(List.of("ms09:nuevo:permiso"), response.permisos());
+        assertEquals(List.of(PERM_C, LOGOUT, "ms09:nuevo:permiso"), response.permisos());
     }
 
-    /**
-     * Un rol inexistente responde 404 antes de validar la lista
+        /**
+     * A non-existent role answers 404 before validating the list
      */
     @Test
     void updatePermissions_unknownRole_isNotFound() {
@@ -964,8 +1088,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:FANTASMA", "ROL_NO_ENCONTRADO");
     }
 
-    /**
-     * Sin ms01:role:manage el cambio de permisos responde 403
+        /**
+     * Without ms01:role:manage the permission change answers 403
      */
     @Test
     void updatePermissions_withoutManage_isForbidden() {
@@ -977,8 +1101,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, null, "SIN_PERMISO");
     }
 
-    /**
-     * Un nombre inválido en la ruta responde 400
+        /**
+     * An invalid name in the path answers 400
      */
     @Test
     void updatePermissions_invalidPathName_isRejected() {
@@ -989,29 +1113,29 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, null, "VALIDACION");
     }
 
-    /**
-     * Un fallo inesperado al guardar se audita y se propaga
+        /**
+     * An unexpected failure when saving is audited and propagated
      */
     @Test
     void updatePermissions_unexpectedFailure_isAuditedAndPropagated() {
         RoleEntity entity = role("MONITOR", false, PERM_A);
-        IllegalStateException failure = new IllegalStateException("base caída");
+        IllegalStateException failure = new IllegalStateException("database down");
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(entity));
         when(roleRepository.saveAndFlush(entity)).thenThrow(failure);
 
         IllegalStateException thrown = assertThrows(IllegalStateException.class,
-                () -> service.updatePermissions(admin(), "MONITOR", permissionsRequest(List.of(PERM_B)),
-                        CORRELATION_ID));
+                () -> service.updatePermissions(admin(), "MONITOR",
+                        permissionsRequest(List.of(PERM_C, LOGOUT, PERM_B)), CORRELATION_ID));
 
         assertSame(failure, thrown);
         assertSingleFailure(AuditAction.CAMBIO_PERMISOS_ROL, "rol:MONITOR", "ERROR_INTERNO");
     }
 
-    // ------------------------------------------------------------------ borrado
+    // ------------------------------------------------------------------ deletion
 
-    /**
-     * Borrar un rol corta la sesión de sus usuarios, pasa a ESTUDIANTE a quienes solo tenían ese rol, lo retira
-     * a los demás y borra el rol, en ese orden, y audita los conteos
+        /**
+     * Deleting a role cuts the session of its users, moves to ESTUDIANTE those who only had that role, removes it from
+     * the others and deletes the role, in that order, and audits the counts
      */
     @Test
     void deleteRole_cutsMovesRemovesAndDeletesInOrder() {
@@ -1036,8 +1160,8 @@ class RoleAdminServiceTest {
         assertEquals("usuarios_a_estudiante=2;usuarios_que_solo_perdieron_el_rol=3", event.detalle());
     }
 
-    /**
-     * Un rol sin usuarios se borra y el detalle lleva ceros
+        /**
+     * A role without users is deleted and the detail carries zeros
      */
     @Test
     void deleteRole_withoutUsers_deletesAndAuditsZeros() {
@@ -1050,8 +1174,8 @@ class RoleAdminServiceTest {
         assertEquals("usuarios_a_estudiante=0;usuarios_que_solo_perdieron_el_rol=0", singleEvent().detalle());
     }
 
-    /**
-     * Un rol de sistema no se puede borrar: responde 409 y no toca usuarios
+        /**
+     * A system role cannot be deleted: it answers 409 and does not touch users
      */
     @Test
     void deleteRole_systemRole_isAConflict() {
@@ -1066,8 +1190,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.ELIMINACION_ROL, "rol:ESTUDIANTE", "ROL_DE_SISTEMA");
     }
 
-    /**
-     * Un rol inexistente responde 404
+        /**
+     * A non-existent role answers 404
      */
     @Test
     void deleteRole_unknownRole_isNotFound() {
@@ -1079,8 +1203,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.ELIMINACION_ROL, "rol:FANTASMA", "ROL_NO_ENCONTRADO");
     }
 
-    /**
-     * Un nombre inválido en la ruta responde 400
+        /**
+     * An invalid name in the path answers 400
      */
     @Test
     void deleteRole_invalidPathName_isRejected() {
@@ -1090,8 +1214,8 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.ELIMINACION_ROL, null, "VALIDACION");
     }
 
-    /**
-     * Sin ms01:role:manage borrar un rol responde 403
+        /**
+     * Without ms01:role:manage deleting a role answers 403
      */
     @Test
     void deleteRole_withoutManage_isForbidden() {
@@ -1102,12 +1226,12 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.ELIMINACION_ROL, null, "SIN_PERMISO");
     }
 
-    /**
-     * Si falla alguna sentencia del borrado se audita el fallo y se propaga para que la transacción se revierta
+        /**
+     * If any statement of the deletion fails the failure is audited and propagated so the transaction is rolled back
      */
     @Test
     void deleteRole_unexpectedFailure_isAuditedAndPropagated() {
-        IllegalStateException failure = new IllegalStateException("base caída");
+        IllegalStateException failure = new IllegalStateException("database down");
         when(roleRepository.findByName("MONITOR")).thenReturn(Optional.of(role("MONITOR", false, PERM_A)));
         when(userRepository.replaceOnlyRole(anyString(), anyString())).thenThrow(failure);
 
@@ -1119,12 +1243,12 @@ class RoleAdminServiceTest {
         assertSingleFailure(AuditAction.ELIMINACION_ROL, "rol:MONITOR", "ERROR_INTERNO");
     }
 
-    // ------------------------------------------------------------------ transacciones y correlación
+    // ------------------------------------------------------------------ transactions and correlation
 
-    /**
-     * Las operaciones de escritura corren en una sola transacción y las de lectura en una de solo lectura
+        /**
+     * The write operations run in a single transaction and the read ones in a read-only one
      *
-     * @throws NoSuchMethodException si algún método no existe
+     * @throws NoSuchMethodException if any method does not exist
      */
     @Test
     void writeOperations_runInOneTransaction() throws NoSuchMethodException {
@@ -1146,8 +1270,8 @@ class RoleAdminServiceTest {
                 .readOnly());
     }
 
-    /**
-     * Un X-Correlation-ID ausente o inválido se reemplaza por uno generado que se usa en la auditoría
+        /**
+     * An absent or invalid X-Correlation-ID is replaced by a generated one that is used in the audit
      */
     @Test
     void writeOperations_withoutAValidCorrelationId_generateOne() {
@@ -1160,8 +1284,8 @@ class RoleAdminServiceTest {
         UUID.fromString(correlation);
     }
 
-    /**
-     * Las operaciones de consulta no auditan
+        /**
+     * The query operations do not audit
      */
     @Test
     void readOperations_doNotAudit() {

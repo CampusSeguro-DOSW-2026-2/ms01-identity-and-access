@@ -24,8 +24,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * X-Correlation-ID (RNF-MS01-03, estandares de integracion 2.3): se preserva si existe, se genera si falta
- * y se devuelve al cliente, el valor resuelto es el que ven los controladores y los manejadores de error
+ * X-Correlation-ID (RNF-MS01-03, integration standards 2.3): it is preserved if it exists, generated if it is missing
+ * and returned to the client, the resolved value is the one seen by the controllers and the error handlers
  */
 class CorrelationIdFilterTest {
 
@@ -36,8 +36,8 @@ class CorrelationIdFilterTest {
     private MockHttpServletResponse response;
     private AtomicReference<HttpServletRequest> seenByChain;
 
-    /**
-     * Prepara el filtro, una peticion y una cadena que guarda la peticion que recibe
+        /**
+     * Prepares the filter, a request and a chain that stores the request it receives
      */
     @BeforeEach
     void setUp() {
@@ -47,20 +47,20 @@ class CorrelationIdFilterTest {
         seenByChain = new AtomicReference<>();
     }
 
-    /**
-     * Ejecuta el filtro con una cadena que solo guarda la peticion recibida
+        /**
+     * Runs the filter with a chain that only stores the received request
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     private void runFilter() throws Exception {
         FilterChain chain = (req, res) -> seenByChain.set((HttpServletRequest) req);
         filter.doFilter(request, response, chain);
     }
 
-    /**
-     * Un valor recibido valido se conserva y se devuelve al cliente
+        /**
+     * A valid received value is kept and returned to the client
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_validHeader_isPreservedAndReturned() throws Exception {
@@ -72,10 +72,10 @@ class CorrelationIdFilterTest {
         assertEquals(VALID, seenByChain.get().getHeader(CorrelationIds.HEADER));
     }
 
-    /**
-     * Si la cabecera falta se genera un UUID, se devuelve al cliente y los siguientes pasos ven el mismo
+        /**
+     * If the header is missing a UUID is generated, returned to the client and the following steps see the same one
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_missingHeader_generatesAUuidAndExposesItToTheChain() throws Exception {
@@ -87,10 +87,10 @@ class CorrelationIdFilterTest {
         assertEquals(returned, seenByChain.get().getHeader(CorrelationIds.HEADER));
     }
 
-    /**
-     * Un valor no valido se reemplaza por un UUID
+        /**
+     * An invalid value is replaced by a UUID
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_unsafeHeader_isReplacedByAUuid() throws Exception {
@@ -103,10 +103,10 @@ class CorrelationIdFilterTest {
         assertEquals(returned, seenByChain.get().getHeader(CorrelationIds.HEADER));
     }
 
-    /**
-     * El nombre de la cabecera se reconoce sin distinguir mayusculas
+        /**
+     * The header name is recognized regardless of case
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_headerNameInAnyCase_isResolved() throws Exception {
@@ -116,10 +116,10 @@ class CorrelationIdFilterTest {
         assertEquals(returned, seenByChain.get().getHeader("x-correlation-id"));
     }
 
-    /**
-     * getHeaders devuelve un solo valor, el resuelto
+        /**
+     * getHeaders returns a single value, the resolved one
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_getHeaders_returnsOnlyTheResolvedValue() throws Exception {
@@ -132,10 +132,10 @@ class CorrelationIdFilterTest {
         assertEquals(List.of(VALID), values);
     }
 
-    /**
-     * Los nombres de cabecera incluyen X-Correlation-ID aunque el cliente no la haya enviado
+        /**
+     * The header names include X-Correlation-ID even if the client did not send it
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_getHeaderNames_includesTheCorrelationHeader() throws Exception {
@@ -148,10 +148,10 @@ class CorrelationIdFilterTest {
         assertTrue(names.contains("X-User-Id"));
     }
 
-    /**
-     * Las demas cabeceras pasan sin cambios
+        /**
+     * The other headers pass unchanged
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_otherHeaders_areNotModified() throws Exception {
@@ -162,10 +162,10 @@ class CorrelationIdFilterTest {
         assertEquals("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c", seenByChain.get().getHeader("X-User-Id"));
     }
 
-    /**
-     * El valor resuelto queda como atributo de la petición para los controladores y el manejador de /error
+        /**
+     * The resolved value is left as an attribute of the request for the controllers and the /error handler
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_exposesTheResolvedValueAsRequestAttribute() throws Exception {
@@ -176,10 +176,10 @@ class CorrelationIdFilterTest {
         assertEquals(VALID, request.getAttribute(CorrelationIds.ATTRIBUTE));
     }
 
-    /**
-     * Durante la petición el valor está en el MDC del log y al terminar se limpia
+        /**
+     * During the request the value is in the MDC of the log and when it ends it is cleared
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_putsTheValueInTheMdcOnlyWhileTheRequestRuns() throws Exception {
@@ -193,13 +193,13 @@ class CorrelationIdFilterTest {
         assertNull(MDC.get(CorrelationIds.MDC_KEY));
     }
 
-    /**
-     * Si la cadena lanza un error, el MDC también se limpia
+        /**
+     * If the chain throws an error, the MDC is also cleared
      */
     @Test
     void doFilter_whenTheChainFails_stillClearsTheMdc() {
         FilterChain chain = (req, res) -> {
-            throw new IllegalStateException("fallo simulado");
+            throw new IllegalStateException("simulated failure");
         };
 
         assertThrows(IllegalStateException.class, () -> filter.doFilter(request, response, chain));

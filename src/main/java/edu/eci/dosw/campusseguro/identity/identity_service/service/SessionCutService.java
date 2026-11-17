@@ -3,15 +3,15 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.SessionCutsResponse;
 
 /**
- * Consulta de los cortes de sesión vigentes (RF-MS01-11), la usa el API Gateway para rechazar las credenciales
- * emitidas antes del corte de un usuario o de alguno de sus roles
+ * Query of the current session cuts (RF-MS01-11), the API Gateway uses it to reject the credentials issued before the
+ * cut of a user or of any of their roles
  */
 public interface SessionCutService {
 
-    /**
-     * Arma la instantánea de los cortes de sesión de los usuarios y roles dentro de la ventana de vigencia
+        /**
+     * Builds the snapshot of the session cuts of the users and roles within the validity window
      *
-     * @return la instantánea con el instante en que se armó, la ventana y los cortes ordenados
+     * @return the snapshot with the instant at which it was built, the window and the cuts sorted
      */
     SessionCutsResponse currentCuts();
 }

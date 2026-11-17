@@ -25,21 +25,21 @@ import org.junit.jupiter.params.provider.ValueSource;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 
 /**
- * RF-MS01-05 / RN-MS01-14: los scripts de base de datos siembran el catálogo de 48 permisos y la asignación
- * inicial de permisos a los ocho roles tal como los define la Matriz Rol-Permiso, sin herencia entre roles
- * (MR-01), y el código de MS01 solo declara permisos que existen en esa siembra
+ * RF-MS01-05 / RN-MS01-14: the database scripts seed the catalog of 48 permissions and the initial assignment of
+ * permissions to the eight roles as defined by the Role-Permission Matrix, without inheritance between roles (MR-01),
+ * and the MS01 code only declares permissions that exist in that seeding
  */
 class PermissionMatrixTest {
 
     private static final Pattern CODE_FORMAT = Pattern.compile("^ms0[1-8]:[a-z_]+:[a-z_]+$");
 
     private static final Pattern PERMISSIONS_BLOCK = Pattern.compile(
-            "INSERT INTO permisos \\(nombre, descripcion\\) VALUES(.*?);", Pattern.DOTALL);
+            "INSERT INTO permissions \\(name, description\\) VALUES(.*?);", Pattern.DOTALL);
 
     private static final Pattern PERMISSION_ROW = Pattern.compile("\\('([^']+)',\\s*'((?:[^']|'')*)'\\)");
 
     private static final Pattern ROLES_BLOCK = Pattern.compile(
-            "INSERT INTO roles \\(nombre, descripcion, es_sistema\\) VALUES(.*?);", Pattern.DOTALL);
+            "INSERT INTO roles \\(name, description, is_system\\) VALUES(.*?);", Pattern.DOTALL);
 
     private static final Pattern ROLE_ROW = Pattern.compile(
             "\\('([A-Z_]+)',\\s*'(?:[^']|'')*',\\s*(TRUE|FALSE)\\)");
@@ -52,14 +52,17 @@ class PermissionMatrixTest {
     private static final Set<String> SEEDED_ROLES = Set.of("ESTUDIANTE", "PROFESOR", "ADMINISTRATIVO",
             "BRIGADISTA", "COORDINADOR", "ORGANIZADOR", "ADMIN", "AUDITOR");
 
-    private static final List<String> SEED_SCRIPTS = List.of("database/001_create_schema.sql",
-            "database/migraciones/004_migracion_roles_permisos.sql");
+    private static final String SCRIPT_001 = "database/001_create_schema.sql";
+    private static final String SCRIPT_004 = "database/migrations/004_migration_roles_permissions.sql";
+    private static final String SCRIPT_005 = "database/maintenance/005_maintenance_roles_permissions.sql";
 
-    /**
-     * Calcula los roles sembrados que tienen un permiso
+    private static final List<String> SEED_SCRIPTS = List.of(SCRIPT_001, SCRIPT_004);
+
+        /**
+     * Computes the seeded roles that have a permission
      *
-     * @param code código del permiso consultado
-     * @return nombres de los roles sembrados cuyo conjunto incluye el permiso
+     * @param code code of the queried permission
+     * @return names of the seeded roles whose set includes the permission
      */
     private static Set<String> holdersOf(String code) {
         Set<String> holders = new TreeSet<>();
@@ -71,12 +74,12 @@ class PermissionMatrixTest {
         return holders;
     }
 
-    /**
-     * Lee de un script SQL el bloque que siembra la tabla permisos
+        /**
+     * Reads from an SQL script the block that seeds the permissions table
      *
-     * @param script ruta del script, relativa a la raíz del proyecto
-     * @return código de cada permiso y su descripción, ordenados por código
-     * @throws IOException si el script no se puede leer
+     * @param script path of the script, relative to the project root
+     * @return code of each permission and its description, sorted by code
+     * @throws IOException if the script cannot be read
      */
     private static Map<String, String> permissionsOf(String script) throws IOException {
         String sql = Files.readString(Path.of(script), StandardCharsets.UTF_8);
@@ -90,12 +93,12 @@ class PermissionMatrixTest {
         return seed;
     }
 
-    /**
-     * Lee de un script SQL la marca de sistema de cada rol sembrado
+        /**
+     * Reads from an SQL script the system flag of each seeded role
      *
-     * @param script ruta del script, relativa a la raíz del proyecto
-     * @return nombre del rol y su marca es_sistema (TRUE o FALSE)
-     * @throws IOException si el script no se puede leer
+     * @param script path of the script, relative to the project root
+     * @return name of the role and its is_system flag (TRUE or FALSE)
+     * @throws IOException if the script cannot be read
      */
     private static Map<String, String> rolesOf(String script) throws IOException {
         String sql = Files.readString(Path.of(script), StandardCharsets.UTF_8);
@@ -109,16 +112,19 @@ class PermissionMatrixTest {
         return seed;
     }
 
-    /**
-     * Lee de un script SQL la asignación inicial de permisos a cada rol
+        /**
+     * Reads from an SQL script the initial assignment of permissions to each role
      *
-     * @param script ruta del script, relativa a la raíz del proyecto
-     * @return nombre del rol y los códigos de sus permisos en el orden del script
-     * @throws IOException si el script no se puede leer
+     * @param script path of the script, relative to the project root
+     * @return name of the role and the codes of its permissions in the order of the script
+     * @throws IOException if the script cannot be read
      */
     private static Map<String, List<String>> assignmentsOf(String script) throws IOException {
         String sql = Files.readString(Path.of(script), StandardCharsets.UTF_8);
-        int start = sql.indexOf("INSERT INTO rol_permiso");
+        int start = sql.indexOf("INSERT INTO matrix_assignments");
+        if (start < 0) {
+            start = sql.indexOf("INSERT INTO role_permissions");
+        }
         assertTrue(start >= 0, "Falta la asignación de permisos en " + script);
         Map<String, List<String>> seed = new TreeMap<>();
         Matcher row = ASSIGNMENT_ROW.matcher(sql.substring(start));
@@ -133,15 +139,15 @@ class PermissionMatrixTest {
         return seed;
     }
 
-    /**
-     * La siembra de permisos de cada script tiene 48 códigos con formato modulo:recurso:accion, sin repetir,
-     * con descripción de hasta 200 caracteres, y es exactamente la unión de los permisos de la matriz
+        /**
+     * The permission seeding of each script has 48 codes with the format module:resource:action, without repeating,
+     * with a description of up to 200 characters, and is exactly the union of the permissions of the matrix
      *
-     * @param script ruta del script
-     * @throws IOException si el script no se puede leer
+     * @param script path of the script
+     * @throws IOException if the script cannot be read
      */
     @ParameterizedTest
-    @ValueSource(strings = {"database/001_create_schema.sql", "database/migraciones/004_migracion_roles_permisos.sql"})
+    @ValueSource(strings = {SCRIPT_001, SCRIPT_004, SCRIPT_005})
     void seedPermissions_are48WellFormedAndEqualToTheMatrixUnion(String script) throws IOException {
         Map<String, String> seeded = permissionsOf(script);
 
@@ -159,15 +165,15 @@ class PermissionMatrixTest {
         assertEquals(union, seeded.keySet());
     }
 
-    /**
-     * Los permisos que declara el enum de MS01 existen en la siembra con la misma descripción, y el enum no
-     * declara permisos de otros módulos
+        /**
+     * The permissions declared by the MS01 enum exist in the seeding with the same description, and the enum does not
+     * declare permissions of other modules
      *
-     * @throws IOException si el script no se puede leer
+     * @throws IOException if the script cannot be read
      */
     @Test
     void enum_declaresOnlyMs01PermissionsPresentInTheSeedWithTheSameDescription() throws IOException {
-        Map<String, String> seeded = permissionsOf("database/001_create_schema.sql");
+        Map<String, String> seeded = permissionsOf(SCRIPT_001);
         Set<String> ms01InSeed = new TreeSet<>();
         for (String code : seeded.keySet()) {
             if (code.startsWith(Permission.PREFIX)) {
@@ -184,8 +190,8 @@ class PermissionMatrixTest {
         assertEquals(ms01InSeed, declared);
     }
 
-    /**
-     * Hay ocho roles sembrados, cada uno con permisos sin repetir y ordenados por código
+        /**
+     * There are eight seeded roles, each one with permissions without repeating and sorted by code
      */
     @Test
     void seedRoles_areEightWithSortedUniquePermissions() {
@@ -196,8 +202,8 @@ class PermissionMatrixTest {
         }
     }
 
-    /**
-     * Cantidad de permisos que siembra cada rol según la Matriz Rol-Permiso, 172 asignaciones en total
+        /**
+     * Number of permissions that each role seeds according to the Role-Permission Matrix, 172 assignments in total
      */
     @Test
     void seedRoles_haveTheExpectedNumberOfPermissions() {
@@ -216,9 +222,8 @@ class PermissionMatrixTest {
         assertEquals(172, total);
     }
 
-    /**
-     * Solo el ADMIN gestiona roles, estados y el catálogo completo de roles, y solo él puede tener
-     * ms01:role:manage
+        /**
+     * Only ADMIN manages roles, statuses and the complete catalog of roles, and only it can have ms01:role:manage
      */
     @ParameterizedTest
     @ValueSource(strings = {"ms01:role:manage", "ms01:role:read_all", "ms01:user:roles", "ms01:user:status"})
@@ -226,8 +231,8 @@ class PermissionMatrixTest {
         assertEquals(Set.of("ADMIN"), holdersOf(code));
     }
 
-    /**
-     * El AUDITOR consulta usuarios pero no cambia roles ni ve el catálogo completo de roles
+        /**
+     * The AUDITOR queries users but does not change roles or see the complete catalog of roles
      */
     @Test
     void auditor_readsUsersButCannotManageRoles() {
@@ -236,17 +241,16 @@ class PermissionMatrixTest {
         assertFalse(SeedRoles.PERMISSIONS.get("AUDITOR").contains(Permission.MS01_ROLE_READ_ALL.getCode()));
     }
 
-    /**
-     * Todos los roles pueden consultar sus propios roles y permisos (ms01:role:read_own)
+        /**
+     * All the roles can query their own roles and permissions (ms01:role:read_own)
      */
     @Test
     void everyRole_canReadItsOwnRoles() {
         assertEquals(SEEDED_ROLES, holdersOf(Permission.MS01_ROLE_READ_OWN.getCode()));
     }
 
-    /**
-     * Los permisos comunes a todos los roles son los de perfil, sesión, consulta de roles y contenido público
-     * del campus
+        /**
+     * The permissions common to all the roles are those of profile, session, role query and public campus content
      */
     @Test
     void grantedToEveryRole_areTheEightCommonPermissions() {
@@ -264,8 +268,8 @@ class PermissionMatrixTest {
                 "ms02:route:read"), common);
     }
 
-    /**
-     * MR-01: ningún rol hereda de otro, ADMIN no recibe los permisos operativos de simulacros ni de check-in
+        /**
+     * MR-01: no role inherits from another, ADMIN does not receive the operational permissions of drills or check-in
      */
     @Test
     void adminDoesNotInheritOperationalPermissions() {
@@ -276,8 +280,8 @@ class PermissionMatrixTest {
         assertFalse(admin.contains("ms03:alert:manage"));
     }
 
-    /**
-     * MR-01: un usuario con varios roles tiene la unión de los permisos de cada uno
+        /**
+     * MR-01: a user with several roles has the union of the permissions of each one
      */
     @Test
     void permissionsOfSeveralRoles_isTheUnion() {
@@ -290,23 +294,23 @@ class PermissionMatrixTest {
         assertTrue(union.contains("ms08:audit:read"));
     }
 
-    /**
-     * Sin roles no hay permisos (denegado por defecto)
+        /**
+     * Without roles there are no permissions (denied by default)
      */
     @Test
     void permissionsOfNoRoles_isEmpty() {
         assertTrue(TestIdentities.permissionsOf().isEmpty());
     }
 
-    /**
-     * Cada script siembra los ocho roles con los mismos permisos de la matriz y marca como de sistema solo a
-     * ESTUDIANTE y ADMIN
+        /**
+     * Each script seeds the eight roles with the same permissions of the matrix and marks as system roles only
+     * ESTUDIANTE and ADMIN
      *
-     * @param script ruta del script
-     * @throws IOException si el script no se puede leer
+     * @param script path of the script
+     * @throws IOException if the script cannot be read
      */
     @ParameterizedTest
-    @ValueSource(strings = {"database/001_create_schema.sql", "database/migraciones/004_migracion_roles_permisos.sql"})
+    @ValueSource(strings = {SCRIPT_001, SCRIPT_004})
     void seedScripts_seedTheMatrixAndMarkOnlyTwoSystemRoles(String script) throws IOException {
         Map<String, String> roles = rolesOf(script);
         Map<String, List<String>> assignments = assignmentsOf(script);
@@ -317,19 +321,49 @@ class PermissionMatrixTest {
             assertEquals(SeedRoles.PERMISSIONS.get(role), assignments.get(role), "Permisos de " + role);
             boolean expectedSystem = role.equals("ESTUDIANTE") || role.equals("ADMIN");
             assertEquals(String.valueOf(expectedSystem).toUpperCase(), roles.get(role),
-                    "es_sistema de " + role);
+                    "is_system of " + role);
         }
     }
 
     /**
-     * El script de creación y la migración siembran exactamente lo mismo
+     * The creation script and the migration seed exactly the same data
      *
-     * @throws IOException si algún script no se puede leer
+     * @throws IOException if a script cannot be read
      */
     @Test
     void script001AndMigration004_seedTheSameData() throws IOException {
         assertEquals(permissionsOf(SEED_SCRIPTS.get(0)), permissionsOf(SEED_SCRIPTS.get(1)));
         assertEquals(rolesOf(SEED_SCRIPTS.get(0)), rolesOf(SEED_SCRIPTS.get(1)));
         assertEquals(assignmentsOf(SEED_SCRIPTS.get(0)), assignmentsOf(SEED_SCRIPTS.get(1)));
+    }
+
+    /**
+     * The maintenance script loads the same catalog and the same assignments as the creation script, so running
+     * it leaves the database as the Matrix says
+     *
+     * @throws IOException if a script cannot be read
+     */
+    @Test
+    void maintenanceScript005_loadsTheSameCatalogAndAssignmentsAsScript001() throws IOException {
+        assertEquals(permissionsOf(SCRIPT_001), permissionsOf(SCRIPT_005));
+        assertEquals(assignmentsOf(SCRIPT_001), assignmentsOf(SCRIPT_005));
+    }
+
+    /**
+     * Every seeded role has the two permissions that all roles must keep, ESTUDIANTE and ADMIN also have
+     * ms01:profile:write and ms01:role:manage belongs only to ADMIN
+     */
+    @Test
+    void seedRoles_satisfyTheMandatoryPermissionRules() {
+        for (Map.Entry<String, List<String>> role : SeedRoles.PERMISSIONS.entrySet()) {
+            assertTrue(role.getValue().contains("ms01:profile:read"), "profile:read of " + role.getKey());
+            assertTrue(role.getValue().contains("ms01:session:logout"), "session:logout of " + role.getKey());
+            boolean mustWrite = role.getKey().equals("ESTUDIANTE") || role.getKey().equals("ADMIN");
+            if (mustWrite) {
+                assertTrue(role.getValue().contains("ms01:profile:write"), "profile:write of " + role.getKey());
+            }
+            assertEquals(role.getKey().equals("ADMIN"), role.getValue().contains("ms01:role:manage"),
+                    "role:manage of " + role.getKey());
+        }
     }
 }

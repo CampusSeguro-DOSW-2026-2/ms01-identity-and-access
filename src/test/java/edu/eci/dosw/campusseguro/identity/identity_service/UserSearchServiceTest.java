@@ -42,7 +42,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * Pruebas de la búsqueda y listado de usuarios (RF-MS01-07, formulario F-07)
+ * Tests of the search and listing of users (RF-MS01-07, form F-07)
  */
 class UserSearchServiceTest {
 
@@ -54,18 +54,18 @@ class UserSearchServiceTest {
     private final RequesterIdentity auditor = identity("AUDITOR");
     private final RequesterIdentity student = identity("ESTUDIANTE");
 
-    /**
-     * Construye la identidad de un solicitante con un rol
+        /**
+     * Builds the identity of a requester with a role
      *
-     * @param role rol del solicitante
-     * @return la identidad del solicitante
+     * @param role role of the requester
+     * @return the identity of the requester
      */
     private static RequesterIdentity identity(String role) {
         return TestIdentities.of(UUID.randomUUID(), role);
     }
 
-    /**
-     * Prepara el servicio con sus dependencias simuladas
+        /**
+     * Prepares the service with its simulated dependencies
      */
     @BeforeEach
     void setUp() {
@@ -81,13 +81,13 @@ class UserSearchServiceTest {
                 requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
     }
 
-    /**
-     * Construye un usuario de prueba
+        /**
+     * Builds a test user
      *
-     * @param email correo del usuario
-     * @param state estado del usuario
-     * @param roles roles del usuario
-     * @return el usuario de prueba
+     * @param email email of the user
+     * @param state status of the user
+     * @param roles roles of the user
+     * @return the test user
      */
     private UserEntity user(String email, UserState state, String... roles) {
         UserEntity u = new UserEntity();
@@ -101,16 +101,16 @@ class UserSearchServiceTest {
         return u;
     }
 
-    /**
-     * Configura el repositorio para devolver una página vacía
+        /**
+     * Configures the repository to return an empty page
      */
     private void stubEmptyPage() {
         when(userRepository.searchUsers(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
     }
 
-    /**
-     * La búsqueda devuelve la página con los perfiles completos y los datos de paginación
+        /**
+     * The search returns the page with the complete profiles and the pagination data
      */
     @Test
     void search_asAdmin_returnsPageWithFullProfilesAndPaginationData() {
@@ -133,8 +133,8 @@ class UserSearchServiceTest {
         assertEquals("Carlos", result.contenido().get(0).firstName());
     }
 
-    /**
-     * La búsqueda entrega los filtros y ordena por fecha de creación descendente y luego por id
+        /**
+     * The search delivers the filters and sorts by creation date descending and then by id
      */
     @Test
     void search_passesFiltersAndSortsByCreationDateDescendingThenId() {
@@ -152,8 +152,8 @@ class UserSearchServiceTest {
         assertTrue(pageable.getSort().getOrderFor("id").isAscending());
     }
 
-    /**
-     * Sin parámetros se usan la página y el tamaño por defecto
+        /**
+     * Without parameters the default page and size are used
      */
     @Test
     void search_withoutParameters_usesDefaultPageAndSize() {
@@ -167,8 +167,8 @@ class UserSearchServiceTest {
         assertEquals(20, captor.getValue().getPageSize());
     }
 
-    /**
-     * El valor Todos y los filtros en blanco significan sin filtro
+        /**
+     * The value Todos and the blank filters mean no filter
      */
     @Test
     void search_todosAndBlankFilters_meanNoFilter() {
@@ -179,8 +179,8 @@ class UserSearchServiceTest {
         verify(userRepository).searchUsers(eq(null), eq(null), eq(null), any(Pageable.class));
     }
 
-    /**
-     * Un solicitante sin permiso de lectura se prohíbe y no se consulta la base de datos
+        /**
+     * A requester without read permission is forbidden and the database is not queried
      */
     @Test
     void search_requesterWithoutReadPermission_isForbiddenAndDoesNotQuery() {
@@ -190,8 +190,8 @@ class UserSearchServiceTest {
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
     }
 
-    /**
-     * El permiso se verifica antes de validar los parámetros
+        /**
+     * The permission is verified before validating the parameters
      */
     @Test
     void search_permissionIsCheckedBeforeValidatingParameters() {
@@ -199,8 +199,8 @@ class UserSearchServiceTest {
                 () -> userService.search(student, null, "XYZ", "SUPER-MAN", "-1", "1000"));
     }
 
-    /**
-     * Los filtros inválidos informan un error por campo con los mensajes del formulario
+        /**
+     * The invalid filters report one error per field with the messages of the form
      */
     @Test
     void search_invalidFilters_reportOneErrorPerFieldWithTheFormMessages() {
@@ -217,9 +217,9 @@ class UserSearchServiceTest {
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
     }
 
-    /**
-     * El rol del filtro debe llegar con el formato guardado: en minúsculas o con símbolos se rechaza sin
-     * consultar la tabla de roles
+        /**
+     * The role of the filter must arrive with the stored format: in lowercase or with symbols it is rejected without
+     * querying the roles table
      */
     @Test
     void search_roleFilterWithoutTheStoredFormat_isRejectedWithoutQueryingRoles() {
@@ -233,8 +233,8 @@ class UserSearchServiceTest {
         verify(roleRepository, never()).existsByName(any());
     }
 
-    /**
-     * Un rol con formato válido que no existe en la tabla de roles se rechaza y no se buscan usuarios
+        /**
+     * A role with a valid format that does not exist in the roles table is rejected and users are not looked up
      */
     @Test
     void search_roleFilterThatDoesNotExist_isRejected() {
@@ -247,8 +247,8 @@ class UserSearchServiceTest {
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
     }
 
-    /**
-     * Un rol personalizado que existe sirve de filtro
+        /**
+     * A custom role that exists works as a filter
      */
     @Test
     void search_roleFilterWithACustomRole_isAccepted() {
@@ -259,8 +259,8 @@ class UserSearchServiceTest {
         verify(userRepository).searchUsers(eq(null), eq(null), eq("MONITOR_EVACUACION"), any(Pageable.class));
     }
 
-    /**
-     * Sin filtro de rol no se consulta la tabla de roles
+        /**
+     * Without a role filter the roles table is not queried
      */
     @Test
     void search_withoutRoleFilter_doesNotQueryTheRolesTable() {
@@ -271,8 +271,8 @@ class UserSearchServiceTest {
         verify(roleRepository, never()).existsByName(any());
     }
 
-    /**
-     * Una página o un tamaño que no son números se rechazan
+        /**
+     * A page or a size that are not numbers are rejected
      */
     @Test
     void search_nonNumericPageOrSize_areRejected() {
@@ -282,8 +282,8 @@ class UserSearchServiceTest {
         assertEquals(2, error.getErrors().size());
     }
 
-    /**
-     * Los límites del tamaño de página son inclusivos
+        /**
+     * The limits of the page size are inclusive
      */
     @Test
     void search_sizeBoundaries_areInclusive() {
@@ -296,8 +296,8 @@ class UserSearchServiceTest {
                 () -> userService.search(admin, null, null, null, "0", "101"));
     }
 
-    /**
-     * Un filtro de correo de más de 100 caracteres se rechaza
+        /**
+     * An email filter of more than 100 characters is rejected
      */
     @Test
     void search_emailLongerThan100Characters_isRejected() {
@@ -309,8 +309,8 @@ class UserSearchServiceTest {
         assertEquals("correo", error.getErrors().get(0).campo());
     }
 
-    /**
-     * Un resultado vacío devuelve una página vacía y no un error
+        /**
+     * An empty result returns an empty page and not an error
      */
     @Test
     void search_emptyResult_returnsEmptyPageNotAnError() {

@@ -6,23 +6,23 @@ import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Respuesta de POST /api/v1/auth/login
+ * Response of POST /api/v1/auth/login
  */
 public record LoginResponse(
         String token,
         String tipo,
         @JsonProperty("expira_en") String expiraEn,
-        UsuarioResumen usuario) {
+        UserSummary usuario) {
 
     public static final String TOKEN_TYPE = "Bearer";
 
-    /**
-     * Datos mínimos del usuario autenticado que acompañan al token
+        /**
+     * Minimum data of the authenticated user that goes with the token
      *
-     * @param id identificador del usuario
-     * @param correo correo institucional del usuario
-     * @param roles roles del usuario en el momento de emitir el token
+     * @param id identifier of the user
+     * @param correo institutional email of the user
+     * @param roles roles of the user at the moment the token was issued
      */
-    public record UsuarioResumen(UUID id, String correo, List<String> roles) {
+    public record UserSummary(UUID id, String correo, List<String> roles) {
     }
 }

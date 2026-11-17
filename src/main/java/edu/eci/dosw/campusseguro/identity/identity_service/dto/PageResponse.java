@@ -7,14 +7,14 @@ import org.springframework.data.domain.Page;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Página de resultados de una colección (Estándares de Integración, sección 9)
+ * Page of results of a collection (Integration Standards, section 9)
  *
- * @param contenido elementos de la página
- * @param page número de la página, desde 0
- * @param size tamaño de página solicitado
- * @param totalElementos cantidad total de elementos que cumplen la consulta
- * @param totalPaginas cantidad total de páginas
- * @param <T> tipo de los elementos de la página
+ * @param contenido elements of the page
+ * @param page number of the page, starting at 0
+ * @param size requested page size
+ * @param totalElementos total number of elements that match the query
+ * @param totalPaginas total number of pages
+ * @param <T> type of the elements of the page
  */
 public record PageResponse<T>(
         List<T> contenido,
@@ -23,12 +23,12 @@ public record PageResponse<T>(
         @JsonProperty("total_elementos") long totalElementos,
         @JsonProperty("total_paginas") int totalPaginas) {
 
-    /**
-     * Construye la respuesta a partir de una página de Spring Data
+        /**
+     * Builds the response from a Spring Data page
      *
-     * @param page página de Spring Data
-     * @param <T> tipo de los elementos de la página
-     * @return la respuesta con los nombres de campo del contrato
+     * @param page Spring Data page
+     * @param <T> type of the elements of the page
+     * @return the response with the field names of the contract
      */
     public static <T> PageResponse<T> from(Page<T> page) {
         return new PageResponse<>(

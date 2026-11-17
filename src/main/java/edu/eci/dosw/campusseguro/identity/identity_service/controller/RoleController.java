@@ -18,7 +18,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Consulta de roles con sus permisos y cambio de roles de los usuarios (RF-MS01-05)
+ * Query of roles with their permissions and role change of the users (RF-MS01-05)
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -26,39 +26,38 @@ public class RoleController {
 
     private final RoleService roleService;
 
-    /**
-     * Crea el controlador con su servicio
+        /**
+     * Creates the controller with its service
      *
-     * @param roleService servicio de gestión de roles y permisos
+     * @param roleService role and permission management service
      */
     public RoleController(RoleService roleService) {
         this.roleService = roleService;
     }
 
-    /**
-     * GET /api/v1/roles: roles con sus permisos (RF-MS01-05)
+        /**
+     * GET /api/v1/roles: roles with their permissions (RF-MS01-05)
      *
-     * 200 arreglo de roles con sus permisos, 401 identidad ausente o inválida
+     * 200 array of roles with their permissions, 401 missing or invalid identity
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @return la lista de roles visibles para el solicitante y los códigos de sus permisos
+     * @param requester identity of the requester taken from the headers
+     * @return the list of roles visible to the requester and the codes of their permissions
      */
     @GetMapping("/roles")
     public ResponseEntity<List<RolePermissionsResponse>> getRoles(RequesterIdentity requester) {
         return ResponseEntity.ok(roleService.getRoles(requester));
     }
 
-    /**
-     * PATCH /api/v1/users/roles: agrega y retira roles a uno o varios usuarios (RF-MS01-05, formulario F-09)
+        /**
+     * PATCH /api/v1/users/roles: adds and removes roles to one or several users (RF-MS01-05, form F-09)
      *
-     * 200 roles resultantes por usuario, 400 datos inválidos o usuario que quedaría sin roles, 401
-     * identidad ausente, 403 sin permiso o intento de modificar los propios roles, 404 algún usuario no
-     * existe
+     * 200 resulting roles per user, 400 invalid data or a user that would be left without roles, 401 missing identity,
+     * 403 no permission or attempt to modify their own roles, 404 some user does not exist
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param request usuarios objetivo y roles a agregar y a retirar
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return los roles finales de cada usuario
+     * @param requester identity of the requester taken from the headers
+     * @param request target users and roles to add and to remove
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the final roles of each user
      */
     @PatchMapping("/users/roles")
     public ResponseEntity<ChangeRolesResponse> changeRoles(

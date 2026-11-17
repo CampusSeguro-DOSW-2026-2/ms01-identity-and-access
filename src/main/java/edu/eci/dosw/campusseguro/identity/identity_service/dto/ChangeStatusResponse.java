@@ -3,17 +3,17 @@ package edu.eci.dosw.campusseguro.identity.identity_service.dto;
 import java.util.List;
 
 /**
- * Respuesta de PATCH /api/v1/users/status (RF-MS01-07), el resultado del cambio de cada usuario
+ * Response of PATCH /api/v1/users/status (RF-MS01-07), the result of the change for each user
  *
- * @param resultados resultado por usuario, en el orden en que se solicitaron
+ * @param resultados result by user, in the order they were requested
  */
 public record ChangeStatusResponse(List<IndividualChangeStateResponse> resultados) {
 
-    /**
-     * Construye la respuesta con los resultados por usuario
+        /**
+     * Builds the response with the results by user
      *
-     * @param resultados resultado de cada usuario
-     * @return la respuesta con los resultados
+     * @param resultados result of each user
+     * @return the response with the results
      */
     public static ChangeStatusResponse fromEntity(List<IndividualChangeStateResponse> resultados) {
         return new ChangeStatusResponse(resultados);

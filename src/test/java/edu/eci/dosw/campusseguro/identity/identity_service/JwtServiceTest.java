@@ -31,7 +31,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeS
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 
 /**
- * Emision del JWT RS256 (RF-MS01-03, 4_jwt-spec.md). No necesita Spring: se prueba contra el JDK
+ * Issuance of the RS256 JWT (RF-MS01-03, 4_jwt-spec.md). It does not need Spring: it is tested against the JDK
  */
 class JwtServiceTest {
 
@@ -44,28 +44,28 @@ class JwtServiceTest {
 
     private static KeyPair keyPair;
 
-    /**
-     * Genera el par de llaves que se comparte entre las pruebas
+        /**
+     * Generates the key pair that is shared between the tests
      */
     @BeforeAll
     static void generateKeys() {
         keyPair = RsaKeyUtils.generateKeyPair();
     }
 
-    /**
-     * Crea el emisor de tokens con reloj fijo y vigencia de una hora
+        /**
+     * Creates the token issuer with a fixed clock and a validity of one hour
      *
-     * @return el emisor de tokens
+     * @return the token issuer
      */
     private static JwtServiceImpl service() {
         return new JwtServiceImpl(keyPair.getPrivate(), "ms01-test", FixedDatabaseTime.at(NOW));
     }
 
-    /**
-     * Separa un token en sus tres partes
+        /**
+     * Splits a token into its three parts
      *
-     * @param token token compacto
-     * @return encabezado, cuerpo y firma
+     * @param token compact token
+     * @return header, body and signature
      */
     private static String[] parts(String token) {
         String[] parts = token.split("\\.");
@@ -73,23 +73,23 @@ class JwtServiceTest {
         return parts;
     }
 
-    /**
-     * Decodifica una parte del token a texto
+        /**
+     * Decodes a part of the token into text
      *
-     * @param part parte codificada en base64 URL
-     * @return el texto decodificado
+     * @param part part encoded in base64 URL
+     * @return the decoded text
      */
     private static String decode(String part) {
         return new String(Base64.getUrlDecoder().decode(part), StandardCharsets.UTF_8);
     }
 
-    /**
-     * Verifica la firma de un token con una llave pública
+        /**
+     * Verifies the signature of a token with a public key
      *
-     * @param key llave pública con la que se verifica
-     * @param parts partes del token
-     * @return true si la firma es válida
-     * @throws Exception si el verificador no se puede inicializar
+     * @param key public key with which it is verified
+     * @param parts parts of the token
+     * @return true if the signature is valid
+     * @throws Exception if the verifier cannot be initialized
      */
     private static boolean verifies(java.security.PublicKey key, String[] parts) throws Exception {
         Signature verifier = Signature.getInstance("SHA256withRSA");
@@ -98,10 +98,10 @@ class JwtServiceTest {
         return verifier.verify(Base64.getUrlDecoder().decode(parts[2]));
     }
 
-    // ---------------------------------------------------------------- forma del token
+    // ---------------------------------------------------------------- shape of the token
 
-    /**
-     * El token es un JWS compacto sin relleno de base64
+        /**
+     * The token is a compact JWS without base64 padding
      */
     @Test
     void issueToken_producesCompactJwsWithoutPadding() {
@@ -112,8 +112,8 @@ class JwtServiceTest {
         assertTrue(token.matches("[A-Za-z0-9_.-]+"));
     }
 
-    /**
-     * El encabezado declara RS256 y el identificador de la llave
+        /**
+     * The header declares RS256 and the identifier of the key
      */
     @Test
     void issueToken_headerDeclaresRs256AndKeyId() {
@@ -122,8 +122,8 @@ class JwtServiceTest {
         assertEquals("{\"alg\":\"RS256\",\"typ\":\"JWT\",\"kid\":\"ms01-test\"}", decode(parts[0]));
     }
 
-    /**
-     * El cuerpo tiene exactamente los claims de la especificación
+        /**
+     * The body has exactly the claims of the specification
      */
     @Test
     void issueToken_payloadHasExactlyTheClaimsOfTheSpec() {
@@ -140,8 +140,8 @@ class JwtServiceTest {
         assertTrue(Pattern.matches(expected, decode(parts[1])), decode(parts[1]));
     }
 
-    /**
-     * Los permisos del token van en orden alfabético y sin repetidos
+        /**
+     * The permissions of the token are in alphabetical order and without repeated ones
      */
     @Test
     void issueToken_permissionsAreSortedAndDistinct() {
@@ -152,8 +152,8 @@ class JwtServiceTest {
                 decode(parts[1]));
     }
 
-    /**
-     * Los roles del token van en orden alfabético
+        /**
+     * The roles of the token are in alphabetical order
      */
     @Test
     void issueToken_rolesAreSortedAlphabetically() {
@@ -163,8 +163,8 @@ class JwtServiceTest {
         assertTrue(decode(parts[1]).contains("\"roles\":[\"ADMIN\",\"BRIGADISTA\",\"PROFESOR\"]"));
     }
 
-    /**
-     * El jti es un UUID y cambia entre tokens
+        /**
+     * The jti is a UUID and changes between tokens
      */
     @Test
     void issueToken_jtiIsAUuidAndDiffersBetweenTokens() {
@@ -181,10 +181,10 @@ class JwtServiceTest {
         assertNotEquals(a.group(1), b.group(1));
     }
 
-    // ---------------------------------------------------------------- expiracion
+    // ---------------------------------------------------------------- expiration
 
-    /**
-     * El token expira exactamente una hora después de emitirse
+        /**
+     * The token expires exactly one hour after being issued
      */
     @Test
     void issueToken_expiresExactlyOneHourAfterIssuance() {
@@ -194,8 +194,8 @@ class JwtServiceTest {
         assertTrue(decode(parts(issued.token())[1]).contains("\"exp\":" + issued.expiresAt().getEpochSecond()));
     }
 
-    /**
-     * La vigencia del token es la que fijan los Estándares de Integración y no depende de la configuración
+        /**
+     * The validity of the token is the one set by the Integration Standards and does not depend on the configuration
      */
     @Test
     void issueToken_lifetimeIsTheGlobalValue() {
@@ -205,12 +205,12 @@ class JwtServiceTest {
                 issued.expiresAt());
     }
 
-    // ---------------------------------------------------------------- firma
+    // ---------------------------------------------------------------- signature
 
-    /**
-     * La firma se verifica con la llave pública
+        /**
+     * The signature is verified with the public key
      *
-     * @throws Exception si falla la verificación de la firma
+     * @throws Exception if the verification of the signature fails
      */
     @Test
     void issueToken_signatureVerifiesWithThePublicKey() throws Exception {
@@ -219,10 +219,10 @@ class JwtServiceTest {
         assertTrue(verifies(keyPair.getPublic(), parts));
     }
 
-    /**
-     * Un cuerpo alterado no pasa la verificación de la firma
+        /**
+     * An altered body does not pass the signature verification
      *
-     * @throws Exception si falla la verificación de la firma
+     * @throws Exception if the verification of the signature fails
      */
     @Test
     void issueToken_tamperedPayloadFailsVerification() throws Exception {
@@ -235,10 +235,10 @@ class JwtServiceTest {
         assertFalse(verifies(keyPair.getPublic(), parts));
     }
 
-    /**
-     * La firma no se verifica con otra llave
+        /**
+     * The signature is not verified with another key
      *
-     * @throws Exception si falla la verificación de la firma
+     * @throws Exception if the verification of the signature fails
      */
     @Test
     void issueToken_signatureDoesNotVerifyWithAnotherKey() throws Exception {
@@ -249,8 +249,8 @@ class JwtServiceTest {
 
     // ---------------------------------------------------------------- RN-MS01-08
 
-    /**
-     * El token nunca incluye datos sensibles ni datos que no estén en la especificación
+        /**
+     * The token never includes sensitive data or data that is not in the specification
      */
     @Test
     void issueToken_neverIncludesSensitiveOrNonSpecifiedData() {
@@ -263,8 +263,8 @@ class JwtServiceTest {
         }
     }
 
-    /**
-     * Los caracteres especiales se escapan para que el cuerpo siga siendo un JSON válido
+        /**
+     * The special characters are escaped so the body remains a valid JSON
      */
     @Test
     void issueToken_escapesSpecialCharactersSoThePayloadStaysValidJson() {
@@ -274,10 +274,10 @@ class JwtServiceTest {
         assertTrue(payload.contains("\"email\":\"a\\\"b\\\\c@escuelaing.edu.co\""), payload);
     }
 
-    // ---------------------------------------------------------------- validaciones
+    // ---------------------------------------------------------------- validations
 
-    /**
-     * Un usuario sin roles se rechaza
+        /**
+     * A user without roles is rejected
      */
     @Test
     void issueToken_withoutRoles_isRejected() {
@@ -287,8 +287,8 @@ class JwtServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.issueToken(USER_ID, EMAIL, null, PERMISSIONS));
     }
 
-    /**
-     * Un usuario sin permisos se rechaza, un token sin permisos no autorizaría nada
+        /**
+     * A user without permissions is rejected, a token without permissions would not authorize anything
      */
     @Test
     void issueToken_withoutPermissions_isRejected() {
@@ -300,8 +300,8 @@ class JwtServiceTest {
                 () -> service.issueToken(USER_ID, EMAIL, List.of("ESTUDIANTE"), null));
     }
 
-    /**
-     * Un correo en blanco se rechaza
+        /**
+     * A blank email is rejected
      */
     @Test
     void issueToken_withBlankEmail_isRejected() {
@@ -311,10 +311,10 @@ class JwtServiceTest {
                 () -> service.issueToken(USER_ID, " ", List.of("ESTUDIANTE"), PERMISSIONS));
     }
 
-    /**
-     * Se rechazan las llaves RSA de menos de 2048 bits
+        /**
+     * RSA keys of less than 2048 bits are rejected
      *
-     * @throws Exception si no se puede generar la llave de prueba
+     * @throws Exception if the test key cannot be generated
      */
     @Test
     void constructor_rejectsRsaKeysShorterThan2048Bits() throws Exception {
@@ -326,10 +326,10 @@ class JwtServiceTest {
                 () -> new JwtServiceImpl(weak.getPrivate(), "kid", FixedDatabaseTime.at(NOW)));
     }
 
-    /**
-     * Se rechazan las llaves que no son RSA
+        /**
+     * Keys that are not RSA are rejected
      *
-     * @throws Exception si no se puede generar la llave de prueba
+     * @throws Exception if the test key cannot be generated
      */
     @Test
     void constructor_rejectsNonRsaKeys() throws Exception {
@@ -341,8 +341,8 @@ class JwtServiceTest {
                 () -> new JwtServiceImpl(ec.getPrivate(), "kid", FixedDatabaseTime.at(NOW)));
     }
 
-    /**
-     * Se rechaza un identificador de llave en blanco o nulo
+        /**
+     * A blank or null key identifier is rejected
      */
     @Test
     void constructor_rejectsABlankKeyId() {
@@ -354,10 +354,10 @@ class JwtServiceTest {
                 () -> new JwtServiceImpl(keyPair.getPrivate(), null, FixedDatabaseTime.at(NOW)));
     }
 
-    // ---------------------------------------------------------------- vigencia
+    // ---------------------------------------------------------------- validity
 
-    /**
-     * La vigencia es exactamente de 3600 segundos, el máximo que permiten los Estándares de Integración
+        /**
+     * The validity is exactly 3600 seconds, the maximum allowed by the Integration Standards
      */
     @Test
     void issueToken_lifetimeIs3600Seconds() {
@@ -366,8 +366,8 @@ class JwtServiceTest {
         assertEquals(NOW.truncatedTo(ChronoUnit.SECONDS).plusSeconds(3600), issued.expiresAt());
     }
 
-    /**
-     * El emisor y la audiencia del token son los valores globales de los Estándares de Integración
+        /**
+     * The issuer and the audience of the token are the global values of the Integration Standards
      */
     @Test
     void issueToken_issuerAndAudienceAreTheGlobalValues() {
@@ -378,9 +378,9 @@ class JwtServiceTest {
         assertTrue(payload.contains("\"aud\":\"" + GlobalValues.JWT_AUDIENCE + "\""), payload);
     }
 
-    /**
-     * El iat y el exp salen de la hora de la base de datos, que se consulta una sola vez por token para que los
-     * dos claims partan del mismo instante
+        /**
+     * The iat and the exp come from the database time, which is queried only once per token so both claims start from
+     * the same instant
      */
     @Test
     void issueToken_iatAndExpComeFromTheDatabaseTimeQueriedOncePerToken() {
@@ -398,13 +398,13 @@ class JwtServiceTest {
         verify(databaseTime, times(1)).now();
     }
 
-    /**
-     * Si la base de datos no responde, el token no se emite y el error se propaga
+        /**
+     * If the database does not respond, the token is not issued and the error is propagated
      */
     @Test
     void issueToken_databaseTimeFailure_isPropagated() {
         DatabaseTimeService databaseTime = mock(DatabaseTimeService.class);
-        when(databaseTime.now()).thenThrow(new IllegalStateException("sin hora"));
+        when(databaseTime.now()).thenThrow(new IllegalStateException("no time"));
         JwtServiceImpl service = new JwtServiceImpl(keyPair.getPrivate(), "ms01-test", databaseTime);
 
         assertThrows(IllegalStateException.class,

@@ -9,11 +9,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.PermissionCodes;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
- * Convierte las cabeceras de identidad X-User-Id, X-User-Role y X-User-Permission en un RequesterIdentity
+ * Converts the identity headers X-User-Id, X-User-Role and X-User-Permission into a RequesterIdentity
  *
- * Si faltan las cabeceras de identidad en un endpoint protegido se responde 401
+ * If the identity headers are missing on a protected endpoint, 401 is answered
  *
- * Los valores que no corresponden a algo valido se rechazan con 401
+ * The values that do not correspond to something valid are rejected with 401
  */
 public final class IdentityHeaderParser {
 
@@ -29,20 +29,20 @@ public final class IdentityHeaderParser {
 
     private static final String LIST_SEPARATOR = ",";
 
-    /**
-     * No se instancia
+        /**
+     * It is not instantiated
      */
     private IdentityHeaderParser() {
     }
 
-    /**
-     * Construye la identidad del solicitante a partir de las cabeceras recibidas
+        /**
+     * Builds the identity of the requester from the received headers
      *
-     * @param userIdHeader debe ser el UUID del usuario
-     * @param roleHeader roles del usuario separados por coma
-     * @param permissionHeader permisos del usuario separados por coma
-     * @return la identidad del solicitante con su id, sus roles y sus permisos
-     * @throws UnauthenticatedException si falta alguna cabecera o si su valor no es valido
+     * @param userIdHeader must be the UUID of the user
+     * @param roleHeader roles of the user separated by comma
+     * @param permissionHeader permissions of the user separated by comma
+     * @return the identity of the requester with its id, its roles and its permissions
+     * @throws UnauthenticatedException if any header is missing or if its value is not valid
      */
     public static RequesterIdentity parse(String userIdHeader, String roleHeader, String permissionHeader) {
         if (isBlank(userIdHeader) || isBlank(roleHeader) || isBlank(permissionHeader)) {
@@ -83,11 +83,11 @@ public final class IdentityHeaderParser {
         return new RequesterIdentity(userId, roles, permissions);
     }
 
-    /**
-     * Verifica si un String es nulo o esta lleno de espacios o vacio
+        /**
+     * Checks whether a String is null, blank or empty
      *
      * @param value String a verificar
-     * @return true si el valor es null o esta en blanco
+     * @return true if the value is null or blank
      */
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();

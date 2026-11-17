@@ -12,25 +12,25 @@ import org.springframework.stereotype.Repository;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.PermissionEntity;
 
 /**
- * Acceso al catálogo de permisos (tabla permisos del modelo de datos)
+ * Access to the permission catalog (table permissions of the data model)
  */
 @Repository
 public interface PermissionRepository extends JpaRepository<PermissionEntity, UUID> {
 
-    /**
-     * Devuelve los permisos cuyo código empieza con un prefijo, se usa para leer los permisos de un módulo
+        /**
+     * Returns the permissions whose code starts with a prefix, it is used to read the permissions of a module
      *
-     * @param prefix prefijo del código, por ejemplo ms01:
-     * @return los permisos del módulo, sin un orden definido
+     * @param prefix prefix of the code, for example ms01:
+     * @return the permissions of the module, in no defined order
      */
     List<PermissionEntity> findAllByNameStartingWith(String prefix);
 
-    /**
-     * Borra un permiso del catálogo, la clave foránea de rol_permiso lo quita de todos los roles que lo
-     * tenían, quien llama debe haber registrado antes el corte de sesión de esos roles
+        /**
+     * Deletes a permission from the catalog, the foreign key of role_permissions removes it from all the roles that had
+     * it, the caller must have recorded the session cut of those roles before
      *
-     * @param name código del permiso que se borra
-     * @return cantidad de permisos borrados
+     * @param name code of the permission that is deleted
+     * @return number of deleted permissions
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM PermissionEntity p WHERE p.name = :name")

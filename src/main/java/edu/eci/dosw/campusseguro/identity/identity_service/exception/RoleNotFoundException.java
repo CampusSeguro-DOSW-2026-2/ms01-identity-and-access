@@ -1,8 +1,8 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
 /**
- * El rol pedido no existe, se traduce a HTTP 404 con código NO_ENCONTRADO y el mensaje "Rol no encontrado."
- * de los formularios F-11, F-12 y F-13
+ * The requested role does not exist, it is translated to HTTP 404 with code NO_ENCONTRADO and the message "Rol no
+ * encontrado." of the forms F-11, F-12 and F-13
  */
 public class RoleNotFoundException extends RuntimeException {
 
@@ -10,21 +10,21 @@ public class RoleNotFoundException extends RuntimeException {
 
     private final String roleName;
 
-    /**
-     * Crea la excepción con el nombre del rol que no existe, el nombre no se incluye en el mensaje que
-     * recibe el cliente
+        /**
+     * Creates the exception with the name of the role that does not exist, the name is not included in the message that
+     * the client receives
      *
-     * @param roleName nombre del rol que no se encontró
+     * @param roleName name of the role that was not found
      */
     public RoleNotFoundException(String roleName) {
         super(MESSAGE);
         this.roleName = roleName;
     }
 
-    /**
-     * Devuelve el nombre del rol que no existe
+        /**
+     * Returns the name of the role that does not exist
      *
-     * @return el nombre no encontrado
+     * @return the name not found
      */
     public String getRoleName() {
         return roleName;

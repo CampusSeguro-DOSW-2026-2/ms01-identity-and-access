@@ -14,15 +14,15 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
 /**
- * Los roles de las respuestas de usuario salen en orden alfabetico por nombre (5_modelo_datos) aunque la
- * entidad los guarde en un conjunto sin orden
+ * The roles of the user responses come out in alphabetical order by name (5_modelo_datos) even if the entity stores
+ * them in an unordered set
  */
 class UserResponseRolesOrderTest {
 
     private UserEntity entity;
 
-    /**
-     * Prepara un usuario con tres roles cuyo orden alfabetico no coincide con el de declaracion del enum
+        /**
+     * Prepares a user with three roles whose alphabetical order does not match the declaration order of the enum
      */
     @BeforeEach
     void setUp() {
@@ -34,8 +34,8 @@ class UserResponseRolesOrderTest {
         entity.setRoles(TestEntities.roles("PROFESOR", "ESTUDIANTE", "ADMIN"));
     }
 
-    /**
-     * UserResponse entrega los roles ordenados
+        /**
+     * UserResponse delivers the roles sorted
      */
     @Test
     void userResponse_fromEntity_sortsTheRoles() {
@@ -44,8 +44,8 @@ class UserResponseRolesOrderTest {
         assertEquals(List.of("ADMIN", "ESTUDIANTE", "PROFESOR"), response.roles());
     }
 
-    /**
-     * UserProfileResponse entrega los roles ordenados
+        /**
+     * UserProfileResponse delivers the roles sorted
      */
     @Test
     void userProfileResponse_fromEntity_sortsTheRoles() {
@@ -54,8 +54,8 @@ class UserResponseRolesOrderTest {
         assertEquals(List.of("ADMIN", "ESTUDIANTE", "PROFESOR"), response.roles());
     }
 
-    /**
-     * Un usuario sin roles da una lista vacia y no null
+        /**
+     * A user without roles gives an empty list and not null
      */
     @Test
     void fromEntity_userWithoutRoles_returnsAnEmptyList() {

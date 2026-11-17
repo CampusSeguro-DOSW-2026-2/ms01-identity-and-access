@@ -18,21 +18,21 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.ChangeRolesCo
 import edu.eci.dosw.campusseguro.identity.identity_service.service.ChangeRolesValidator;
 
 /**
- * Validaciones del formulario F-09 (PATCH /users/roles): ids, roles del catalogo, listas no vacias a la
- * vez y ningun rol en ambas listas. Todas responden 400 con el mensaje exacto del formulario
+ * Validations of form F-09 (PATCH /users/roles): ids, roles of the catalog, lists that are not both empty and no role
+ * in both lists. All of them answer 400 with the exact message of the form
  */
 class ChangeRolesValidatorTest {
 
     private static final String ID_ONE = "5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c";
     private static final String ID_TWO = "7c2e1d3f-9e5b-4d2c-8b88-4a3f7e2b1c0d";
 
-    /**
-     * Crea una peticion con los valores indicados
+        /**
+     * Creates a request with the given values
      *
-     * @param ids identificadores de usuario; puede ser null
-     * @param add roles a agregar; puede ser null
-     * @param remove roles a retirar; puede ser null
-     * @return la peticion armada
+     * @param ids user identifiers; may be null
+     * @param add roles to add; may be null
+     * @param remove roles to remove; may be null
+     * @return the assembled request
      */
     private ChangeRolesRequest request(List<String> ids, List<String> add, List<String> remove) {
         ChangeRolesRequest request = new ChangeRolesRequest();
@@ -42,18 +42,18 @@ class ChangeRolesValidatorTest {
         return request;
     }
 
-    /**
-     * Valida una peticion que debe fallar y devuelve la excepcion
+        /**
+     * Validates a request that must fail and returns the exception
      *
-     * @param request peticion invalida
-     * @return la excepcion InvalidRequestException lanzada
+     * @param request invalid request
+     * @return the InvalidRequestException thrown
      */
     private InvalidRequestException invalid(ChangeRolesRequest request) {
         return assertThrows(InvalidRequestException.class, () -> ChangeRolesValidator.validate(request));
     }
 
-    /**
-     * Una peticion correcta se convierte en un comando con tipos fuertes
+        /**
+     * A correct request is converted into a command with strong types
      */
     @Test
     void validate_validRequest_returnsTheCommand() {
@@ -66,8 +66,8 @@ class ChangeRolesValidatorTest {
         assertEquals(Set.of("ESTUDIANTE"), command.rolesToRemove());
     }
 
-    /**
-     * Solo agregar (retirar ausente) es valido
+        /**
+     * Only adding (removing absent) is valid
      */
     @Test
     void validate_onlyAdd_isValid() {
@@ -78,8 +78,8 @@ class ChangeRolesValidatorTest {
         assertTrue(command.rolesToRemove().isEmpty());
     }
 
-    /**
-     * Solo retirar (agregar ausente) es valido
+        /**
+     * Only removing (adding absent) is valid
      */
     @Test
     void validate_onlyRemove_isValid() {
@@ -90,9 +90,8 @@ class ChangeRolesValidatorTest {
         assertEquals(Set.of("AUDITOR"), command.rolesToRemove());
     }
 
-    /**
-     * RG-01: los espacios alrededor de ids y roles se recortan antes de validar, y un id en mayusculas
-     * se acepta
+        /**
+     * RG-01: the spaces around ids and roles are trimmed before validating, and an uppercase id is accepted
      */
     @Test
     void validate_trimsIdsAndRoles() {
@@ -103,8 +102,8 @@ class ChangeRolesValidatorTest {
         assertEquals(Set.of("PROFESOR"), command.rolesToAdd());
     }
 
-    /**
-     * Un id repetido se procesa una sola vez, en el orden en que apareció por primera vez
+        /**
+     * A repeated id is processed only once, in the order in which it first appeared
      */
     @Test
     void validate_repeatedUserId_isProcessedOnce() {
@@ -115,8 +114,8 @@ class ChangeRolesValidatorTest {
                 new ArrayList<>(command.userIds()));
     }
 
-    /**
-     * Sin ids: "Seleccione al menos un usuario." en el campo ids
+        /**
+     * Without ids: "Seleccione al menos un usuario." in the ids field
      */
     @Test
     void validate_missingIds_returnsFieldError() {
@@ -129,8 +128,8 @@ class ChangeRolesValidatorTest {
         assertEquals("Seleccione al menos un usuario.", detail.mensaje());
     }
 
-    /**
-     * Una lista de ids vacia cuenta como sin usuarios
+        /**
+     * An empty list of ids counts as no users
      */
     @Test
     void validate_emptyIds_returnsFieldError() {
@@ -140,8 +139,8 @@ class ChangeRolesValidatorTest {
         assertEquals(ChangeRolesValidator.MISSING_USERS_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un id que no es un UUID se rechaza en el campo ids
+        /**
+     * An id that is not a UUID is rejected in the ids field
      */
     @Test
     void validate_idWithoutUuidFormat_returnsFieldError() {
@@ -151,8 +150,8 @@ class ChangeRolesValidatorTest {
         assertEquals(ChangeRolesValidator.INVALID_USER_ID_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un id nulo dentro de la lista se rechaza en el campo ids
+        /**
+     * A null id inside the list is rejected in the ids field
      */
     @Test
     void validate_nullIdInsideTheList_returnsFieldError() {
@@ -164,9 +163,9 @@ class ChangeRolesValidatorTest {
         assertEquals("ids", error.getErrors().get(0).campo());
     }
 
-    /**
-     * Un nombre de rol sin el formato guardado: "Seleccione roles válidos." en el campo agregar, que el rol
-     * exista lo comprueba el servicio
+        /**
+     * A role name without the stored format: "Seleccione roles válidos." in the agregar field, whether the role exists
+     * is checked by the service
      */
     @Test
     void validate_roleWithoutTheStoredFormatToAdd_returnsFieldError() {
@@ -177,8 +176,8 @@ class ChangeRolesValidatorTest {
         assertEquals("Seleccione roles válidos.", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un rol fuera del catalogo: "Seleccione roles válidos." en el campo retirar
+        /**
+     * A role outside the catalog: "Seleccione roles válidos." in the retirar field
      */
     @Test
     void validate_unknownRoleToRemove_returnsFieldError() {
@@ -188,8 +187,8 @@ class ChangeRolesValidatorTest {
         assertEquals(ChangeRolesValidator.INVALID_ROLES_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un rol repetido dentro de la misma lista tambien es un rol no valido (uniqueItems)
+        /**
+     * A role repeated inside the same list is also an invalid role (uniqueItems)
      */
     @Test
     void validate_repeatedRoleInTheSameList_returnsFieldError() {
@@ -200,8 +199,8 @@ class ChangeRolesValidatorTest {
         assertEquals(ChangeRolesValidator.INVALID_ROLES_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Se reportan juntos los errores de varios campos
+        /**
+     * The errors of several fields are reported together
      */
     @Test
     void validate_severalInvalidFields_reportsAllOfThem() {
@@ -235,8 +234,8 @@ class ChangeRolesValidatorTest {
         assertEquals(ChangeRolesValidator.NO_ROLES_GIVEN_MESSAGE, error.getMessage());
     }
 
-    /**
-     * Un rol en ambas listas: "Un rol no puede agregarse y retirarse a la vez."
+        /**
+     * A role in both lists: "Un rol no puede agregarse y retirarse a la vez."
      */
     @Test
     void validate_sameRoleInBothLists_returnsTheMessage() {
@@ -247,8 +246,8 @@ class ChangeRolesValidatorTest {
         assertTrue(error.getErrors().isEmpty());
     }
 
-    /**
-     * Los errores de formato tienen prioridad sobre las reglas que cruzan las dos listas
+        /**
+     * The format errors take priority over the rules that cross the two lists
      */
     @Test
     void validate_fieldErrorsTakePriorityOverCrossListRules() {
@@ -258,8 +257,8 @@ class ChangeRolesValidatorTest {
         assertEquals("ids", error.getErrors().get(0).campo());
     }
 
-    /**
-     * Todos los roles del catalogo inicial se pueden agregar en una sola peticion
+        /**
+     * All the roles of the initial catalog can be added in a single request
      */
     @Test
     void validate_allSeedRoles_areAccepted() {
@@ -273,9 +272,9 @@ class ChangeRolesValidatorTest {
         assertEquals(SeedRoles.PERMISSIONS.keySet(), command.rolesToAdd());
     }
 
-    /**
-     * Las listas agregar y retirar no tienen límite de tamaño por operación: 60 roles en cada una se aceptan
-     * (el tope de 50 roles por usuario se verifica en el servicio, contra los roles que ya tiene)
+        /**
+     * The agregar and retirar lists have no size limit per operation: 60 roles in each one are accepted (the limit of
+     * 50 roles per user is verified in the service, against the roles that it already has)
      */
     @Test
     void validate_listsWithManyRoles_areAccepted() {
@@ -292,8 +291,8 @@ class ChangeRolesValidatorTest {
         assertEquals(60, command.rolesToRemove().size());
     }
 
-    /**
-     * Un campo que no está en el contrato se rechaza con un error por ese campo (RG-04)
+        /**
+     * A field that is not in the contract is rejected with an error for that field (RG-04)
      */
     @Test
     void validate_unknownFieldInTheBody_isRejectedPerField() {
@@ -307,8 +306,8 @@ class ChangeRolesValidatorTest {
         assertEquals("El campo no está permitido.", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Los campos desconocidos se informan junto con los demás errores del formulario
+        /**
+     * The unknown fields are reported together with the other errors of the form
      */
     @Test
     void validate_unknownFieldAndInvalidFields_reportsAllOfThem() {

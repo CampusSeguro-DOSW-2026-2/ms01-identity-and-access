@@ -1,12 +1,12 @@
 name: Desplegar a producción
 
-# CD a producción: manual, solo desde main y con la aprobación que exige el Environment ms01-prod.
-# Promueve la misma imagen que ya pasó por test (sha-xxxxxxx), sin reconstruirla. Otro tag anterior = rollback.
+# CD to production: manual, only from main and with the approval required by the ms01-prod Environment.
+# It promotes the same image that already went through test (sha-xxxxxxx), without rebuilding it. Another earlier tag = rollback.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Imagen a promover (sha-xxxxxxx), la misma que ya se probó en test
+        description: Image to promote (sha-xxxxxxx), the same one that was already tested in test
         type: string
         required: true
 
@@ -14,12 +14,12 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     steps:
-      - name: Solo desde main y con un tag sha-xxxxxxx
+      - name: Only from main and with a sha-xxxxxxx tag
         env:
           TAG: ${{ inputs.tag }}
         run: |
-          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::Producción solo se despliega desde main (recibido: $GITHUB_REF)"; exit 1; }
-          [[ "$TAG" =~ ^sha-[0-9a-f]{7}$ ]] || { echo "::error::El tag debe tener la forma sha-xxxxxxx (recibido: $TAG)"; exit 1; }
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::Production is only deployed from main (received: $GITHUB_REF)"; exit 1; }
+          [[ "$TAG" =~ ^sha-[0-9a-f]{7}$ ]] || { echo "::error::The tag must have the form sha-xxxxxxx (received: $TAG)"; exit 1; }
 
   desplegar:
     needs: verificar

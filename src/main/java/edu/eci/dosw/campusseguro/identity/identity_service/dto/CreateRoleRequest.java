@@ -5,13 +5,13 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Cuerpo de POST /api/v1/roles (formulario F-10)
+ * Body of POST /api/v1/roles (form F-10)
  *
- * rol: nombre del rol, se normaliza antes de validarlo (RG-08)
- * descripcion: texto que muestra la interfaz de administración
- * permisos: códigos de permiso del rol
+ * rol: name of the role, normalized before validating it (RG-08)
+ * descripcion: text shown by the administration interface
+ * permisos: permission codes of the role
  *
- * cualquier campo no definido en el contrato se rechaza con HTTP 400 (RG-04)
+ * any field not defined in the contract is rejected with HTTP 400 (RG-04)
  */
 public class CreateRoleRequest extends RoleRequest {
 
@@ -24,55 +24,55 @@ public class CreateRoleRequest extends RoleRequest {
     @JsonProperty("permisos")
     private List<String> permisos;
 
-    /**
-     * Devuelve el nombre del rol
+        /**
+     * Returns the name of the role
      *
-     * @return nombre recibido, sin normalizar
+     * @return name received, not normalized
      */
     public String getRol() {
         return rol;
     }
 
-    /**
-     * Coloca el nombre del rol
+        /**
+     * Sets the name of the role
      *
-     * @param rol nombre del rol que se crea
+     * @param rol name of the role being created
      */
     public void setRol(String rol) {
         this.rol = rol;
     }
 
-    /**
-     * Devuelve la descripción del rol
+        /**
+     * Returns the description of the role
      *
-     * @return descripción recibida
+     * @return description received
      */
     public String getDescripcion() {
         return descripcion;
     }
 
-    /**
-     * Coloca la descripción del rol
+        /**
+     * Sets the description of the role
      *
-     * @param descripcion descripción del rol que se crea
+     * @param descripcion description of the role being created
      */
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
     }
 
-    /**
-     * Devuelve los permisos del rol
+        /**
+     * Returns the permissions of the role
      *
-     * @return códigos de permiso recibidos
+     * @return permission codes received
      */
     public List<String> getPermisos() {
         return permisos;
     }
 
-    /**
-     * Coloca los permisos del rol
+        /**
+     * Sets the permissions of the role
      *
-     * @param permisos códigos de permiso del rol que se crea
+     * @param permisos permission codes of the role being created
      */
     public void setPermisos(List<String> permisos) {
         this.permisos = permisos;

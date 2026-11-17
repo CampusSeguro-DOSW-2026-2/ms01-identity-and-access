@@ -25,8 +25,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import jakarta.servlet.FilterChain;
 
 /**
- * RN-MS01-23 y estándares de integración 2.3: la identidad llega solo por las cabeceras X-User-Id, X-User-Role
- * y X-User-Permission, si faltan o no son válidas la petición queda sin autenticar
+ * RN-MS01-23 and integration standards 2.3: the identity arrives only through the headers X-User-Id, X-User-Role and
+ * X-User-Permission, if they are missing or not valid the request is left unauthenticated
  */
 class IdentityHeadersAuthenticationFilterTest {
 
@@ -37,8 +37,8 @@ class IdentityHeadersAuthenticationFilterTest {
     private MockHttpServletResponse response;
     private AtomicBoolean chainCalled;
 
-    /**
-     * Prepara el filtro, una peticion y una cadena que registra si fue invocada
+        /**
+     * Prepares the filter, a request and a chain that records whether it was invoked
      */
     @BeforeEach
     void setUp() {
@@ -49,28 +49,28 @@ class IdentityHeadersAuthenticationFilterTest {
         chainCalled = new AtomicBoolean(false);
     }
 
-    /**
-     * Limpia el contexto de seguridad para no afectar a otros tests
+        /**
+     * Clears the security context so as not to affect other tests
      */
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
     }
 
-    /**
-     * Ejecuta el filtro con una cadena que solo registra que fue invocada
+        /**
+     * Runs the filter with a chain that only records that it was invoked
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     private void runFilter() throws Exception {
         FilterChain chain = (req, res) -> chainCalled.set(true);
         filter.doFilter(request, response, chain);
     }
 
-    /**
-     * Con cabeceras validas la peticion queda autenticada con la identidad como principal
+        /**
+     * With valid headers the request is authenticated with the identity as principal
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_validHeaders_authenticatesWithTheIdentity() throws Exception {
@@ -89,10 +89,10 @@ class IdentityHeadersAuthenticationFilterTest {
         assertTrue(chainCalled.get());
     }
 
-    /**
-     * Las autoridades son los códigos de X-User-Permission, sin importar el nombre de los roles
+        /**
+     * The authorities are the codes of X-User-Permission, regardless of the name of the roles
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_validHeaders_grantsTheReceivedPermissions() throws Exception {
@@ -112,10 +112,10 @@ class IdentityHeadersAuthenticationFilterTest {
         assertFalse(authorities.contains("ms03:alert:manage"));
     }
 
-    /**
-     * Sin cabeceras no se autentica, se guarda el motivo y la cadena continua
+        /**
+     * Without headers it is not authenticated, the reason is stored and the chain continues
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_missingHeaders_leavesTheRequestUnauthenticated() throws Exception {
@@ -127,10 +127,10 @@ class IdentityHeadersAuthenticationFilterTest {
         assertTrue(chainCalled.get());
     }
 
-    /**
-     * Sin X-User-Permission no se autentica aunque estén las otras dos cabeceras
+        /**
+     * Without X-User-Permission it is not authenticated even if the other two headers are present
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_missingPermissionHeader_leavesTheRequestUnauthenticated() throws Exception {
@@ -145,10 +145,10 @@ class IdentityHeadersAuthenticationFilterTest {
         assertTrue(chainCalled.get());
     }
 
-    /**
-     * Un X-User-Id que no es un UUID no autentica
+        /**
+     * An X-User-Id that is not a UUID does not authenticate
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_invalidUserId_leavesTheRequestUnauthenticated() throws Exception {
@@ -163,10 +163,10 @@ class IdentityHeadersAuthenticationFilterTest {
                 request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 
-    /**
-     * Un nombre de rol con formato inválido no autentica
+        /**
+     * A role name with an invalid format does not authenticate
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_invalidRoleFormat_leavesTheRequestUnauthenticated() throws Exception {
@@ -181,10 +181,10 @@ class IdentityHeadersAuthenticationFilterTest {
                 request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 
-    /**
-     * Un rol en minúsculas no autentica, los nombres de rol guardados van en mayúsculas
+        /**
+     * A lowercase role does not authenticate, the stored role names are uppercase
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_lowercaseRole_leavesTheRequestUnauthenticated() throws Exception {
@@ -197,10 +197,10 @@ class IdentityHeadersAuthenticationFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
-    /**
-     * Un código de permiso con formato inválido no autentica
+        /**
+     * A permission code with an invalid format does not authenticate
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_invalidPermissionFormat_leavesTheRequestUnauthenticated() throws Exception {

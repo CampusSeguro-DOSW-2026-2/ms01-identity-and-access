@@ -25,8 +25,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.InternalServ
 import edu.eci.dosw.campusseguro.identity.identity_service.service.SessionCutService;
 
 /**
- * Seguridad HTTP y contrato de GET /api/v1/internal/session-cuts con las cadenas reales (RF-MS01-11): solo la
- * atiende el servicio gateway, sin cabeceras de usuario
+ * HTTP security and contract of GET /api/v1/internal/session-cuts with the real chains (RF-MS01-11): only the gateway
+ * service is served, without user headers
  */
 @WebMvcTest(SessionCutsController.class)
 @Import({InternalSecurityConfig.class, SecurityConfig.class})
@@ -41,10 +41,10 @@ class SessionCutsControllerTest {
     @MockitoBean
     private SessionCutService sessionCutService;
 
-    /**
-     * Instantánea de ejemplo
+        /**
+     * Sample snapshot
      *
-     * @return la respuesta con un corte de usuario y uno de rol
+     * @return the response with a user cut and a role cut
      */
     private SessionCutsResponse snapshot() {
         return new SessionCutsResponse("2026-11-11T12:00:00Z", 3700,
@@ -53,10 +53,10 @@ class SessionCutsControllerTest {
                 List.of(new SessionCutsResponse.RoleCut("PROFESOR", "2026-11-11T11:45:10Z")));
     }
 
-    /**
-     * El gateway recibe la instantánea con los nombres de campo del contrato
+        /**
+     * The gateway receives the snapshot with the field names of the contract
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void sessionCuts_fromGateway_returns200WithTheContractFields() throws Exception {
@@ -72,10 +72,10 @@ class SessionCutsControllerTest {
                 .andExpect(jsonPath("$.roles[0].valido_desde").value("2026-11-11T11:45:10Z"));
     }
 
-    /**
-     * El nombre del servicio se compara sin importar mayúsculas ni espacios
+        /**
+     * The service name is compared regardless of case and spaces
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void sessionCuts_serviceNameIsCaseAndSpaceInsensitive() throws Exception {
@@ -85,10 +85,10 @@ class SessionCutsControllerTest {
                 .andExpect(status().isOk());
     }
 
-    /**
-     * Sin X-Service-Name responde 401 con el motivo y no se consulta nada
+        /**
+     * Without X-Service-Name it answers 401 with the reason and nothing is queried
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void sessionCuts_withoutServiceName_returns401WithTheReason() throws Exception {
@@ -103,10 +103,10 @@ class SessionCutsControllerTest {
         verifyNoInteractions(sessionCutService);
     }
 
-    /**
-     * Las cabeceras de usuario, aunque sean de un ADMIN, no sustituyen a X-Service-Name
+        /**
+     * The user headers, even those of an ADMIN, do not replace X-Service-Name
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void sessionCuts_withAdminUserHeadersOnly_returns401() throws Exception {
@@ -119,11 +119,11 @@ class SessionCutsControllerTest {
         verifyNoInteractions(sessionCutService);
     }
 
-    /**
-     * Los servicios de la lista de autorizados de las rutas internas, ms03 y ms05, no pueden consultar los
-     * cortes: solo el gateway
+        /**
+     * The services in the list of authorized ones of the internal routes, ms03, ms04 and ms05, cannot query the cuts:
+     * only the gateway
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void sessionCuts_fromAnyOtherService_returns403() throws Exception {
@@ -136,10 +136,10 @@ class SessionCutsControllerTest {
         verifyNoInteractions(sessionCutService);
     }
 
-    /**
-     * La ruta solo responde a GET, otro método responde 405 con el cuerpo normalizado
+        /**
+     * The route only answers to GET, another method answers 405 with the normalized body
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void sessionCuts_otherMethods_areNotServed() throws Exception {

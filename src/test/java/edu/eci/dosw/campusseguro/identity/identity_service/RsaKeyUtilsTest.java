@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RsaKeyUtils;
 
 /**
- * Lectura de JWT_PRIVATE_KEY (PEM PKCS#8) y generacion de la llave efimera de desarrollo
+ * Reading of JWT_PRIVATE_KEY (PEM PKCS#8) and generation of the ephemeral development key
  */
 class RsaKeyUtilsTest {
 
@@ -26,8 +26,8 @@ class RsaKeyUtilsTest {
     private static String body;
     private static String pem;
 
-    /**
-     * Genera el par de llaves que se comparte entre las pruebas
+        /**
+     * Generates the key pair that is shared between the tests
      */
     @BeforeAll
     static void generateKeys() {
@@ -37,8 +37,8 @@ class RsaKeyUtilsTest {
         pem = "-----BEGIN PRIVATE KEY-----\n" + body + "\n-----END PRIVATE KEY-----\n";
     }
 
-    /**
-     * Se lee un PEM PKCS#8 estándar
+        /**
+     * A standard PKCS#8 PEM is read
      */
     @Test
     void parsePrivateKey_readsAStandardPkcs8Pem() {
@@ -47,12 +47,12 @@ class RsaKeyUtilsTest {
         assertArrayEquals(keyPair.getPrivate().getEncoded(), parsed.getEncoded());
     }
 
-    /**
-     * Se aceptan saltos de línea escritos como la secuencia literal \n
+        /**
+     * Line breaks written as the literal sequence \n are accepted
      */
     @Test
     void parsePrivateKey_acceptsNewlinesWrittenAsLiteralBackslashN() {
-        // Asi suele llegar el PEM cuando se define en una sola linea de variable de entorno.
+        // This is how the PEM usually arrives when it is defined in a single line of an environment variable.
         String oneLine = pem.trim().replace("\n", "\\n");
 
         PrivateKey parsed = RsaKeyUtils.parsePrivateKey(oneLine);
@@ -60,8 +60,8 @@ class RsaKeyUtilsTest {
         assertArrayEquals(keyPair.getPrivate().getEncoded(), parsed.getEncoded());
     }
 
-    /**
-     * Se acepta el cuerpo en base64 sin las líneas BEGIN y END
+        /**
+     * The base64 body without the BEGIN and END lines is accepted
      */
     @Test
     void parsePrivateKey_acceptsBareBase64WithoutHeaders() {
@@ -70,8 +70,8 @@ class RsaKeyUtilsTest {
         assertArrayEquals(keyPair.getPrivate().getEncoded(), parsed.getEncoded());
     }
 
-    /**
-     * Se toleran los espacios alrededor del PEM
+        /**
+     * The spaces around the PEM are tolerated
      */
     @Test
     void parsePrivateKey_toleratesSurroundingWhitespace() {
@@ -80,8 +80,8 @@ class RsaKeyUtilsTest {
         assertArrayEquals(keyPair.getPrivate().getEncoded(), parsed.getEncoded());
     }
 
-    /**
-     * Un valor nulo o en blanco se rechaza
+        /**
+     * A null or blank value is rejected
      */
     @Test
     void parsePrivateKey_blankOrNull_isRejected() {
@@ -90,8 +90,8 @@ class RsaKeyUtilsTest {
         assertThrows(IllegalArgumentException.class, () -> RsaKeyUtils.parsePrivateKey("   \n "));
     }
 
-    /**
-     * Una llave PKCS#1 se rechaza con un mensaje que indica el formato esperado
+        /**
+     * A PKCS#1 key is rejected with a message that indicates the expected format
      */
     @Test
     void parsePrivateKey_pkcs1_isRejectedWithAHelpfulMessage() {
@@ -103,18 +103,18 @@ class RsaKeyUtilsTest {
         assertTrue(ex.getMessage().contains("PKCS#8"));
     }
 
-    /**
-     * Un texto que no es una llave se rechaza
+        /**
+     * A text that is not a key is rejected
      */
     @Test
     void parsePrivateKey_garbage_isRejected() {
         assertThrows(IllegalArgumentException.class, () -> RsaKeyUtils.parsePrivateKey("esto no es una llave ***"));
-        // Base64 valido, pero no es una estructura PKCS#8.
+        // Valid Base64, but it is not a PKCS#8 structure.
         assertThrows(IllegalArgumentException.class, () -> RsaKeyUtils.parsePrivateKey("AAECAwQFBgcICQ=="));
     }
 
-    /**
-     * Los mensajes de error nunca incluyen material de la llave
+        /**
+     * The error messages never include key material
      */
     @Test
     void parsePrivateKey_errorMessagesNeverLeakKeyMaterial() {
@@ -126,8 +126,8 @@ class RsaKeyUtilsTest {
         assertFalse(ex.getMessage().contains(body.substring(40, 80)));
     }
 
-    /**
-     * El par generado es RSA de 2048 bits
+        /**
+     * The generated pair is a 2048-bit RSA
      */
     @Test
     void generateKeyPair_returnsAnRsa2048Pair() {

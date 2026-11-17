@@ -40,9 +40,9 @@ import jakarta.validation.Validation;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleServiceImpl;
 
 /**
- * RF-MS01-05 postcondicion / RN-MS01-09 / MR-06: los nuevos roles se reflejan en el siguiente token. Se
- * cambian los roles de un usuario con RoleServiceImpl y luego se hace login con AuthServiceImpl sobre el
- * mismo usuario: el JWT se emite con los roles nuevos
+ * RF-MS01-05 postcondition / RN-MS01-09 / MR-06: the new roles are reflected in the next token. The roles of a user are
+ * changed with RoleServiceImpl and then a login is done with AuthServiceImpl on the same user: the JWT is issued with
+ * the new roles
  */
 @ExtendWith(MockitoExtension.class)
 class RoleChangeNextLoginTest {
@@ -72,8 +72,8 @@ class RoleChangeNextLoginTest {
     private RoleServiceImpl roleService;
     private AuthServiceImpl authService;
 
-    /**
-     * Crea ambos servicios sobre los mismos mocks y el mismo reloj fijo
+        /**
+     * Creates both services on the same mocks and the same fixed clock
      */
     @BeforeEach
     void setUp() {
@@ -85,8 +85,8 @@ class RoleChangeNextLoginTest {
                 new RequestValidator(Validation.buildDefaultValidatorFactory().getValidator()));
     }
 
-    /**
-     * Tras agregar el rol BRIGADISTA, el siguiente login emite el token con ESTUDIANTE y BRIGADISTA
+        /**
+     * After adding the BRIGADISTA role, the next login issues the token with ESTUDIANTE and BRIGADISTA
      */
     @Test
     void nextLogin_afterAddingARole_issuesTheTokenWithTheNewRoles() {

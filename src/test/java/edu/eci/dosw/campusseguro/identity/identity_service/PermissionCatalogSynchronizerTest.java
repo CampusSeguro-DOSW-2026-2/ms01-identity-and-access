@@ -38,9 +38,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.repository.Permission
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 
 /**
- * RN-MS01-42: al arrancar, MS01 sincroniza solo los permisos con prefijo ms01: del enum con la tabla permisos,
- * inserta los que faltan, borra los que ya no están en el código y deja intactos los existentes y los de los
- * demás módulos
+ * RN-MS01-42: at startup, MS01 synchronizes only the permissions with the ms01: prefix of the enum with the permissions
+ * table, inserts the missing ones, deletes those that are no longer in the code and leaves untouched the existing ones
+ * and those of the other modules
  */
 @ExtendWith(MockitoExtension.class)
 class PermissionCatalogSynchronizerTest {
@@ -56,8 +56,8 @@ class PermissionCatalogSynchronizerTest {
 
     private PermissionCatalogSynchronizer synchronizer;
 
-    /**
-     * Crea el sincronizador con un reloj de base de datos fijo
+        /**
+     * Creates the synchronizer with a fixed database clock
      */
     @BeforeEach
     void setUp() {
@@ -65,10 +65,10 @@ class PermissionCatalogSynchronizerTest {
                 FixedDatabaseTime.at(NOW));
     }
 
-    /**
-     * Permisos de MS01 que ya están guardados, con una descripción distinta a la del enum
+        /**
+     * MS01 permissions that are already stored, with a description different from the one of the enum
      *
-     * @return una entidad por cada permiso del enum
+     * @return one entity for each permission of the enum
      */
     private List<PermissionEntity> storedMs01() {
         List<PermissionEntity> stored = new ArrayList<>();
@@ -80,8 +80,8 @@ class PermissionCatalogSynchronizerTest {
         return stored;
     }
 
-    /**
-     * Con la tabla sin permisos de MS01 se insertan los 10 del enum con su código y su descripción
+        /**
+     * With the table without MS01 permissions the 10 of the enum are inserted with their code and their description
      */
     @Test
     void synchronize_emptyCatalog_insertsEveryEnumPermission() {
@@ -100,8 +100,9 @@ class PermissionCatalogSynchronizerTest {
         verifyNoInteractions(roleRepository);
     }
 
-    /**
-     * Solo se insertan los permisos que faltan y los existentes no se modifican, aunque su descripción difiera
+        /**
+     * Only the missing permissions are inserted and the existing ones are not modified, even if their description
+     * differs
      */
     @Test
     void synchronize_oneMissingPermission_insertsOnlyThatOneAndKeepsTheExistingOnes() {
@@ -121,8 +122,8 @@ class PermissionCatalogSynchronizerTest {
         verify(permissionRepository, never()).deleteByCode(anyString());
     }
 
-    /**
-     * Con todos los permisos de MS01 ya guardados no se inserta ni se borra nada
+        /**
+     * With all the MS01 permissions already stored nothing is inserted or deleted
      */
     @Test
     void synchronize_catalogAlreadySynchronized_changesNothing() {
@@ -136,9 +137,9 @@ class PermissionCatalogSynchronizerTest {
         verifyNoInteractions(roleRepository);
     }
 
-    /**
-     * Un permiso ms01:* que ya no está en el enum se borra: antes se registra el corte de sesión de los roles que
-     * lo tienen, y el enum no se toca
+        /**
+     * An ms01:* permission that is no longer in the enum is deleted: before that the session cut of the roles that have
+     * it is recorded, and the enum is not touched
      */
     @Test
     void synchronize_permissionNoLongerInTheEnum_cutsTheRolesThenDeletesIt() {
@@ -157,8 +158,8 @@ class PermissionCatalogSynchronizerTest {
         verify(permissionRepository, never()).save(any());
     }
 
-    /**
-     * Solo se consultan los permisos con prefijo ms01:, los de los demás módulos nunca se leen ni se borran
+        /**
+     * Only the permissions with the ms01: prefix are queried, those of the other modules are never read or deleted
      */
     @Test
     void synchronize_neverReadsOrDeletesPermissionsOfOtherModules() {
@@ -172,9 +173,9 @@ class PermissionCatalogSynchronizerTest {
         verifyNoMoreInteractions(permissionRepository);
     }
 
-    /**
-     * Si la base de datos rechaza el borrado (un rol quedaría sin permisos o sin los mínimos de ADMIN o
-     * ESTUDIANTE) el error se propaga para que la transacción se revierta y MS01 no arranque
+        /**
+     * If the database rejects the deletion (a role would lose one of its mandatory permissions) the error is propagated
+     * so the transaction is rolled back and MS01 does not start
      */
     @Test
     void synchronize_databaseRejectsTheDeletion_propagatesTheError() {
@@ -183,13 +184,13 @@ class PermissionCatalogSynchronizerTest {
         when(permissionRepository.findAllByNameStartingWith("ms01:")).thenReturn(stored);
         when(roleRepository.findNamesByPermission("ms01:legacy:old")).thenReturn(List.of("MONITOR"));
         when(permissionRepository.deleteByCode("ms01:legacy:old"))
-                .thenThrow(new DataIntegrityViolationException("el rol MONITOR quedaría sin permisos"));
+                .thenThrow(new DataIntegrityViolationException("the role MONITOR would lose a mandatory permission"));
 
         assertThrows(DataIntegrityViolationException.class, () -> synchronizer.synchronize());
     }
 
-    /**
-     * Al arrancar la aplicación el runner ejecuta la sincronización
+        /**
+     * When the application starts the runner executes the synchronization
      */
     @Test
     void run_executesTheSynchronization() {
@@ -200,10 +201,10 @@ class PermissionCatalogSynchronizerTest {
         verify(permissionRepository).findAllByNameStartingWith("ms01:");
     }
 
-    /**
-     * El runner corre en una sola transacción y antes de la creación del primer administrador
+        /**
+     * The runner runs in a single transaction and before the creation of the first administrator
      *
-     * @throws NoSuchMethodException si el método run no existe
+     * @throws NoSuchMethodException if the run method does not exist
      */
     @Test
     void run_isTransactionalAndRunsBeforeTheBootstrapAdmin() throws NoSuchMethodException {

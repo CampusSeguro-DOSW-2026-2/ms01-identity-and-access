@@ -3,8 +3,8 @@ package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 import java.util.UUID;
 
 /**
- * El usuario pedido no existe, se traduce a HTTP 404 con código NO_ENCONTRADO y el mensaje
- * "Usuario no encontrado." de los formularios F-08 y F-09
+ * The requested user does not exist, it is translated to HTTP 404 with code NO_ENCONTRADO and the message "Usuario no
+ * encontrado." of the forms F-08 and F-09
  */
 public class UserNotFoundException extends RuntimeException {
 
@@ -12,21 +12,21 @@ public class UserNotFoundException extends RuntimeException {
 
     private final UUID userId;
 
-    /**
-     * Crea la excepción con el identificador que no existe, el identificador no se incluye en el mensaje
-     * que recibe el cliente
+        /**
+     * Creates the exception with the identifier that does not exist, the identifier is not included in the message that
+     * the client receives
      *
-     * @param id identificador del usuario que no se encontró
+     * @param id identifier of the user that was not found
      */
     public UserNotFoundException(UUID id) {
         super(MESSAGE);
         this.userId = id;
     }
 
-    /**
-     * Devuelve el identificador del usuario que no existe
+        /**
+     * Returns the identifier of the user that does not exist
      *
-     * @return el identificador no encontrado
+     * @return the identifier not found
      */
     public UUID getUserId() {
         return userId;

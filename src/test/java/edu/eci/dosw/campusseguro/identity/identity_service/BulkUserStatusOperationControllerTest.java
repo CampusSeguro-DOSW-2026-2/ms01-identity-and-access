@@ -37,7 +37,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 
 /**
- * Pruebas de PATCH /api/v1/users/status (RF-MS01-07, formulario F-08)
+ * Tests of PATCH /api/v1/users/status (RF-MS01-07, form F-08)
  */
 @ExtendWith(MockitoExtension.class)
 class BulkUserStatusOperationControllerTest {
@@ -53,8 +53,8 @@ class BulkUserStatusOperationControllerTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Prepara el controlador y el cliente de pruebas con el manejador global de errores y la resolución de identidad
+        /**
+     * Prepares the controller and the test client with the global error handler and the identity resolution
      */
     @BeforeEach
     void setUp() {
@@ -64,21 +64,21 @@ class BulkUserStatusOperationControllerTest {
                 .build();
     }
 
-    /**
-     * Construye el cuerpo JSON del cambio de estado
+        /**
+     * Builds the JSON body of the status change
      *
-     * @param targetId identificador del usuario a modificar
-     * @param estado estado solicitado
-     * @return el cuerpo JSON de la petición
+     * @param targetId identifier of the user to modify
+     * @param estado requested status
+     * @return the JSON body of the request
      */
     private String body(UUID targetId, String estado) {
         return "{\"ids\": [\"" + targetId + "\"], \"estado\": \"" + estado + "\"}";
     }
 
-    /**
-     * Un cambio de estado válido responde 200 con el estado anterior y el nuevo
+        /**
+     * A valid status change answers 200 with the previous and the new status
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void changeUserStatus_validRequest_returns200WithPreviousAndNewState() throws Exception {
@@ -107,10 +107,10 @@ class BulkUserStatusOperationControllerTest {
         assertEquals("INACTIVO", captor.getValue().getEstado());
     }
 
-    /**
-     * Un solicitante sin permiso recibe 403
+        /**
+     * A requester without permission receives 403
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void changeUserStatus_withoutPermission_returns403() throws Exception {
@@ -127,10 +127,10 @@ class BulkUserStatusOperationControllerTest {
                 .andExpect(jsonPath("$.codigo").value("PROHIBIDO"));
     }
 
-    /**
-     * Modificar el propio estado responde 403 con el mensaje del formulario
+        /**
+     * Modifying the own status answers 403 with the message of the form
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void changeUserStatus_selfModification_returns403WithTheFormMessage() throws Exception {
@@ -148,10 +148,10 @@ class BulkUserStatusOperationControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("No puede cambiar su propio estado."));
     }
 
-    /**
-     * Un usuario inexistente responde 404
+        /**
+     * A non-existent user answers 404
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void changeUserStatus_userNotFound_returns404() throws Exception {
@@ -170,10 +170,10 @@ class BulkUserStatusOperationControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("Usuario no encontrado."));
     }
 
-    /**
-     * Sin cabeceras de identidad la respuesta es 401
+        /**
+     * Without identity headers the response is 401
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void changeUserStatus_withoutIdentityHeaders_returns401() throws Exception {
@@ -186,10 +186,10 @@ class BulkUserStatusOperationControllerTest {
         verifyNoInteractions(userService);
     }
 
-    /**
-     * Un cuerpo mal formado responde 400
+        /**
+     * A malformed body answers 400
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void changeUserStatus_malformedBody_returns400() throws Exception {

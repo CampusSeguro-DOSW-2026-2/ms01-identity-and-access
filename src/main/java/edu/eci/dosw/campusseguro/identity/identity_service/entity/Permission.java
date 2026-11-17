@@ -1,14 +1,15 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 
 /**
- * Permisos de MS01 (RN-MS01-14), los únicos que el código define y exige en sus rutas, el catálogo completo con
- * los permisos de todos los módulos vive en la tabla permisos y MS01 solo sincroniza al arrancar los de este enum
+ * Permissions of MS01 (RN-MS01-14), the only ones that the code defines and requires in its routes, the complete
+ * catalog with the permissions of all the modules lives in the permissions table and MS01 only synchronizes at startup
+ * those of this enum
  *
- * Cada permiso se identifica con un código modulo:recurso:accion, qué roles lo tienen no se define aquí: lo
- * guarda la tabla rol_permiso y lo edita el administrador (RF-MS01-10)
+ * Each permission is identified by a code module:resource:action, which roles have it is not defined here: it is stored
+ * by the role_permissions table and edited by the administrator (RF-MS01-10)
  */
 public enum Permission {
-    // MS01-Identidad y acceso
+    // MS01-Identity and access
     MS01_PROFILE_READ("ms01:profile:read", "Consultar el propio perfil"),
     MS01_PROFILE_WRITE("ms01:profile:write", "Actualizar el propio perfil (nombres y apellidos)"),
     MS01_PASSWORD_CHANGE("ms01:password:change", "Cambiar la propia contraseña"),
@@ -26,30 +27,30 @@ public enum Permission {
     private final String code;
     private final String description;
 
-    /**
-     * Crea un permiso
+        /**
+     * Creates a permission
      *
-     * @param code código del permiso
-     * @param description descripción del permiso, se usa solo al insertarlo en el catálogo
+     * @param code code of the permission
+     * @param description description of the permission, it is only used when inserting it into the catalog
      */
     Permission(String code, String description) {
         this.code = code;
         this.description = description;
     }
 
-    /**
-     * Devuelve el código del permiso
+        /**
+     * Returns the code of the permission
      *
-     * @return código del permiso con el formato modulo:recurso:accion
+     * @return code of the permission with the format module:resource:action
      */
     public String getCode() {
         return code;
     }
 
-    /**
-     * Devuelve la descripción del permiso
+        /**
+     * Returns the description of the permission
      *
-     * @return descripción del permiso
+     * @return description of the permission
      */
     public String getDescription() {
         return description;

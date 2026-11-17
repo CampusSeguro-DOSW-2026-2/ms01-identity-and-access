@@ -21,7 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeServiceImpl;
 
 /**
- * RF-MS01-11: reloj único de MS01 basado en la hora de la base de datos
+ * RF-MS01-11: single clock of MS01 based on the database time
  */
 @ExtendWith(MockitoExtension.class)
 class DatabaseTimeServiceTest {
@@ -29,8 +29,8 @@ class DatabaseTimeServiceTest {
     @Mock
     private JdbcTemplate jdbcTemplate;
 
-    /**
-     * La hora de la base de datos llega en segundos desde la época y se convierte en un instante sin fracción
+        /**
+     * The database time arrives in seconds since the epoch and is converted into an instant without a fraction
      */
     @Test
     void now_convertsTheDatabaseEpochSecondsToAnInstant() {
@@ -42,9 +42,9 @@ class DatabaseTimeServiceTest {
         assertEquals(0, now.getNano());
     }
 
-    /**
-     * La consulta usa el reloj real de la base de datos (clock_timestamp, no el inicio de la transacción) y
-     * trunca a segundos
+        /**
+     * The query uses the real clock of the database (clock_timestamp, not the start of the transaction) and truncates
+     * to seconds
      */
     @Test
     void now_queriesTheRealClockOfTheDatabaseTruncatedToSeconds() {
@@ -59,8 +59,8 @@ class DatabaseTimeServiceTest {
         assertTrue(sql.getValue().contains("epoch"), sql.getValue());
     }
 
-    /**
-     * Cada llamada consulta la base de datos: no guarda la hora de la llamada anterior
+        /**
+     * Each call queries the database: it does not keep the time of the previous call
      */
     @Test
     void now_queriesTheDatabaseOnEveryCall() {
@@ -71,8 +71,8 @@ class DatabaseTimeServiceTest {
         assertEquals(Instant.ofEpochSecond(101), service.now());
     }
 
-    /**
-     * Si la base de datos no devuelve la hora se lanza IllegalStateException
+        /**
+     * If the database does not return the time an IllegalStateException is thrown
      */
     @Test
     void now_nullResult_throwsIllegalState() {
@@ -81,16 +81,16 @@ class DatabaseTimeServiceTest {
 
         IllegalStateException error = assertThrows(IllegalStateException.class, service::now);
 
-        assertEquals("La base de datos no devolvió la hora actual.", error.getMessage());
+        assertEquals("The database did not return the current time.", error.getMessage());
     }
 
-    /**
-     * Si la base de datos falla el error se propaga sin inventar una hora
+        /**
+     * If the database fails the error is propagated without inventing a time
      */
     @Test
     void now_databaseFailure_isPropagated() {
         when(jdbcTemplate.queryForObject(anyString(), eq(Long.class)))
-                .thenThrow(new DataAccessResourceFailureException("sin conexión"));
+                .thenThrow(new DataAccessResourceFailureException("no connection"));
         DatabaseTimeServiceImpl service = new DatabaseTimeServiceImpl(jdbcTemplate);
 
         assertThrows(DataAccessResourceFailureException.class, service::now);

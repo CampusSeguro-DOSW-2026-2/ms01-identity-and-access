@@ -15,7 +15,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de POST /api/v1/users/batch (RF-MS01-09), cualquier campo fuera del contrato se rechaza (RG-04)
+ * Body of POST /api/v1/users/batch (RF-MS01-09), any field outside the contract is rejected (RG-04)
  */
 public class BatchUsersRequest extends StrictRequest {
 
@@ -34,19 +34,19 @@ public class BatchUsersRequest extends StrictRequest {
     private List<@NotNull(message = INVALID_ID_MESSAGE)
             @Pattern(regexp = UUID_PATTERN, message = INVALID_ID_MESSAGE) String> ids;
 
-    /**
-     * Devuelve los ids de los usuarios consultados
+        /**
+     * Returns the ids of the requested users
      *
-     * @return los ids recibidos como texto, null si no se enviaron
+     * @return the ids received as text, null if they were not sent
      */
     public List<String> getIds() {
         return ids;
     }
 
-    /**
-     * Coloca los ids de los usuarios consultados, cada uno recortado según RG-01
+        /**
+     * Sets the ids of the requested users, each one trimmed according to RG-01
      *
-     * @param ids ids de los usuarios como texto
+     * @param ids ids of the users as text
      */
     public void setIds(List<String> ids) {
         if (ids == null) {
@@ -60,11 +60,11 @@ public class BatchUsersRequest extends StrictRequest {
         this.ids = trimmed;
     }
 
-    /**
-     * Convierte los ids recibidos en UUID, sin repetidos y en el orden en que llegaron, solo se debe
-     * llamar después de validar la petición
+        /**
+     * Converts the received ids to UUID, without repeated ones and in the order they arrived, it must be called only
+     * after validating the request
      *
-     * @return conjunto ordenado de identificadores de usuario
+     * @return ordered set of user identifiers
      */
     public Set<UUID> toUserIds() {
         Set<UUID> parsed = new LinkedHashSet<>();

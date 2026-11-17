@@ -6,10 +6,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Reloj único de MS01 basado en la hora de la base de datos (RF-MS01-11)
+ * Single clock of MS01 based on the database time (RF-MS01-11)
  *
- * Con varias instancias de MS01 el iat de un token y el corte de sesión de un cambio salen del mismo reloj,
- * y así la comparación del Gateway no depende de la sincronía entre las instancias
+ * With several instances of MS01 the iat of a token and the session cut of a change come from the same clock, so the
+ * comparison done by the Gateway does not depend on the synchronization between the instances
  */
 @Service
 public class DatabaseTimeServiceImpl implements DatabaseTimeService {
@@ -19,26 +19,26 @@ public class DatabaseTimeServiceImpl implements DatabaseTimeService {
 
     private final JdbcTemplate jdbcTemplate;
 
-    /**
-     * Crea el servicio con su acceso a la base de datos
+        /**
+     * Creates the service with its access to the database
      *
-     * @param jdbcTemplate acceso JDBC con el que se consulta la hora
+     * @param jdbcTemplate JDBC access with which the time is queried
      */
     public DatabaseTimeServiceImpl(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    /**
-     * Consulta la hora actual de la base de datos, truncada a segundos
+        /**
+     * Queries the current time of the database, truncated to seconds
      *
-     * @return el instante actual, sin fracción de segundo
-     * @throws IllegalStateException si la base de datos no devuelve la hora
+     * @return the current instant, without a fraction of a second
+     * @throws IllegalStateException if the database does not return the time
      */
     @Override
     public Instant now() {
         Long epochSecond = jdbcTemplate.queryForObject(CURRENT_SECOND_QUERY, Long.class);
         if (epochSecond == null) {
-            throw new IllegalStateException("La base de datos no devolvió la hora actual.");
+            throw new IllegalStateException("The database did not return the current time.");
         }
         return Instant.ofEpochSecond(epochSecond);
     }

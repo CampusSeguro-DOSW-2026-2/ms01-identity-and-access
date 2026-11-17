@@ -31,9 +31,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleReposi
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 
 /**
- * RN-MS01-12 / seccion "Datos iniciales" del modelo de datos: el primer administrador se crea al arrancar solo
- * si no existe ningun ADMIN, con el correo y la contrasena de las variables de entorno BOOTSTRAP_ADMIN_EMAIL
- * y BOOTSTRAP_ADMIN_PASSWORD, y queda ACTIVO con el rol ADMIN
+ * RN-MS01-12 / "Initial data" section of the data model: the first administrator is created at startup only if no ADMIN
+ * exists, with the email and the password of the environment variables BOOTSTRAP_ADMIN_EMAIL and
+ * BOOTSTRAP_ADMIN_PASSWORD, and it is left ACTIVO with the role ADMIN
  */
 @ExtendWith(MockitoExtension.class)
 class BootstrapAdminInitializerTest {
@@ -57,22 +57,22 @@ class BootstrapAdminInitializerTest {
 
     private BootstrapAdminInitializer initializer;
 
-    /**
-     * Crea el inicializador con la configuracion completa y nombres por defecto
+        /**
+     * Creates the initializer with the complete configuration and default names
      */
     @BeforeEach
     void setUp() {
         initializer = initializer(EMAIL, PASSWORD, null, null);
     }
 
-    /**
-     * Crea un inicializador con los valores de configuracion indicados
+        /**
+     * Creates an initializer with the given configuration values
      *
-     * @param email correo configurado
-     * @param password contrasena configurada
-     * @param firstName primer nombre configurado
-     * @param lastName primer apellido configurado
-     * @return el inicializador
+     * @param email configured email
+     * @param password configured password
+     * @param firstName configured first name
+     * @param lastName configured first lastname
+     * @return the initializer
      */
     private BootstrapAdminInitializer initializer(String email, String password, String firstName,
             String lastName) {
@@ -80,10 +80,10 @@ class BootstrapAdminInitializerTest {
                 firstName, lastName);
     }
 
-    /**
-     * Captura el usuario que se guardo
+        /**
+     * Captures the user that was saved
      *
-     * @return el administrador guardado
+     * @return the saved administrator
      */
     private UserEntity savedAdmin() {
         ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
@@ -91,9 +91,9 @@ class BootstrapAdminInitializerTest {
         return captor.getValue();
     }
 
-    /**
-     * Sin ningun ADMIN y con la configuracion completa se crea el primer administrador: ACTIVO, con rol
-     * ADMIN, correo normalizado y contrasena guardada como hash
+        /**
+     * With no ADMIN and with the complete configuration the first administrator is created: ACTIVO, with role ADMIN,
+     * normalized email and password stored as a hash
      */
     @Test
     void create_noAdminExists_createsTheFirstAdmin() {
@@ -116,8 +116,8 @@ class BootstrapAdminInitializerTest {
         assertEquals("Inicial", admin.getFirstLastName());
     }
 
-    /**
-     * Los nombres configurados se usan, recortados
+        /**
+     * The configured names are used, trimmed
      */
     @Test
     void create_withConfiguredNames_usesThem() {
@@ -134,8 +134,8 @@ class BootstrapAdminInitializerTest {
         assertEquals("Gomez", admin.getFirstLastName());
     }
 
-    /**
-     * Si ya existe un ADMIN no se crea otro
+        /**
+     * If an ADMIN already exists another one is not created
      */
     @Test
     void create_adminAlreadyExists_doesNothing() {
@@ -148,8 +148,8 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(passwordEncoder);
     }
 
-    /**
-     * Sin correo configurado no se crea ningun administrador ni se consulta la base de datos
+        /**
+     * Without a configured email no administrator is created and the database is not queried
      */
     @Test
     void create_withoutEmail_doesNothing() {
@@ -159,8 +159,8 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(userRepository, passwordEncoder);
     }
 
-    /**
-     * Sin contrasena configurada no se crea ningun administrador ni se consulta la base de datos
+        /**
+     * Without a configured password no administrator is created and the database is not queried
      */
     @Test
     void create_withoutPassword_doesNothing() {
@@ -170,8 +170,8 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(userRepository, passwordEncoder);
     }
 
-    /**
-     * Si el correo ya pertenece a un usuario sin rol ADMIN no se crea ni se asciende automaticamente
+        /**
+     * If the email already belongs to a user without the ADMIN role it is neither created nor promoted automatically
      */
     @Test
     void create_emailBelongsToAnotherUser_doesNotPromoteIt() {
@@ -185,8 +185,8 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(passwordEncoder);
     }
 
-    /**
-     * Si el rol de sistema ADMIN no existe en la base de datos no se crea el administrador y el arranque falla
+        /**
+     * If the ADMIN system role does not exist in the database the administrator is not created and the startup fails
      */
     @Test
     void create_adminRoleMissingInTheDatabase_failsWithoutSavingAnything() {
@@ -200,8 +200,8 @@ class BootstrapAdminInitializerTest {
         verifyNoInteractions(passwordEncoder);
     }
 
-    /**
-     * Al arrancar la aplicacion (ApplicationRunner) se ejecuta la creacion del primer administrador
+        /**
+     * When the application starts (ApplicationRunner) the creation of the first administrator is executed
      */
     @Test
     void run_executesTheCreation() {

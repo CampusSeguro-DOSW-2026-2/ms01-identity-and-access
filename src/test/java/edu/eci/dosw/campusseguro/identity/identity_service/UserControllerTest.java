@@ -41,7 +41,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 
 /**
- * Pruebas de los endpoints de perfil propio y consulta por id (RF-MS01-06, RF-MS01-07)
+ * Tests of the endpoints of the own profile and query by id (RF-MS01-06, RF-MS01-07)
  */
 @ExtendWith(MockitoExtension.class)
 class UserControllerTest {
@@ -59,8 +59,8 @@ class UserControllerTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Prepara el controlador y el cliente de pruebas con el manejador global de errores y la resolución de identidad
+        /**
+     * Prepares the controller and the test client with the global error handler and the identity resolution
      */
     @BeforeEach
     void setUp() {
@@ -70,23 +70,23 @@ class UserControllerTest {
                 .build();
     }
 
-    /**
-     * Construye una respuesta de perfil de ejemplo
+        /**
+     * Builds a sample profile response
      *
-     * @param id identificador del usuario
-     * @param firstName primer nombre
-     * @param lastName primer apellido
-     * @return el perfil de ejemplo
+     * @param id identifier of the user
+     * @param firstName first name
+     * @param lastName first lastname
+     * @return the sample profile
      */
     private UserProfileResponse profile(UUID id, String firstName, String lastName) {
         return new UserProfileResponse(id, firstName, null, lastName, null, "carlos.gomez@escuelaing.edu.co",
                 List.of("ESTUDIANTE"), UserState.ACTIVO);
     }
 
-    /**
-     * La consulta del propio perfil responde 200 con los nombres del contrato y sin nombres opcionales nulos
+        /**
+     * The query of the own profile answers 200 with the names of the contract and without null optional names
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void getMyProfile_existingUser_returns200WithWireNamesAndWithoutNullOptionalNames() throws Exception {
@@ -108,10 +108,10 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.estado").value("ACTIVO"));
     }
 
-    /**
-     * La identidad del solicitante se construye con las cabeceras del gateway
+        /**
+     * The identity of the requester is built with the gateway headers
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void getMyProfile_buildsTheIdentityFromTheGatewayHeaders() throws Exception {
@@ -130,10 +130,10 @@ class UserControllerTest {
         assertEquals(Set.of("PROFESOR", "BRIGADISTA"), captor.getValue().roles());
     }
 
-    /**
-     * Sin cabeceras de identidad la respuesta es 401 y no se llama al servicio
+        /**
+     * Without identity headers the response is 401 and the service is not called
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void getMyProfile_withoutIdentityHeaders_returns401AndDoesNotCallTheService() throws Exception {
@@ -147,10 +147,10 @@ class UserControllerTest {
         verifyNoInteractions(userService);
     }
 
-    /**
-     * Un usuario inexistente responde 404
+        /**
+     * A non-existent user answers 404
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void getMyProfile_unknownUser_returns404() throws Exception {
@@ -166,10 +166,10 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("Usuario no encontrado."));
     }
 
-    /**
-     * Una actualización válida del perfil responde 200
+        /**
+     * A valid profile update answers 200
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void updateMyProfile_validRequest_returns200() throws Exception {
@@ -195,10 +195,10 @@ class UserControllerTest {
         assertEquals("Perez", captor.getValue().getFirstLastName());
     }
 
-    /**
-     * Los campos desconocidos se capturan para que el servicio los rechace
+        /**
+     * The unknown fields are captured so the service rejects them
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void updateMyProfile_unknownFields_areCapturedForTheServiceToReject() throws Exception {
@@ -226,10 +226,10 @@ class UserControllerTest {
         assertTrue(captor.getValue().unknownFieldNames().contains("correo"));
     }
 
-    /**
-     * Un JSON mal formado responde 400 sin llamar al servicio
+        /**
+     * A malformed JSON answers 400 without calling the service
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void updateMyProfile_malformedJson_returns400WithoutCallingTheService() throws Exception {
@@ -246,10 +246,10 @@ class UserControllerTest {
         verifyNoInteractions(userService);
     }
 
-    /**
-     * La consulta de un usuario por id con permiso responde 200
+        /**
+     * The query of a user by id with permission answers 200
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void getUserById_withPermission_returns200() throws Exception {
@@ -266,10 +266,10 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.id").value(targetId.toString()));
     }
 
-    /**
-     * La consulta de un usuario por id sin permiso responde 403
+        /**
+     * The query of a user by id without permission answers 403
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void getUserById_withoutPermission_returns403() throws Exception {
@@ -286,10 +286,10 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("No tiene permisos para realizar esta operación."));
     }
 
-    /**
-     * Un id con formato inválido responde 400
+        /**
+     * An id with an invalid format answers 400
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void getUserById_idWithInvalidFormat_returns400() throws Exception {

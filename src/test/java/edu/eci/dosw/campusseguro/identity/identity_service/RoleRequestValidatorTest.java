@@ -24,8 +24,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.UpdateRoleCom
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * Validaciones de los formularios F-10, F-11 y F-12 (RF-MS01-10) y de la ruta {rol}: nombre normalizado,
- * descripción de 3 a 200 caracteres sin etiquetas, permisos del catálogo de la base de datos sin repetidos, campos desconocidos
+ * Validations of forms F-10, F-11 and F-12 (RF-MS01-10) and of the {rol} path: normalized name, description from 3 to
+ * 200 characters without tags, permissions of the database catalog without repeated ones, unknown fields
  */
 class RoleRequestValidatorTest {
 
@@ -34,13 +34,13 @@ class RoleRequestValidatorTest {
     private static final String PERM_C = "ms01:profile:read";
     private static final Set<String> CATALOG = Set.of(PERM_A, PERM_B, PERM_C);
 
-    /**
-     * Cuerpo de creación
+        /**
+     * Creation body
      *
-     * @param name nombre del rol
-     * @param description descripción del rol
-     * @param permissions permisos del rol
-     * @return la petición
+     * @param name name of the role
+     * @param description description of the role
+     * @param permissions permissions of the role
+     * @return the request
      */
     private CreateRoleRequest create(String name, String description, List<String> permissions) {
         CreateRoleRequest request = new CreateRoleRequest();
@@ -50,12 +50,12 @@ class RoleRequestValidatorTest {
         return request;
     }
 
-    /**
-     * Cuerpo de edición
+        /**
+     * Edit body
      *
-     * @param name nombre del rol
-     * @param description descripción del rol
-     * @return la petición
+     * @param name name of the role
+     * @param description description of the role
+     * @return the request
      */
     private UpdateRoleRequest update(String name, String description) {
         UpdateRoleRequest request = new UpdateRoleRequest();
@@ -64,11 +64,11 @@ class RoleRequestValidatorTest {
         return request;
     }
 
-    /**
-     * Cuerpo de cambio de permisos
+        /**
+     * Permission change body
      *
-     * @param permissions permisos del rol
-     * @return la petición
+     * @param permissions permissions of the role
+     * @return the request
      */
     private UpdateRolePermissionsRequest permissions(List<String> permissions) {
         UpdateRolePermissionsRequest request = new UpdateRolePermissionsRequest();
@@ -76,21 +76,21 @@ class RoleRequestValidatorTest {
         return request;
     }
 
-    /**
-     * Valida una creación que debe fallar
+        /**
+     * Validates a creation that must fail
      *
-     * @param request petición inválida
-     * @return la excepción lanzada
+     * @param request invalid request
+     * @return the thrown exception
      */
     private InvalidRequestException invalidCreate(CreateRoleRequest request) {
         return assertThrows(InvalidRequestException.class, () -> RoleRequestValidator.validateCreate(request, CATALOG));
     }
 
-    /**
-     * Campos con error de una excepción, en el orden en que llegaron
+        /**
+     * Fields with error of an exception, in the order in which they arrived
      *
-     * @param error excepción de validación
-     * @return los nombres de campo
+     * @param error validation exception
+     * @return the field names
      */
     private List<String> fields(InvalidRequestException error) {
         List<String> fields = new ArrayList<>();
@@ -100,10 +100,10 @@ class RoleRequestValidatorTest {
         return fields;
     }
 
-    // ------------------------------------------------------------------ creación (F-10)
+    // ------------------------------------------------------------------ creation (F-10)
 
-    /**
-     * Una creación correcta se normaliza: nombre en mayúsculas, descripción recortada y permisos ordenados
+        /**
+     * A correct creation is normalized: name in uppercase, trimmed description and sorted permissions
      */
     @Test
     void validateCreate_validRequest_returnsTheNormalizedCommand() {
@@ -115,8 +115,8 @@ class RoleRequestValidatorTest {
         assertEquals(List.of(PERM_C, PERM_B, PERM_A), command.permissions());
     }
 
-    /**
-     * Los límites de longitud se aceptan: nombre de 2 y de 30 caracteres, descripción de 3 y de 200
+        /**
+     * The length limits are accepted: name of 2 and of 30 characters, description of 3 and of 200
      */
     @Test
     void validateCreate_lengthLimits_areAccepted() {
@@ -129,11 +129,11 @@ class RoleRequestValidatorTest {
         assertEquals(200, longest.description().length());
     }
 
-    /**
-     * Nombres que incumplen el formato de entrada: de 2 a 30 caracteres, letras sin tilde, números y guion
-     * bajo, empezando con una letra
+        /**
+     * Names that break the input format: from 2 to 30 characters, letters without accents, numbers and underscore,
+     * starting with a letter
      *
-     * @param name nombre inválido
+     * @param name invalid name
      */
     @ParameterizedTest
     @ValueSource(strings = {"", "   ", "A", "1ROL", "_ROL", "ROL-MALO", "ROL MALO", "ROLÑ", "ROLÁ", "ROL.X",
@@ -145,11 +145,11 @@ class RoleRequestValidatorTest {
         assertEquals(RoleRequestValidator.INVALID_NAME_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * DETAILS está reservado para la ruta GET /roles/details: en cualquier combinación de mayúsculas se rechaza
-     * al crear con un error en el campo rol
+        /**
+     * DETAILS is reserved for the route GET /roles/details: in any combination of uppercase it is rejected on creation
+     * with an error in the rol field
      *
-     * @param name nombre reservado
+     * @param name reserved name
      */
     @ParameterizedTest
     @ValueSource(strings = {"DETAILS", "details", "Details", "  details  "})
@@ -160,8 +160,8 @@ class RoleRequestValidatorTest {
         assertEquals(RoleRequestValidator.RESERVED_NAME_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Solo el nombre exacto está reservado: los nombres que lo contienen se aceptan
+        /**
+     * Only the exact name is reserved: the names that contain it are accepted
      */
     @Test
     void validateCreate_namesContainingDetails_areAccepted() {
@@ -173,8 +173,8 @@ class RoleRequestValidatorTest {
                 create("detail", "Descripción", List.of(PERM_A)), CATALOG).name());
     }
 
-    /**
-     * Un nombre ausente es un nombre inválido
+        /**
+     * An absent name is an invalid name
      */
     @Test
     void validateCreate_nullName_returnsTheNameError() {
@@ -183,10 +183,10 @@ class RoleRequestValidatorTest {
         assertEquals(List.of("rol"), fields(error));
     }
 
-    /**
-     * Descripciones fuera de las reglas: vacía, corta, larga o con etiquetas HTML (RG-03)
+        /**
+     * Descriptions outside the rules: empty, short, long or with HTML tags (RG-03)
      *
-     * @param description descripción inválida
+     * @param description invalid description
      */
     @ParameterizedTest
     @ValueSource(strings = {"", "  ", "ab", "  ab  ", "<b>negrita</b>", "texto > otro", "texto < otro"})
@@ -197,8 +197,8 @@ class RoleRequestValidatorTest {
         assertEquals(RoleRequestValidator.INVALID_DESCRIPTION_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Una descripción de más de 200 caracteres se rechaza, y una ausente también
+        /**
+     * A description of more than 200 characters is rejected, and an absent one too
      */
     @Test
     void validateCreate_tooLongOrMissingDescription_isRejected() {
@@ -208,20 +208,20 @@ class RoleRequestValidatorTest {
     }
 
     /**
-     * Sin permisos, o con la lista vacía, se pide al menos uno
+     * Without permissions, or with an empty list, the request is valid: the service adds the mandatory ones
      */
     @Test
-    void validateCreate_withoutPermissions_asksForAtLeastOne() {
-        InvalidRequestException missing = invalidCreate(create("ROL", "Descripción", null));
-        InvalidRequestException empty = invalidCreate(create("ROL", "Descripción", List.of()));
+    void validateCreate_withoutPermissions_isValidWithAnEmptyList() {
+        CreateRoleCommand missing = RoleRequestValidator.validateCreate(create("ROL", "Descripción", null), CATALOG);
+        CreateRoleCommand empty = RoleRequestValidator.validateCreate(create("ROL", "Descripción", List.of()),
+                CATALOG);
 
-        assertEquals("Seleccione al menos un permiso.", missing.getErrors().get(0).mensaje());
-        assertEquals("permisos", missing.getErrors().get(0).campo());
-        assertEquals("Seleccione al menos un permiso.", empty.getErrors().get(0).mensaje());
+        assertEquals(List.of(), missing.permissions());
+        assertEquals(List.of(), empty.permissions());
     }
 
-    /**
-     * Un permiso fuera del catálogo se rechaza y su código se repite en el mensaje
+        /**
+     * A permission outside the catalog is rejected and its code is repeated in the message
      */
     @Test
     void validateCreate_permissionOutsideTheCatalog_isRejectedWithItsCode() {
@@ -231,8 +231,8 @@ class RoleRequestValidatorTest {
         assertEquals("Permiso no válido: ms99:x:y", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * El catálogo lo define la base de datos: un permiso de cualquier módulo que esté en él se acepta
+        /**
+     * The catalog is defined by the database: a permission of any module that is in it is accepted
      */
     @Test
     void validateCreate_permissionPresentInTheCatalog_isAccepted() {
@@ -243,8 +243,8 @@ class RoleRequestValidatorTest {
         assertEquals(List.of(PERM_A, "ms99:nuevo:permiso"), command.permissions());
     }
 
-    /**
-     * Los códigos de permiso no se normalizan: en mayúsculas no existen en el catálogo
+        /**
+     * The permission codes are not normalized: in uppercase they do not exist in the catalog
      */
     @Test
     void validateCreate_permissionCodeIsCaseSensitive() {
@@ -253,8 +253,8 @@ class RoleRequestValidatorTest {
         assertEquals("Permiso no válido: MS01:PROFILE:READ", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Los espacios alrededor de un código de permiso se recortan
+        /**
+     * The spaces around a permission code are trimmed
      */
     @Test
     void validateCreate_permissionCodeIsTrimmed() {
@@ -264,8 +264,8 @@ class RoleRequestValidatorTest {
         assertEquals(List.of(PERM_A), command.permissions());
     }
 
-    /**
-     * Un permiso repetido se rechaza con su código
+        /**
+     * A repeated permission is rejected with its code
      */
     @Test
     void validateCreate_repeatedPermission_isRejectedWithItsCode() {
@@ -274,8 +274,8 @@ class RoleRequestValidatorTest {
         assertEquals("Permiso repetido: " + PERM_A, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un código con caracteres que no conviene devolver al cliente no se repite en el mensaje
+        /**
+     * A code with characters that should not be returned to the client is not repeated in the message
      */
     @Test
     void validateCreate_unsafeCodeIsNotEchoed() {
@@ -288,8 +288,8 @@ class RoleRequestValidatorTest {
         assertEquals("Permiso no válido.", tooLong.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un elemento nulo dentro de la lista es un permiso no válido
+        /**
+     * A null element inside the list is an invalid permission
      */
     @Test
     void validateCreate_nullPermissionInsideTheList_isRejected() {
@@ -301,19 +301,19 @@ class RoleRequestValidatorTest {
         assertEquals("Permiso no válido.", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Los errores de nombre, descripción y permisos se informan juntos
+        /**
+     * The errors of name, description and permissions are reported together
      */
     @Test
     void validateCreate_severalInvalidFields_reportsAllOfThem() {
-        InvalidRequestException error = invalidCreate(create("1", "ab", List.of()));
+        InvalidRequestException error = invalidCreate(create("1", "ab", List.of("ms99:x:y")));
 
         assertEquals(ValidationErrors.INVALID_DATA_MESSAGE, error.getMessage());
         assertEquals(List.of("descripcion", "permisos", "rol"), fields(error).stream().sorted().toList());
     }
 
-    /**
-     * Un campo que no está en el contrato se rechaza con un error por ese campo
+        /**
+     * A field that is not in the contract is rejected with an error for that field
      */
     @Test
     void validateCreate_unknownField_isRejectedPerField() {
@@ -326,10 +326,10 @@ class RoleRequestValidatorTest {
         assertEquals("Campo no permitido.", error.getErrors().get(0).mensaje());
     }
 
-    // ------------------------------------------------------------------ edición (F-11)
+    // ------------------------------------------------------------------ edition (F-11)
 
-    /**
-     * Una edición correcta normaliza el nombre y recorta la descripción
+        /**
+     * A correct edit normalizes the name and trims the description
      */
     @Test
     void validateUpdate_validRequest_returnsTheNormalizedCommand() {
@@ -339,10 +339,10 @@ class RoleRequestValidatorTest {
         assertEquals("Nueva descripción", command.description());
     }
 
-    /**
-     * Renombrar un rol a DETAILS se rechaza con el error de nombre reservado en el campo rol
+        /**
+     * Renaming a role to DETAILS is rejected with the reserved name error in the rol field
      *
-     * @param name nombre reservado
+     * @param name reserved name
      */
     @ParameterizedTest
     @ValueSource(strings = {"DETAILS", "details", "Details"})
@@ -354,8 +354,8 @@ class RoleRequestValidatorTest {
         assertEquals(RoleRequestValidator.RESERVED_NAME_MESSAGE, error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Una edición con nombre y descripción inválidos informa los dos campos
+        /**
+     * An edit with an invalid name and description reports both fields
      */
     @Test
     void validateUpdate_invalidFields_reportsBoth() {
@@ -365,8 +365,8 @@ class RoleRequestValidatorTest {
         assertEquals(List.of("descripcion", "rol"), fields(error).stream().sorted().toList());
     }
 
-    /**
-     * Una edición con un campo desconocido se rechaza, el campo permisos no va en este cuerpo
+        /**
+     * An edit with an unknown field is rejected, the permisos field does not go in this body
      */
     @Test
     void validateUpdate_unknownField_isRejected() {
@@ -380,10 +380,10 @@ class RoleRequestValidatorTest {
         assertEquals("Campo no permitido.", error.getErrors().get(0).mensaje());
     }
 
-    // ------------------------------------------------------------------ permisos (F-12)
+    // ------------------------------------------------------------------ permissions (F-12)
 
-    /**
-     * Una lista correcta se devuelve ordenada
+        /**
+     * A correct list is returned sorted
      */
     @Test
     void validatePermissions_validRequest_returnsTheSortedList() {
@@ -394,21 +394,20 @@ class RoleRequestValidatorTest {
     }
 
     /**
-     * Una lista vacía o ausente se rechaza: se pide al menos un permiso
+     * An empty or missing list passes the validation: the service answers 422 if the mandatory permissions are
+     * missing
      */
     @Test
-    void validatePermissions_emptyOrMissing_isRejected() {
-        InvalidRequestException empty = assertThrows(InvalidRequestException.class,
-                () -> RoleRequestValidator.validatePermissions(permissions(List.of()), CATALOG));
-        InvalidRequestException missing = assertThrows(InvalidRequestException.class,
-                () -> RoleRequestValidator.validatePermissions(permissions(null), CATALOG));
+    void validatePermissions_emptyOrMissing_isValidWithAnEmptyList() {
+        RolePermissionsCommand empty = RoleRequestValidator.validatePermissions(permissions(List.of()), CATALOG);
+        RolePermissionsCommand missing = RoleRequestValidator.validatePermissions(permissions(null), CATALOG);
 
-        assertEquals("Seleccione al menos un permiso.", empty.getErrors().get(0).mensaje());
-        assertEquals("Seleccione al menos un permiso.", missing.getErrors().get(0).mensaje());
+        assertEquals(List.of(), empty.permissions());
+        assertEquals(List.of(), missing.permissions());
     }
 
-    /**
-     * Un permiso repetido o fuera del catálogo se rechaza
+        /**
+     * A repeated permission or one outside the catalog is rejected
      */
     @Test
     void validatePermissions_repeatedOrUnknown_isRejected() {
@@ -421,8 +420,8 @@ class RoleRequestValidatorTest {
         assertEquals("Permiso no válido: ms01:profile:delete", unknown.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un campo desconocido junto a una lista válida se rechaza
+        /**
+     * An unknown field next to a valid list is rejected
      */
     @Test
     void validatePermissions_unknownField_isRejected() {
@@ -435,10 +434,10 @@ class RoleRequestValidatorTest {
         assertEquals(List.of("rol"), fields(error));
     }
 
-    // ------------------------------------------------------------------ ruta {rol}
+    // ------------------------------------------------------------------ {rol} path
 
-    /**
-     * El nombre de la ruta se recorta y se pasa a mayúsculas
+        /**
+     * The name of the path is trimmed and converted to uppercase
      */
     @Test
     void normalizePathRole_validName_isTrimmedAndUppercased() {
@@ -446,8 +445,8 @@ class RoleRequestValidatorTest {
         assertEquals("ADMIN", RoleRequestValidator.normalizePathRole("Admin"));
     }
 
-    /**
-     * Un nombre inválido en la ruta responde 400 con el error en el campo rol
+        /**
+     * An invalid name in the path answers 400 with the error in the rol field
      */
     @Test
     void normalizePathRole_invalidName_isRejected() {
@@ -459,8 +458,8 @@ class RoleRequestValidatorTest {
         assertTrue(error.getMessage().length() > 0);
     }
 
-    /**
-     * Un nombre nulo en la ruta también es inválido
+        /**
+     * A null name in the path is also invalid
      */
     @Test
     void normalizePathRole_nullName_isRejected() {

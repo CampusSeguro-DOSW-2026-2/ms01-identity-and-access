@@ -16,75 +16,75 @@ import org.springframework.stereotype.Repository;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 
 /**
- * Acceso a los roles y a sus permisos (tablas roles y rol_permiso del modelo de datos)
+ * Access to the roles and their permissions (tables roles and role_permissions of the data model)
  */
 @Repository
 public interface RoleRepository extends JpaRepository<RoleEntity, UUID> {
 
-    /**
-     * Devuelve todos los roles con sus permisos, ordenados por nombre
+        /**
+     * Returns all the roles with their permissions, sorted by name
      *
-     * @return los roles en orden alfabético
+     * @return the roles in alphabetical order
      */
     @EntityGraph(attributePaths = "permissions")
     List<RoleEntity> findAllByOrderByNameAsc();
 
-    /**
-     * Busca un rol por su nombre, que lo identifica hacia afuera
+        /**
+     * Finds a role by its name, which identifies it to the outside
      *
-     * @param name nombre del rol, ya normalizado a mayúsculas
-     * @return el rol con sus permisos, o vacío si no existe
+     * @param name name of the role, already normalized to uppercase
+     * @return the role with its permissions, or empty if it does not exist
      */
     @EntityGraph(attributePaths = "permissions")
     Optional<RoleEntity> findByName(String name);
 
-    /**
-     * Indica si existe un rol con el nombre
+        /**
+     * Tells whether a role with the name exists
      *
-     * @param name nombre del rol, ya normalizado a mayúsculas
-     * @return true si existe un rol con ese nombre
+     * @param name name of the role, already normalized to uppercase
+     * @return true if a role with that name exists
      */
     boolean existsByName(String name);
 
-    /**
-     * Devuelve los roles con los nombres recibidos y sus permisos, los nombres que no existen no aparecen
+        /**
+     * Returns the roles with the received names and their permissions, the names that do not exist do not appear
      *
-     * @param names nombres de rol
-     * @return los roles encontrados, sin un orden definido
+     * @param names role names
+     * @return the roles found, in no defined order
      */
     @EntityGraph(attributePaths = "permissions")
     List<RoleEntity> findAllByNameIn(Collection<String> names);
 
-    /**
-     * Devuelve los roles con un corte de sesión dentro de la ventana de la consulta interna (RF-MS01-11)
+        /**
+     * Returns the roles with a session cut within the window of the internal query (RF-MS01-11)
      *
-     * @param since instante desde el cual el corte se considera vigente, incluido
-     * @return los roles con corte vigente, del corte más antiguo al más reciente y luego por nombre
+     * @param since instant from which the cut is considered in force, included
+     * @return the roles with a cut in force, from the oldest cut to the most recent and then by name
      */
     @Query("SELECT r FROM RoleEntity r WHERE r.validFrom IS NOT NULL AND r.validFrom >= :since "
             + "ORDER BY r.validFrom, r.name")
     List<RoleEntity> findWithSessionCutSince(@Param("since") Instant since);
 
-    /**
-     * Devuelve los nombres de los roles que tienen un permiso
+        /**
+     * Returns the names of the roles that have a permission
      *
-     * @param permission código del permiso
-     * @return los nombres de rol en orden alfabético
+     * @param permission code of the permission
+     * @return the role names in alphabetical order
      */
     @Query("SELECT r.name FROM RoleEntity r JOIN r.permissions p WHERE p.name = :permission ORDER BY r.name")
     List<String> findNamesByPermission(@Param("permission") String permission);
 
-    /**
-     * Escribe el corte de sesión de todos los roles que tienen un permiso (RF-MS01-11), se usa antes de
-     * retirar el permiso del catálogo
+        /**
+     * Writes the session cut of all the roles that have a permission (RF-MS01-11), it is used before removing the
+     * permission from the catalog
      *
-     * @param permission código del permiso
-     * @param cut instante de corte, truncado a segundos
-     * @return cantidad de roles marcados
+     * @param permission code of the permission
+     * @param cut cut instant, truncated to seconds
+     * @return number of marked roles
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(value = "UPDATE roles SET valido_desde = :cut WHERE id IN ("
-            + "SELECT rp.rol_id FROM rol_permiso rp JOIN permisos p ON p.id = rp.permiso_id "
-            + "WHERE p.nombre = :permission)", nativeQuery = true)
+    @Query(value = "UPDATE roles SET valid_from = :cut WHERE id IN ("
+            + "SELECT rp.role_id FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id "
+            + "WHERE p.name = :permission)", nativeQuery = true)
     int markSessionCutByPermission(@Param("permission") String permission, @Param("cut") Instant cut);
 }

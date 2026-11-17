@@ -51,8 +51,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleAdminService;
 
 /**
- * RF-MS01-10: contrato HTTP de las rutas de administración de roles y del catálogo de permisos, lectura de la
- * identidad desde las cabeceras del gateway, códigos de estado y traducción de errores al ErrorResponse
+ * RF-MS01-10: HTTP contract of the role administration and permission catalog routes, reading of the identity from the
+ * gateway headers, status codes and translation of errors into the ErrorResponse
  */
 @ExtendWith(MockitoExtension.class)
 class RoleAdminControllerTest {
@@ -71,8 +71,8 @@ class RoleAdminControllerTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Arma MockMvc con el controlador, el manejador global de errores y el resolvedor de la identidad
+        /**
+     * Builds MockMvc with the controller, the global error handler and the identity resolver
      */
     @BeforeEach
     void setUp() {
@@ -82,21 +82,21 @@ class RoleAdminControllerTest {
                 .build();
     }
 
-    /**
-     * Rol de ejemplo
+        /**
+     * Sample role
      *
-     * @return el detalle de un rol personalizado
+     * @return the detail of a custom role
      */
     private RoleDetailResponse monitor() {
         return new RoleDetailResponse("MONITOR_EVACUACION", "Apoya la evacuación",
                 List.of("ms01:profile:read", "ms04:checkin:write"), false);
     }
 
-    /**
-     * Cabecera de identidad del administrador en una petición
+        /**
+     * Identity header of the administrator in a request
      *
-     * @param builder petición a la que se agregan las cabeceras
-     * @return la misma petición con la identidad del rol ADMIN
+     * @param builder request to which the headers are added
+     * @return the same request with the identity of the ADMIN role
      */
     private MockHttpServletRequestBuilder asAdmin(MockHttpServletRequestBuilder builder) {
         return builder
@@ -106,13 +106,13 @@ class RoleAdminControllerTest {
                 .header("X-Correlation-ID", CORRELATION_ID);
     }
 
-    // ------------------------------------------------------------------ consultas
+    // ------------------------------------------------------------------ queries
 
-    /**
-     * GET /roles/details: 200 con los roles, sus permisos y la marca de sistema, y el servicio recibe la
-     * identidad armada con las cabeceras
+        /**
+     * GET /roles/details: 200 with the roles, their permissions and the system flag, and the service receives the
+     * identity built with the headers
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void listRoles_returns200WithTheDetailAndPassesTheIdentity() throws Exception {
@@ -136,10 +136,10 @@ class RoleAdminControllerTest {
         assertEquals(TestIdentities.permissionsOf("ADMIN"), captor.getValue().permissions());
     }
 
-    /**
-     * GET /roles/details sin cabeceras: 401 y el servicio no se llama
+        /**
+     * GET /roles/details without headers: 401 and the service is not called
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void listRoles_withoutIdentityHeaders_returns401() throws Exception {
@@ -151,10 +151,10 @@ class RoleAdminControllerTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    /**
-     * GET /roles/details sin permiso: 403 PROHIBIDO
+        /**
+     * GET /roles/details without permission: 403 PROHIBIDO
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void listRoles_withoutPermission_returns403() throws Exception {
@@ -167,10 +167,10 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.status").value(403));
     }
 
-    /**
-     * GET /roles/{rol}: 200 con el detalle y la ruta llega al servicio sin normalizar
+        /**
+     * GET /roles/{rol}: 200 with the detail and the route reaches the service without normalizing
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRole_returns200AndPassesThePathValue() throws Exception {
@@ -181,10 +181,10 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.rol").value("MONITOR_EVACUACION"));
     }
 
-    /**
-     * GET /roles/details se resuelve como ruta literal y no como un rol llamado details
+        /**
+     * GET /roles/details is resolved as a literal route and not as a role named details
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRole_detailsIsALiteralPathAndNotARoleName() throws Exception {
@@ -197,10 +197,10 @@ class RoleAdminControllerTest {
         verify(roleAdminService, never()).getRole(any(), any());
     }
 
-    /**
-     * GET /roles/{rol} con un rol inexistente: 404 NO_ENCONTRADO con el mensaje del formulario
+        /**
+     * GET /roles/{rol} with a non-existent role: 404 NO_ENCONTRADO with the message of the form
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRole_unknownRole_returns404() throws Exception {
@@ -213,10 +213,10 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.correlation_id").value(CORRELATION_ID));
     }
 
-    /**
-     * GET /roles/{rol} con un nombre de formato inválido: 400 VALIDACION con el error del campo rol
+        /**
+     * GET /roles/{rol} with a name with an invalid format: 400 VALIDACION with the error of the rol field
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void getRole_invalidName_returns400WithTheFieldError() throws Exception {
@@ -230,10 +230,10 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.errores[0].mensaje").value("Rol no válido."));
     }
 
-    /**
-     * GET /permissions: 200 con el catálogo
+        /**
+     * GET /permissions: 200 with the catalog
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void listPermissions_returns200WithTheCatalog() throws Exception {
@@ -248,10 +248,10 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$[0].descripcion").value("Cambiar la propia contraseña"));
     }
 
-    /**
-     * GET /permissions sin cabeceras: 401
+        /**
+     * GET /permissions without headers: 401
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void listPermissions_withoutIdentityHeaders_returns401() throws Exception {
@@ -260,13 +260,13 @@ class RoleAdminControllerTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    // ------------------------------------------------------------------ creación
+    // ------------------------------------------------------------------ creation
 
-    /**
-     * POST /roles: 201 con el rol en el cuerpo y su ruta en Location, el servicio recibe el cuerpo y el
+        /**
+     * POST /roles: 201 with the role in the body and its path in Location, the service receives the body and the
      * correlation id
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void createRole_returns201WithLocationAndBody() throws Exception {
@@ -290,11 +290,11 @@ class RoleAdminControllerTest {
         assertEquals(List.of("ms01:profile:read", "ms04:checkin:write"), request.getValue().getPermisos());
     }
 
-    /**
-     * POST /roles: un campo fuera del contrato llega al servicio como campo desconocido para que se rechace
-     * con un error por campo
+        /**
+     * POST /roles: a field outside the contract reaches the service as an unknown field so it is rejected with an error
+     * per field
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void createRole_unknownField_isHandedToTheServiceAsUnknown() throws Exception {
@@ -310,10 +310,10 @@ class RoleAdminControllerTest {
         assertEquals("es_sistema", request.getValue().unknownFieldErrors().get(0).campo());
     }
 
-    /**
-     * POST /roles: 400, 403, 409 y 422 del servicio salen con su estado y su código
+        /**
+     * POST /roles: 400, 403, 409 and 422 from the service come out with their status and their code
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void createRole_serviceErrors_areTranslated() throws Exception {
@@ -344,10 +344,10 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("El permiso ms01:role:manage es exclusivo del rol ADMIN."));
     }
 
-    /**
-     * POST /roles con un cuerpo que no es JSON: 400 y el servicio no se llama
+        /**
+     * POST /roles with a body that is not JSON: 400 and the service is not called
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void createRole_malformedBody_returns400() throws Exception {
@@ -358,10 +358,10 @@ class RoleAdminControllerTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    /**
-     * POST /roles sin cabeceras de identidad: 401
+        /**
+     * POST /roles without identity headers: 401
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void createRole_withoutIdentityHeaders_returns401() throws Exception {
@@ -371,12 +371,12 @@ class RoleAdminControllerTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    // ------------------------------------------------------------------ edición
+    // ------------------------------------------------------------------ edition
 
-    /**
-     * PUT /roles/{rol}: 200 con el rol actualizado, el servicio recibe la ruta, el cuerpo y el correlation id
+        /**
+     * PUT /roles/{rol}: 200 with the updated role, the service receives the path, the body and the correlation id
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void updateRole_returns200AndPassesPathBodyAndCorrelationId() throws Exception {
@@ -395,10 +395,10 @@ class RoleAdminControllerTest {
         assertEquals("Apoya la evacuación", request.getValue().getDescripcion());
     }
 
-    /**
-     * PUT /roles/{rol}: 404 y 409 del servicio salen con su estado y su código
+        /**
+     * PUT /roles/{rol}: 404 and 409 from the service come out with their status and their code
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void updateRole_serviceErrors_areTranslated() throws Exception {
@@ -415,12 +415,12 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("Los roles de sistema no se pueden renombrar."));
     }
 
-    // ------------------------------------------------------------------ permisos
+    // ------------------------------------------------------------------ permissions
 
-    /**
-     * PUT /roles/{rol}/permissions: 200 con el rol actualizado y el cuerpo llega al servicio
+        /**
+     * PUT /roles/{rol}/permissions: 200 with the updated role and the body reaches the service
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void updatePermissions_returns200AndPassesTheList() throws Exception {
@@ -439,10 +439,10 @@ class RoleAdminControllerTest {
         assertEquals(List.of("ms01:profile:read", "ms04:checkin:write"), request.getValue().getPermisos());
     }
 
-    /**
-     * PUT /roles/{rol}/permissions: 422 de la regla de ms01:role:manage
+        /**
+     * PUT /roles/{rol}/permissions: 422 from the ms01:role:manage rule
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void updatePermissions_businessRule_returns422() throws Exception {
@@ -456,12 +456,12 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.codigo").value("REGLA_NEGOCIO"));
     }
 
-    // ------------------------------------------------------------------ borrado
+    // ------------------------------------------------------------------ deletion
 
-    /**
-     * DELETE /roles/{rol}: 204 sin cuerpo y el servicio recibe la ruta y el correlation id
+        /**
+     * DELETE /roles/{rol}: 204 without a body and the service receives the path and the correlation id
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void deleteRole_returns204WithoutBody() throws Exception {
@@ -472,10 +472,10 @@ class RoleAdminControllerTest {
         verify(roleAdminService).deleteRole(any(RequesterIdentity.class), eq("MONITOR"), eq(CORRELATION_ID));
     }
 
-    /**
-     * DELETE /roles/{rol}: 404 y 409 del servicio salen con su estado y su código
+        /**
+     * DELETE /roles/{rol}: 404 and 409 from the service come out with their status and their code
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void deleteRole_serviceErrors_areTranslated() throws Exception {
@@ -491,10 +491,10 @@ class RoleAdminControllerTest {
                 .andExpect(jsonPath("$.codigo").value("CONFLICTO"));
     }
 
-    /**
-     * DELETE /roles/{rol} sin cabeceras de identidad: 401
+        /**
+     * DELETE /roles/{rol} without identity headers: 401
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void deleteRole_withoutIdentityHeaders_returns401() throws Exception {
@@ -503,10 +503,10 @@ class RoleAdminControllerTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    /**
-     * Un método no definido en las rutas responde 405
+        /**
+     * A method not defined on the routes answers 405
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void unsupportedMethods_return405() throws Exception {

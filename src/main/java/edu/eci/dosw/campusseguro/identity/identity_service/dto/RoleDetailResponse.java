@@ -5,13 +5,12 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Detalle de un rol (esquema RoleDetail del contrato), respuesta de las consultas, la creación y la edición
- * de roles
+ * Detail of a role (RoleDetail schema of the contract), response of the queries, the creation and the edition of roles
  *
- * @param rol nombre del rol
- * @param descripcion descripción del rol
- * @param permisos codigos de permiso del rol, ordenados y sin repetidos
- * @param system true solo en los roles de sistema, ESTUDIANTE y ADMIN
+ * @param rol name of the role
+ * @param descripcion description of the role
+ * @param permisos permission codes of the role, sorted and without repeated ones
+ * @param system true only for the system roles, ESTUDIANTE and ADMIN
  */
 public record RoleDetailResponse(
         String rol,

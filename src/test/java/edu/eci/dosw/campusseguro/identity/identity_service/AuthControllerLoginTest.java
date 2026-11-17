@@ -37,8 +37,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.AuthService;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 
 /**
- * POST /api/v1/auth/login (RF-MS01-02, formulario F-02): contrato HTTP según el OpenAPI, la validación de
- * los campos la hace el servicio y se prueba en AuthServiceTest y LoginRequestValidationTest
+ * POST /api/v1/auth/login (RF-MS01-02, form F-02): HTTP contract according to the OpenAPI, the validation of the fields
+ * is done by the service and is tested in AuthServiceTest and LoginRequestValidationTest
  */
 @ExtendWith(MockitoExtension.class)
 class AuthControllerLoginTest {
@@ -59,8 +59,8 @@ class AuthControllerLoginTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Prepara el controlador y el cliente de pruebas con el manejador global de errores
+        /**
+     * Prepares the controller and the test client with the global error handler
      */
     @BeforeEach
     void setUp() {
@@ -69,12 +69,12 @@ class AuthControllerLoginTest {
                 .build();
     }
 
-    /**
-     * Construye el cuerpo JSON de la petición de login
+        /**
+     * Builds the JSON body of the login request
      *
-     * @param correo correo que se envía
-     * @param contrasena contraseña que se envía
-     * @return el cuerpo JSON de la petición
+     * @param correo email that is sent
+     * @param contrasena password that is sent
+     * @return the JSON body of the request
      */
     private String body(String correo, String contrasena) {
         return """
@@ -85,24 +85,24 @@ class AuthControllerLoginTest {
                 """.formatted(correo, contrasena);
     }
 
-    /**
-     * Construye una respuesta de login de ejemplo
+        /**
+     * Builds a sample login response
      *
-     * @param id identificador del usuario autenticado
-     * @return la respuesta de login con un token de ejemplo
+     * @param id identifier of the authenticated user
+     * @return the login response with a sample token
      */
     private LoginResponse buildResponse(UUID id) {
         return new LoginResponse(
                 "header.payload.signature",
                 "Bearer",
                 "2026-10-22T06:00:00Z",
-                new LoginResponse.UsuarioResumen(id, EMAIL, List.of("ESTUDIANTE", "PROFESOR")));
+                new LoginResponse.UserSummary(id, EMAIL, List.of("ESTUDIANTE", "PROFESOR")));
     }
 
-    /**
-     * Un login correcto responde 200 con el token y los datos básicos del usuario
+        /**
+     * A successful login answers 200 with the token and the basic data of the user
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_validCredentials_returns200WithTokenAndBasicUserData() throws Exception {
@@ -123,10 +123,10 @@ class AuthControllerLoginTest {
                 .andExpect(jsonPath("$.usuario.roles[1]").value("PROFESOR"));
     }
 
-    /**
-     * La respuesta del login nunca incluye la contraseña ni su hash
+        /**
+     * The login response never includes the password or its hash
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_responseNeverExposesPasswordOrHash() throws Exception {
@@ -142,10 +142,10 @@ class AuthControllerLoginTest {
                 .andExpect(jsonPath("$.usuario.password_hash").doesNotExist());
     }
 
-    /**
-     * Al leer el cuerpo el correo se normaliza y la contraseña se entrega sin cambios (RG-01)
+        /**
+     * When reading the body the email is normalized and the password is delivered unchanged (RG-01)
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_normalizesEmailButNeverTouchesThePassword() throws Exception {
@@ -162,10 +162,10 @@ class AuthControllerLoginTest {
         assertEquals(" Campus#2026 ", captor.getValue().getContrasena());
     }
 
-    /**
-     * Sin cabecera de correlación se entrega al servicio un UUID generado
+        /**
+     * Without a correlation header a generated UUID is delivered to the service
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_withoutCorrelationHeader_passesAGeneratedUuidToTheService() throws Exception {
@@ -180,10 +180,10 @@ class AuthControllerLoginTest {
         assertEquals(4, UUID.fromString(captor.getValue()).version());
     }
 
-    /**
-     * Unas credenciales incorrectas responden 401 con el cuerpo de error normalizado
+        /**
+     * Incorrect credentials answer 401 with the normalized error body
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_invalidCredentials_returns401WithNormalizedBody() throws Exception {
@@ -201,10 +201,10 @@ class AuthControllerLoginTest {
                 .andExpect(jsonPath("$.correlation_id").value(CORRELATION_ID));
     }
 
-    /**
-     * La respuesta a credenciales incorrectas es la misma exista o no el correo
+        /**
+     * The response to incorrect credentials is the same whether the email exists or not
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_invalidCredentials_responseDoesNotDependOnTheRequest() throws Exception {
@@ -226,10 +226,10 @@ class AuthControllerLoginTest {
         assertEquals(unknownEmail, wrongPassword);
     }
 
-    /**
-     * Un error sin cabecera de correlación lleva en el cuerpo un UUID v4 generado
+        /**
+     * An error without a correlation header carries a generated UUID v4 in the body
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_errorWithoutCorrelationHeader_generatesAUuidV4ForTheErrorBody() throws Exception {
@@ -243,10 +243,10 @@ class AuthControllerLoginTest {
         assertTrue(json.matches(".*\"correlation_id\":\"[0-9a-f-]{36}\".*"));
     }
 
-    /**
-     * Una cuenta inactiva responde 403 con el cuerpo de error normalizado
+        /**
+     * An inactive account answers 403 with the normalized error body
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_inactiveAccount_returns403WithNormalizedBody() throws Exception {
@@ -264,10 +264,10 @@ class AuthControllerLoginTest {
                 .andExpect(jsonPath("$.correlation_id").value(CORRELATION_ID));
     }
 
-    /**
-     * Los errores de validación del servicio responden 400 con una entrada por campo
+        /**
+     * The validation errors of the service answer 400 with one entry per field
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_validationErrorsFromTheService_return400WithOneEntryPerField() throws Exception {
@@ -290,10 +290,10 @@ class AuthControllerLoginTest {
                 .andExpect(jsonPath("$.correlation_id").value(CORRELATION_ID));
     }
 
-    /**
-     * Un campo que no está en el contrato se captura para que el servicio lo rechace (RG-04)
+        /**
+     * A field that is not in the contract is captured so the service rejects it (RG-04)
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_fieldNotDefinedInTheContract_isCapturedForTheServiceToReject() throws Exception {
@@ -314,10 +314,10 @@ class AuthControllerLoginTest {
         assertTrue(captor.getValue().unknownFieldNames().contains("rol"));
     }
 
-    /**
-     * Un JSON mal formado responde 400
+        /**
+     * A malformed JSON answers 400
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_malformedJson_returns400() throws Exception {
@@ -328,10 +328,10 @@ class AuthControllerLoginTest {
         verifyNoInteractions(authService);
     }
 
-    /**
-     * Una petición sin cuerpo responde 400
+        /**
+     * A request without a body answers 400
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_missingBody_returns400() throws Exception {
@@ -341,10 +341,10 @@ class AuthControllerLoginTest {
         verifyNoInteractions(authService);
     }
 
-    /**
-     * Un tipo de contenido distinto de JSON responde 415
+        /**
+     * A content type other than JSON answers 415
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_unsupportedMediaType_returns415() throws Exception {
@@ -355,10 +355,10 @@ class AuthControllerLoginTest {
         verifyNoInteractions(authService);
     }
 
-    /**
-     * Un método HTTP no permitido responde 405 con la cabecera Allow
+        /**
+     * A not allowed HTTP method answers 405 with the Allow header
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void login_wrongHttpMethod_returns405WithAllowHeader() throws Exception {

@@ -32,9 +32,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleAdminServ
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Seguridad HTTP de las rutas de administración de roles con la cadena de filtros real (RN-MS01-23): ninguna
- * es pública, sin cabeceras de identidad responden 401 con el ErrorResponse y con cabeceras llegan al
- * controlador, que decide por permisos
+ * HTTP security of the role administration routes with the real filter chain (RN-MS01-23): none is public, without
+ * identity headers they answer 401 with the ErrorResponse and with headers they reach the controller, which decides by
+ * permissions
  */
 @WebMvcTest(RoleAdminController.class)
 @Import(SecurityConfig.class)
@@ -48,12 +48,12 @@ class RoleAdminSecurityTest {
     @MockitoBean
     private RoleAdminService roleAdminService;
 
-    /**
-     * Ninguna ruta de administración de roles es pública: sin cabeceras responde 401 y no llega al servicio
+        /**
+     * No role administration route is public: without headers it answers 401 and does not reach the service
      *
-     * @param method método HTTP
-     * @param path ruta
-     * @throws Exception si falla la petición simulada
+     * @param method HTTP method
+     * @param path route
+     * @throws Exception if the simulated request fails
      */
     @ParameterizedTest
     @CsvSource({
@@ -83,10 +83,10 @@ class RoleAdminSecurityTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    /**
-     * Sin X-User-Permission la petición no tiene identidad y responde 401, aunque lleve el rol ADMIN
+        /**
+     * Without X-User-Permission the request has no identity and answers 401, even if it carries the ADMIN role
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void roleAdminRoutes_withoutThePermissionHeader_return401() throws Exception {
@@ -99,10 +99,10 @@ class RoleAdminSecurityTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    /**
-     * Un código de permiso con formato inválido en X-User-Permission responde 401 con el motivo
+        /**
+     * A permission code with an invalid format in X-User-Permission answers 401 with the reason
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void roleAdminRoutes_withAnInvalidPermissionFormat_return401() throws Exception {
@@ -116,10 +116,10 @@ class RoleAdminSecurityTest {
         verifyNoInteractions(roleAdminService);
     }
 
-    /**
-     * Con las tres cabeceras la petición llega al controlador
+        /**
+     * With the three headers the request reaches the controller
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void roleAdminRoutes_withIdentityHeaders_reachTheController() throws Exception {
@@ -136,11 +136,11 @@ class RoleAdminSecurityTest {
         verify(roleAdminService).listPermissions(any());
     }
 
-    /**
-     * La ruta interna de cortes de sesión no la atiende esta cadena: sin la cadena interna sigue exigiendo
-     * identidad de usuario
+        /**
+     * The internal session cuts route is not served by this chain: without the internal chain it still requires a user
+     * identity
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void sessionCutsPath_isNotPublicInTheDefaultChain() throws Exception {

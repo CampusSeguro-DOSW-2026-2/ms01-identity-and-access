@@ -17,8 +17,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Endpoints públicos de registro (RF-MS01-01) y autenticación (RF-MS01-02), no requieren las cabeceras de
- * identidad porque se invocan antes de tener una sesión
+ * Public endpoints for registration (RF-MS01-01) and authentication (RF-MS01-02), they do not require the identity
+ * headers because they are invoked before having a session
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -27,25 +27,25 @@ public class AuthController {
     private final UserService userService;
     private final AuthService authService;
 
-    /**
-     * Crea el controlador con sus servicios
+        /**
+     * Creates the controller with its services
      *
-     * @param userService servicio de registro de usuarios
-     * @param authService servicio de autenticación
+     * @param userService user registration service
+     * @param authService authentication service
      */
     public AuthController(UserService userService, AuthService authService) {
         this.userService = userService;
         this.authService = authService;
     }
 
-    /**
-     * POST /api/v1/auth/register: registra un usuario institucional (RF-MS01-01)
+        /**
+     * POST /api/v1/auth/register: registers an institutional user (RF-MS01-01)
      *
-     * 201 usuario creado, 400 datos inválidos, 409 correo ya registrado
+     * 201 user created, 400 invalid data, 409 email already registered
      *
-     * @param request datos del formulario de registro
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el usuario creado
+     * @param request data of the registration form
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the created user
      */
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@RequestBody UserCreateRequest request,
@@ -54,15 +54,15 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    /**
-     * POST /api/v1/auth/login: autentica a un usuario y emite su token JWT (RF-MS01-02)
+        /**
+     * POST /api/v1/auth/login: authenticates a user and issues their JWT token (RF-MS01-02)
      *
-     * 200 token con su tipo, expiración y datos básicos, 400 datos inválidos, 401 credenciales incorrectas,
-     * idéntico para correo inexistente y contraseña errónea, 403 cuenta inactiva
+     * 200 token with its type, expiration and basic data, 400 invalid data, 401 incorrect credentials, identical for a
+     * non-existent email and a wrong password, 403 inactive account
      *
-     * @param request correo y contraseña
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el token y los datos básicos del usuario
+     * @param request email and password
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the token and the basic data of the user
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {

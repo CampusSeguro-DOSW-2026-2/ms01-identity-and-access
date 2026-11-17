@@ -24,8 +24,8 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 
 /**
- * Reglas de los formularios F-04, F-05 y F-06 de la recuperación y el cambio de contraseña (RF-MS01-08) y de
- * las reglas generales RG-01, RG-02 y RG-04
+ * Rules of forms F-04, F-05 and F-06 of the password recovery and change (RF-MS01-08) and of the general rules RG-01,
+ * RG-02 and RG-04
  */
 class PasswordRequestValidationTest {
 
@@ -44,8 +44,8 @@ class PasswordRequestValidationTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    /**
-     * Crea el validador que se comparte entre las pruebas
+        /**
+     * Creates the validator that is shared between the tests
      */
     @BeforeAll
     static void init() {
@@ -53,19 +53,19 @@ class PasswordRequestValidationTest {
         validator = new RequestValidator(factory.getValidator());
     }
 
-    /**
-     * Libera la fábrica de validadores
+        /**
+     * Releases the validator factory
      */
     @AfterAll
     static void close() {
         factory.close();
     }
 
-    /**
-     * Obtiene el mensaje de cada campo inválido con el nombre que tiene en el contrato
+        /**
+     * Gets the message of each invalid field with the name it has in the contract
      *
-     * @param request petición que se valida
-     * @return mapa de nombre de campo a mensaje
+     * @param request request that is validated
+     * @return map from field name to message
      */
     private static Map<String, String> errors(Object request) {
         Map<String, String> result = new TreeMap<>();
@@ -75,11 +75,11 @@ class PasswordRequestValidationTest {
         return result;
     }
 
-    /**
-     * Construye una solicitud de código
+        /**
+     * Builds a code request
      *
-     * @param email correo de la solicitud
-     * @return la solicitud construida
+     * @param email email of the request
+     * @return the built request
      */
     private static ForgotPasswordRequest forgot(String email) {
         ForgotPasswordRequest request = new ForgotPasswordRequest();
@@ -87,14 +87,14 @@ class PasswordRequestValidationTest {
         return request;
     }
 
-    /**
-     * Construye una petición de restablecimiento
+        /**
+     * Builds a reset request
      *
-     * @param email correo de la petición
-     * @param code código de la petición
-     * @param password nueva contraseña
-     * @param confirmation confirmación de la nueva contraseña
-     * @return la petición construida
+     * @param email email of the request
+     * @param code code of the request
+     * @param password new password
+     * @param confirmation confirmation of the new password
+     * @return the built request
      */
     private static ResetPasswordRequest reset(String email, String code, String password, String confirmation) {
         ResetPasswordRequest request = new ResetPasswordRequest();
@@ -105,13 +105,13 @@ class PasswordRequestValidationTest {
         return request;
     }
 
-    /**
-     * Construye una petición de cambio de contraseña
+        /**
+     * Builds a password change request
      *
-     * @param current contraseña actual
-     * @param password nueva contraseña
-     * @param confirmation confirmación de la nueva contraseña
-     * @return la petición construida
+     * @param current current password
+     * @param password new password
+     * @param confirmation confirmation of the new password
+     * @return the built request
      */
     private static ChangePasswordRequest change(String current, String password, String confirmation) {
         ChangePasswordRequest request = new ChangePasswordRequest();
@@ -121,16 +121,16 @@ class PasswordRequestValidationTest {
         return request;
     }
 
-    /**
-     * Una solicitud de código válida no produce errores
+        /**
+     * A valid code request produces no errors
      */
     @Test
     void forgot_validRequest_hasNoErrors() {
         assertTrue(errors(forgot("maria.perez@escuelaing.edu.co")).isEmpty());
     }
 
-    /**
-     * El correo se recorta y se pasa a minúsculas (RG-01)
+        /**
+     * The email is trimmed and converted to lowercase (RG-01)
      */
     @Test
     void forgot_email_isTrimmedAndLowercased() {
@@ -140,18 +140,18 @@ class PasswordRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * No se exige el dominio institucional para no revelar qué correos son válidos, solo el formato
+        /**
+     * The institutional domain is not required so as not to reveal which emails are valid, only the format
      */
     @Test
     void forgot_externalDomain_isAccepted() {
         assertTrue(errors(forgot("alguien@gmail.com")).isEmpty());
     }
 
-    /**
-     * Un correo faltante, vacío, con solo espacios o con formato inválido tiene el mensaje del formulario F-04
+        /**
+     * A missing, empty, spaces-only or invalid-format email has the message of form F-04
      *
-     * @param email correo recibido
+     * @param email email received
      */
     @ParameterizedTest
     @ValueSource(strings = { "", "   ", "sin-arroba", "a@", "@escuelaing.edu.co", "dos@@escuelaing.edu.co" })
@@ -159,8 +159,8 @@ class PasswordRequestValidationTest {
         assertEquals(Map.of("correo", EMAIL_MESSAGE), errors(forgot(email)));
     }
 
-    /**
-     * Un correo de más de 100 caracteres se rechaza
+        /**
+     * An email of more than 100 characters is rejected
      */
     @Test
     void forgot_emailLongerThan100_isRejected() {
@@ -169,18 +169,18 @@ class PasswordRequestValidationTest {
         assertEquals(Map.of("correo", EMAIL_MESSAGE), errors(forgot(email)));
     }
 
-    /**
-     * Sin el campo correo se rechaza con el mensaje del formulario
+        /**
+     * Without the correo field it is rejected with the message of the form
      */
     @Test
     void forgot_withoutEmail_isRejected() {
         assertEquals(Map.of("correo", EMAIL_MESSAGE), errors(new ForgotPasswordRequest()));
     }
 
-    /**
-     * Un campo fuera del contrato se rechaza e indica cuál es (RG-04)
+        /**
+     * A field outside the contract is rejected and indicates which one it is (RG-04)
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void forgot_unknownField_isRejectedByName() throws Exception {
@@ -191,8 +191,8 @@ class PasswordRequestValidationTest {
         assertEquals(Map.of("codigo", "El campo no está permitido."), errors(request));
     }
 
-    /**
-     * Una petición de restablecimiento válida no produce errores
+        /**
+     * A valid reset request produces no errors
      */
     @Test
     void reset_validRequest_hasNoErrors() {
@@ -200,8 +200,8 @@ class PasswordRequestValidationTest {
                 .isEmpty());
     }
 
-    /**
-     * El código acepta ceros a la izquierda y se recorta (RG-01)
+        /**
+     * The code accepts leading zeros and is trimmed (RG-01)
      */
     @Test
     void reset_codeWithLeadingZeros_isAcceptedAndTrimmed() {
@@ -212,10 +212,10 @@ class PasswordRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * Un código que no son exactamente 6 dígitos tiene el mensaje genérico del formulario F-05
+        /**
+     * A code that is not exactly 6 digits has the generic message of form F-05
      *
-     * @param code código recibido
+     * @param code code received
      */
     @ParameterizedTest
     @ValueSource(strings = { "", "   ", "12345", "1234567", "12345a", "12 345", "１２３４５６", "-12345", "12.345" })
@@ -224,8 +224,8 @@ class PasswordRequestValidationTest {
                 errors(reset("maria.perez@escuelaing.edu.co", code, "Nueva#2026x", "Nueva#2026x")));
     }
 
-    /**
-     * Un correo con formato inválido tiene el mensaje del formulario F-05
+        /**
+     * An email with an invalid format has the message of form F-05
      */
     @Test
     void reset_malformedEmail_hasTheFormMessage() {
@@ -233,10 +233,10 @@ class PasswordRequestValidationTest {
                 errors(reset("no-es-un-correo", "482913", "Nueva#2026x", "Nueva#2026x")));
     }
 
-    /**
-     * Una nueva contraseña que incumple la política tiene el mensaje del formulario F-05
+        /**
+     * A new password that breaks the policy has the message of form F-05
      *
-     * @param password nueva contraseña recibida
+     * @param password new password received
      */
     @ParameterizedTest
     @ValueSource(strings = { "Ab1#", "sinmayuscula1#", "SINMINUSCULA1#", "SinNumero#abc", "SinEspecial123",
@@ -246,8 +246,8 @@ class PasswordRequestValidationTest {
                 errors(reset("maria.perez@escuelaing.edu.co", "482913", password, password)));
     }
 
-    /**
-     * Una confirmación distinta tiene el mensaje del formulario F-05 y se asocia al campo de confirmación
+        /**
+     * A different confirmation has the message of form F-05 and is associated with the confirmation field
      */
     @Test
     void reset_confirmationDoesNotMatch_isReportedOnTheConfirmationField() {
@@ -255,8 +255,8 @@ class PasswordRequestValidationTest {
                 errors(reset("maria.perez@escuelaing.edu.co", "482913", "Nueva#2026x", "Otra#2026xyz")));
     }
 
-    /**
-     * La contraseña y su confirmación no se recortan: un espacio al final hace que no coincidan (RG-01)
+        /**
+     * The password and its confirmation are not trimmed: a trailing space makes them not match (RG-01)
      */
     @Test
     void reset_passwordsAreNotTrimmed() {
@@ -267,8 +267,8 @@ class PasswordRequestValidationTest {
         assertEquals(Map.of("confirmar_nueva_contrasena", MISMATCH_MESSAGE), errors(request));
     }
 
-    /**
-     * Un cuerpo vacío informa todos los campos obligatorios a la vez
+        /**
+     * An empty body reports all the required fields at once
      */
     @Test
     void reset_emptyRequest_reportsEveryRequiredField() {
@@ -281,11 +281,11 @@ class PasswordRequestValidationTest {
         assertEquals(4, result.size());
     }
 
-    /**
-     * El nombre de la confirmación del registro no es válido en este formulario: se rechaza como campo
-     * desconocido y la confirmación queda faltante
+        /**
+     * The confirmation name of the registration is not valid in this form: it is rejected as an unknown field and the
+     * confirmation is left missing
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void reset_registrationConfirmationName_isRejected() throws Exception {
@@ -299,10 +299,10 @@ class PasswordRequestValidationTest {
         assertEquals(MISMATCH_MESSAGE, result.get("confirmar_nueva_contrasena"));
     }
 
-    /**
-     * Los nombres del contrato se leen del JSON
+        /**
+     * The names of the contract are read from the JSON
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void reset_json_isMappedWithTheContractNames() throws Exception {
@@ -317,17 +317,17 @@ class PasswordRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * Una petición de cambio válida no produce errores
+        /**
+     * A valid change request produces no errors
      */
     @Test
     void change_validRequest_hasNoErrors() {
         assertTrue(errors(change("Campus#2026", "Nueva#2026x", "Nueva#2026x")).isEmpty());
     }
 
-    /**
-     * La contraseña actual no se valida contra la política: solo debe existir y no superar los 64 caracteres, la
-     * decide el servicio contra la almacenada
+        /**
+     * The current password is not validated against the policy: it only has to exist and not exceed 64 characters, the
+     * service decides it against the stored one
      */
     @Test
     void change_currentPassword_onlyRequiresPresenceAndMaxLength() {
@@ -337,10 +337,10 @@ class PasswordRequestValidationTest {
                 errors(change("a".repeat(65), "Nueva#2026x", "Nueva#2026x")));
     }
 
-    /**
-     * Una contraseña actual vacía o con solo espacios tiene el mensaje del formulario F-06
+        /**
+     * An empty or spaces-only current password has the message of form F-06
      *
-     * @param current contraseña actual recibida
+     * @param current current password received
      */
     @ParameterizedTest
     @ValueSource(strings = { "", "   " })
@@ -349,11 +349,11 @@ class PasswordRequestValidationTest {
                 errors(change(current, "Nueva#2026x", "Nueva#2026x")));
     }
 
-    /**
-     * Una nueva contraseña que incumple la política tiene el mensaje del formulario F-06, que también cubre el
-     * caso de ser igual a la actual
+        /**
+     * A new password that breaks the policy has the message of form F-06, which also covers the case of being equal to
+     * the current one
      *
-     * @param password nueva contraseña recibida
+     * @param password new password received
      */
     @ParameterizedTest
     @ValueSource(strings = { "Ab1#", "sinmayuscula1#", "SINMINUSCULA1#", "SinNumero#abc", "SinEspecial123",
@@ -363,8 +363,8 @@ class PasswordRequestValidationTest {
                 errors(change("Campus#2026", password, password)));
     }
 
-    /**
-     * Una confirmación distinta tiene el mensaje del formulario F-06 y se asocia al campo de confirmación
+        /**
+     * A different confirmation has the message of form F-06 and is associated with the confirmation field
      */
     @Test
     void change_confirmationDoesNotMatch_isReportedOnTheConfirmationField() {
@@ -372,8 +372,8 @@ class PasswordRequestValidationTest {
                 errors(change("Campus#2026", "Nueva#2026x", "Otra#2026xyz")));
     }
 
-    /**
-     * Un cuerpo vacío informa todos los campos obligatorios a la vez
+        /**
+     * An empty body reports all the required fields at once
      */
     @Test
     void change_emptyRequest_reportsEveryRequiredField() {
@@ -385,8 +385,8 @@ class PasswordRequestValidationTest {
         assertEquals(3, result.size());
     }
 
-    /**
-     * Las contraseñas no se recortan ni se normalizan (RG-01)
+        /**
+     * The passwords are not trimmed or normalized (RG-01)
      */
     @Test
     void change_passwords_areKeptExactlyAsReceived() {
@@ -395,10 +395,11 @@ class PasswordRequestValidationTest {
         assertEquals(" Campus#2026 ", request.getCurrentPassword());
     }
 
-    /**
-     * Un campo fuera del contrato, como el correo, el id o el estado, se rechaza e indica cuál es (RG-04)
+        /**
+     * A field outside the contract, such as the email, the id or the status, is rejected and indicates which one it is
+     * (RG-04)
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void change_unknownFields_areRejectedByName() throws Exception {
@@ -414,10 +415,10 @@ class PasswordRequestValidationTest {
         assertEquals(2, result.size());
     }
 
-    /**
-     * Los nombres del contrato se leen del JSON
+        /**
+     * The names of the contract are read from the JSON
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void change_json_isMappedWithTheContractNames() throws Exception {

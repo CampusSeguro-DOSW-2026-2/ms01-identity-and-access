@@ -16,9 +16,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 
 /**
- * Los roles del usuario son un conjunto de entidades que se sincroniza en sitio (4_modelo-datos, cambio de roles
- * en lote): la colección que carga Hibernate no se reemplaza, así solo se insertan los roles nuevos y se borran
- * los retirados de usuario_rol
+ * The roles of the user are a set of entities that is synchronized in place (4_modelo-datos, batch role change): the
+ * collection loaded by Hibernate is not replaced, so only the new roles are inserted and the removed ones are deleted
+ * from user_roles
  */
 class UserEntityRolesTest {
 
@@ -27,8 +27,8 @@ class UserEntityRolesTest {
     private final RoleEntity brigadier = TestEntities.role("BRIGADISTA", "ms01:profile:read");
     private final RoleEntity admin = TestEntities.role("ADMIN", "ms01:profile:read");
 
-    /**
-     * Un usuario nuevo tiene un conjunto de roles vacío y nunca null
+        /**
+     * A new user has an empty set of roles and never null
      */
     @Test
     void newUser_hasAnEmptyRoleSet() {
@@ -38,8 +38,8 @@ class UserEntityRolesTest {
         assertTrue(user.getRoles().isEmpty());
     }
 
-    /**
-     * Asignar roles deja la misma colección con el contenido nuevo, no la reemplaza
+        /**
+     * Assigning roles leaves the same collection with the new content, it does not replace it
      */
     @Test
     void setRoles_keepsTheSameCollectionInstance() {
@@ -53,8 +53,8 @@ class UserEntityRolesTest {
         assertEquals(Set.of(student, brigadier), user.getRoles());
     }
 
-    /**
-     * Se agregan los roles que faltaban y se retiran los que ya no están
+        /**
+     * The roles that were missing are added and those that are no longer there are removed
      */
     @Test
     void setRoles_addsTheNewRolesAndRemovesTheMissingOnes() {
@@ -66,8 +66,8 @@ class UserEntityRolesTest {
         assertEquals(Set.of(professor, admin), user.getRoles());
     }
 
-    /**
-     * Asignar los mismos roles no cambia nada
+        /**
+     * Assigning the same roles changes nothing
      */
     @Test
     void setRoles_withTheSameRoles_changesNothing() {
@@ -79,8 +79,8 @@ class UserEntityRolesTest {
         assertEquals(Set.of(student), user.getRoles());
     }
 
-    /**
-     * Asignar null deja al usuario sin roles y conserva la colección
+        /**
+     * Assigning null leaves the user without roles and keeps the collection
      */
     @Test
     void setRoles_null_leavesNoRolesAndKeepsTheCollection() {
@@ -94,8 +94,8 @@ class UserEntityRolesTest {
         assertTrue(user.getRoles().isEmpty());
     }
 
-    /**
-     * La entidad copia los roles recibidos, modificar el conjunto original después no afecta al usuario
+        /**
+     * The entity copies the received roles, modifying the original set afterwards does not affect the user
      */
     @Test
     void setRoles_copiesTheReceivedSet() {
@@ -109,8 +109,8 @@ class UserEntityRolesTest {
         assertEquals(Set.of(student), user.getRoles());
     }
 
-    /**
-     * Asignar su propia colección no la vacía ni la modifica
+        /**
+     * Assigning its own collection does not empty or modify it
      */
     @Test
     void setRoles_withItsOwnCollection_keepsTheRoles() {
@@ -122,8 +122,8 @@ class UserEntityRolesTest {
         assertEquals(Set.of(student, professor), user.getRoles());
     }
 
-    /**
-     * Asignar una vista de su propia colección tampoco pierde roles
+        /**
+     * Assigning a view of its own collection does not lose roles either
      */
     @Test
     void setRoles_withAViewOfItsOwnCollection_keepsTheRoles() {
@@ -135,8 +135,8 @@ class UserEntityRolesTest {
         assertEquals(Set.of(student, professor), user.getRoles());
     }
 
-    /**
-     * Los nombres de los roles salen ordenados alfabéticamente
+        /**
+     * The names of the roles come out sorted alphabetically
      */
     @Test
     void getRoleNames_returnsTheNamesSorted() {
@@ -146,8 +146,8 @@ class UserEntityRolesTest {
         assertEquals(List.of("ADMIN", "ESTUDIANTE", "PROFESOR"), user.getRoleNames());
     }
 
-    /**
-     * Un usuario sin roles no tiene nombres de rol
+        /**
+     * A user without roles has no role names
      */
     @Test
     void getRoleNames_withoutRoles_isEmpty() {

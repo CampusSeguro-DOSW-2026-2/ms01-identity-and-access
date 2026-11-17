@@ -3,12 +3,12 @@ package edu.eci.dosw.campusseguro.identity.identity_service.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Cuerpo de PUT /api/v1/roles/{rol} (formulario F-11)
+ * Body of PUT /api/v1/roles/{rol} (form F-11)
  *
- * rol: nombre del rol, igual al actual o uno nuevo, se normaliza antes de validarlo (RG-08)
- * descripcion: texto que muestra la interfaz de administración
+ * rol: name of the role, the same as the current one or a new one, normalized before validating it (RG-08)
+ * descripcion: text shown by the administration interface
  *
- * los permisos no se editan aquí y, como cualquier campo no definido en el contrato, se rechazan con HTTP 400
+ * the permissions are not edited here and, like any field not defined in the contract, they are rejected with HTTP 400
  * (RG-04)
  */
 public class UpdateRoleRequest extends RoleRequest {
@@ -19,37 +19,37 @@ public class UpdateRoleRequest extends RoleRequest {
     @JsonProperty("descripcion")
     private String descripcion;
 
-    /**
-     * Devuelve el nombre del rol
+        /**
+     * Returns the name of the role
      *
-     * @return nombre recibido, sin normalizar
+     * @return name received, not normalized
      */
     public String getRol() {
         return rol;
     }
 
-    /**
-     * Coloca el nombre del rol
+        /**
+     * Sets the name of the role
      *
-     * @param rol nombre del rol
+     * @param rol name of the role
      */
     public void setRol(String rol) {
         this.rol = rol;
     }
 
-    /**
-     * Devuelve la descripción del rol
+        /**
+     * Returns the description of the role
      *
-     * @return descripción recibida
+     * @return description received
      */
     public String getDescripcion() {
         return descripcion;
     }
 
-    /**
-     * Coloca la descripción del rol
+        /**
+     * Sets the description of the role
      *
-     * @param descripcion descripción del rol
+     * @param descripcion description of the role
      */
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;

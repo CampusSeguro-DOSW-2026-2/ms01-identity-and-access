@@ -17,20 +17,19 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.UserSearchCri
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserSearchValidator;
 
 /**
- * Validación de los filtros de búsqueda y de la paginación del listado de usuarios (formulario F-07,
- * Estándares de Integración, sección 6)
+ * Validation of the search filters and the pagination of the user list (form F-07, Integration Standards, section 6)
  */
 class UserSearchValidatorTest {
 
-    /**
-     * Obtiene los errores por campo que produce una búsqueda inválida
+        /**
+     * Gets the errors by field produced by an invalid search
      *
-     * @param email filtro de correo
-     * @param state filtro de estado
-     * @param role filtro de rol
-     * @param page número de página
-     * @param size tamaño de página
-     * @return los errores informados
+     * @param email email filter
+     * @param state status filter
+     * @param role role filter
+     * @param page page number
+     * @param size page size
+     * @return the reported errors
      */
     private static List<ErrorResponse.ErrorDetail> errorsOf(String email, String state, String role, String page,
             String size) {
@@ -39,8 +38,8 @@ class UserSearchValidatorTest {
         return exception.getErrors();
     }
 
-    /**
-     * Sin parámetros se usan los valores por defecto
+        /**
+     * Without parameters the default values are used
      */
     @Test
     void validate_withoutParameters_usesTheDefaults() {
@@ -53,8 +52,8 @@ class UserSearchValidatorTest {
         assertEquals(20, criteria.size());
     }
 
-    /**
-     * Los parámetros en blanco se tratan como ausentes
+        /**
+     * The blank parameters are treated as absent
      */
     @Test
     void validate_blankParameters_areTreatedAsAbsent() {
@@ -67,8 +66,8 @@ class UserSearchValidatorTest {
         assertEquals(20, criteria.size());
     }
 
-    /**
-     * El correo se recorta y se pasa a minúsculas
+        /**
+     * The email is trimmed and converted to lowercase
      */
     @Test
     void validate_email_isTrimmedAndLowercased() {
@@ -78,8 +77,8 @@ class UserSearchValidatorTest {
         assertEquals("ana@escuelaing.edu.co", criteria.email());
     }
 
-    /**
-     * Los filtros válidos se convierten a los valores del catálogo
+        /**
+     * The valid filters are converted to the values of the catalog
      */
     @Test
     void validate_validFilters_areConverted() {
@@ -91,8 +90,8 @@ class UserSearchValidatorTest {
         assertEquals(50, criteria.size());
     }
 
-    /**
-     * El valor Todos equivale a no filtrar sin distinguir mayúsculas
+        /**
+     * The value Todos is equivalent to not filtering regardless of case
      */
     @Test
     void validate_allValue_meansNoFilter() {
@@ -102,8 +101,8 @@ class UserSearchValidatorTest {
         assertNull(criteria.role());
     }
 
-    /**
-     * Un estado fuera del catálogo se rechaza
+        /**
+     * A status outside the catalog is rejected
      */
     @Test
     void validate_invalidState_isRejected() {
@@ -111,8 +110,8 @@ class UserSearchValidatorTest {
                 errorsOf(null, "PENDIENTE", null, null, null));
     }
 
-    /**
-     * Un rol sin el formato guardado se rechaza, que el rol exista lo comprueba el servicio
+        /**
+     * A role without the stored format is rejected, whether the role exists is checked by the service
      */
     @Test
     void validate_invalidRole_isRejected() {
@@ -120,10 +119,10 @@ class UserSearchValidatorTest {
                 errorsOf(null, null, "SUPER-USUARIO", null, null));
     }
 
-    /**
-     * Un correo con marcas de etiqueta se rechaza
+        /**
+     * An email with tag marks is rejected
      *
-     * @param email filtro de correo que se prueba
+     * @param email email filter that is tested
      */
     @ParameterizedTest
     @ValueSource(strings = { "<script>", "ana>", "a<b" })
@@ -132,8 +131,8 @@ class UserSearchValidatorTest {
                 errorsOf(email, null, null, null, null));
     }
 
-    /**
-     * Un correo de más de 100 caracteres se rechaza
+        /**
+     * An email of more than 100 characters is rejected
      */
     @Test
     void validate_emailLongerThan100_isRejected() {
@@ -141,18 +140,18 @@ class UserSearchValidatorTest {
                 errorsOf("a".repeat(101), null, null, null, null));
     }
 
-    /**
-     * Un correo de exactamente 100 caracteres se acepta
+        /**
+     * An email of exactly 100 characters is accepted
      */
     @Test
     void validate_emailOf100_isAccepted() {
         assertEquals("a".repeat(100), UserSearchValidator.validate("a".repeat(100), null, null, null, null).email());
     }
 
-    /**
-     * Una página negativa o que no es número se rechaza
+        /**
+     * A negative page or one that is not a number is rejected
      *
-     * @param page número de página que se prueba
+     * @param page page number that is tested
      */
     @ParameterizedTest
     @ValueSource(strings = { "-1", "abc", "1.5" })
@@ -161,10 +160,10 @@ class UserSearchValidatorTest {
                 errorsOf(null, null, null, page, null));
     }
 
-    /**
-     * Un tamaño fuera de 1 a 100 o que no es número se rechaza
+        /**
+     * A size outside 1 to 100 or that is not a number is rejected
      *
-     * @param size tamaño de página que se prueba
+     * @param size page size that is tested
      */
     @ParameterizedTest
     @ValueSource(strings = { "0", "101", "-5", "x" })
@@ -173,8 +172,8 @@ class UserSearchValidatorTest {
                 errorsOf(null, null, null, null, size));
     }
 
-    /**
-     * Los límites del tamaño de página se aceptan
+        /**
+     * The limits of the page size are accepted
      */
     @Test
     void validate_sizeBounds_areAccepted() {
@@ -182,8 +181,8 @@ class UserSearchValidatorTest {
         assertEquals(100, UserSearchValidator.validate(null, null, null, null, "100").size());
     }
 
-    /**
-     * Varios errores se informan juntos, uno por campo y en orden alfabético
+        /**
+     * Several errors are reported together, one per field and in alphabetical order
      */
     @Test
     void validate_severalErrors_areReportedTogetherSortedByField() {

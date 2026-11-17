@@ -42,11 +42,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * Gestión de roles y permisos (RF-MS01-05)
+ * Management of roles and permissions (RF-MS01-05)
  *
- * La consulta de roles y el cambio de roles los decide el permiso que recibe el solicitante en
- * X-User-Permission y nunca el nombre de un rol, cada cambio de roles se audita en MS08 (RNF-MS01-10) y
- * registra el corte de sesión de cada usuario modificado (RF-MS01-11)
+ * The query of roles and the role change are decided by the permission that the requester receives in X-User-Permission
+ * and never by the name of a role, every role change is audited in MS08 (RNF-MS01-10) and records the session cut of
+ * each modified user (RF-MS01-11)
  */
 @Service
 public class RoleServiceImpl implements RoleService {
@@ -69,13 +69,13 @@ public class RoleServiceImpl implements RoleService {
     private final AuditRecorder auditRecorder;
     private final DatabaseTimeService timeService;
 
-    /**
-     * Crea el servicio con sus dependencias
+        /**
+     * Creates the service with its dependencies
      *
-     * @param userRepository repositorio de acceso a los usuarios y sus roles
-     * @param roleRepository repositorio de acceso a los roles y sus permisos
-     * @param auditRecorder registrador de los eventos de auditoría de MS08
-     * @param timeService reloj único de la base de datos con el que se fijan los cortes de sesión
+     * @param userRepository repository to access the users and their roles
+     * @param roleRepository repository to access the roles and their permissions
+     * @param auditRecorder recorder of the audit events of MS08
+     * @param timeService single database clock with which the session cuts are set
      */
     public RoleServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
             AuditRecorder auditRecorder, DatabaseTimeService timeService) {
@@ -85,12 +85,12 @@ public class RoleServiceImpl implements RoleService {
         this.timeService = timeService;
     }
 
-    /**
-     * Consulta los roles con sus permisos, quien tenga el permiso de lectura de todos los roles recibe
-     * el catálogo completo y los demás reciben solo sus propios roles
+        /**
+     * Queries the roles with their permissions, whoever has the permission to read all the roles receives the complete
+     * catalog and the rest receive only their own roles
      *
-     * @param requester identidad de quien consulta
-     * @return los roles, cada uno con los códigos de sus permisos
+     * @param requester identity of whoever queries
+     * @return the roles, each one with the codes of its permissions
      */
     @Override
     @Transactional(readOnly = true)
@@ -108,20 +108,19 @@ public class RoleServiceImpl implements RoleService {
                 .toList();
     }
 
-    /**
-     * Agrega y retira roles a uno o varios usuarios en una sola operación atómica, cada usuario
-     * procesado se audita en MS08
+        /**
+     * Adds and removes roles to one or several users in a single atomic operation, every processed user is audited in
+     * MS08
      *
-     * @param requester identidad de quien solicita
-     * @param request cuerpo con los usuarios objetivo y los roles a agregar y a retirar
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return los roles finales de cada usuario
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido o se incluye a sí
-     *         mismo
-     * @throws InvalidRequestException si el cuerpo es inválido, algún rol no existe o algún usuario quedaría
-     *         sin roles
-     * @throws BusinessRuleException si algún usuario quedaría con más roles que el máximo permitido
-     * @throws UsersNotFoundException si algún usuario objetivo no existe
+     * @param requester identity of whoever requests
+     * @param request body with the target users and the roles to add and to remove
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the final roles of each user
+     * @throws ForbiddenOperationException if the requester does not have the required permission or includes themselves
+     * @throws InvalidRequestException if the body is invalid, any role does not exist or any user would be left without
+     *         roles
+     * @throws BusinessRuleException if any user would be left with more roles than the maximum allowed
+     * @throws UsersNotFoundException if any target user does not exist
      */
     @Override
     @Transactional
@@ -131,7 +130,7 @@ public class RoleServiceImpl implements RoleService {
 
         if (!requester.hasPermission(Permission.MS01_USER_ROLES)) {
             publishFailure(requester, null, REASON_NOT_ALLOWED, corr);
-            log.warn("Cambio de roles rechazado: el solicitante {} no tiene el permiso requerido",
+            log.warn("Role change rejected: the requester {} does not have the required permission",
                     requester.userId());
             throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
         }
@@ -141,7 +140,7 @@ public class RoleServiceImpl implements RoleService {
 
         if (command.userIds().contains(requester.userId())) {
             publishFailure(requester, requester.userId(), REASON_SELF_MODIFICATION, corr);
-            log.warn("Cambio de roles rechazado: el usuario {} intenta modificar sus propios roles",
+            log.warn("Role change rejected: the user {} tries to modify their own roles",
                     requester.userId());
             throw new ForbiddenOperationException(SELF_MODIFICATION_MESSAGE);
         }
@@ -165,18 +164,18 @@ public class RoleServiceImpl implements RoleService {
             publishSuccess(requester, change, corr);
             results.add(new ChangeRolesResponse.UserRoles(id.toString(), RoleNames.sorted(change.after())));
         }
-        log.info("Roles actualizados por el usuario {}: {} usuario(s) procesado(s), {} modificado(s)",
+        log.info("Roles updated by user {}: {} user(s) processed, {} modified",
                 requester.userId(), results.size(), modified.size());
         return new ChangeRolesResponse(results);
     }
 
-    /**
-     * Comprueba que todos los roles a agregar y a retirar existan en la tabla roles, si alguno no existe se
-     * rechaza la petición con 400 sin auditar, igual que los demás errores de validación
+        /**
+     * Checks that all the roles to add and to remove exist in the roles table, if any does not exist the request is
+     * rejected with 400 without auditing, like the other validation errors
      *
-     * @param command petición validada con los roles a agregar y a retirar
-     * @return los roles nombrados en la petición, por nombre
-     * @throws InvalidRequestException si algún rol no existe, con un error por lista
+     * @param command validated request with the roles to add and to remove
+     * @return the roles named in the request, by name
+     * @throws InvalidRequestException if any role does not exist, with one error per list
      */
     private Map<String, RoleEntity> verifyRolesExist(ChangeRolesCommand command) {
         Set<String> referenced = new HashSet<>(command.rolesToAdd());
@@ -204,15 +203,15 @@ public class RoleServiceImpl implements RoleService {
         return found;
     }
 
-    /**
-     * Comprueba que todos los ids pedidos correspondan a un usuario existente, si falta alguno,
-     * audita un FALLO por cada id inexistente y lanza 404 sin haber cambiado nada
+        /**
+     * Checks that all the requested ids correspond to an existing user, if any is missing, it audits a FALLO for each
+     * non-existent id and throws 404 without having changed anything
      *
-     * @param requester identidad de quien solicita
-     * @param command peticion validada con los ids pedidos
-     * @param users usuarios encontrados en la base de datos
+     * @param requester identity of whoever requests
+     * @param command validated request with the requested ids
+     * @param users users found in the database
      * @param corr correlationId
-     * @throws UsersNotFoundException si algun id pedido no corresponde a un usuario
+     * @throws UsersNotFoundException if any requested id does not correspond to a user
      */
     private void verifyAllUsersExist(RequesterIdentity requester, ChangeRolesCommand command,
             List<UserEntity> users, String corr) {
@@ -234,16 +233,16 @@ public class RoleServiceImpl implements RoleService {
         for (UUID id : missing) {
             publishFailure(requester, id, REASON_USER_NOT_FOUND, corr);
         }
-        log.warn("Cambio de roles rechazado: {} usuario(s) inexistente(s)", missing.size());
+        log.warn("Role change rejected: {} non-existent user(s)", missing.size());
         throw new UsersNotFoundException(missing);
     }
 
-    /**
-     * Devuelve los roles que tendria cada usuario despues del cambio
+        /**
+     * Returns the roles that each user would have after the change
      *
-     * @param users usuarios que se van a modificar
-     * @param command peticion validada con los roles a agregar y a retirar
-     * @return el cambio final de cada usuario
+     * @param users users that are going to be modified
+     * @param command validated request with the roles to add and to remove
+     * @return the final change of each user
      */
     private Map<UUID, RoleChange> planChanges(List<UserEntity> users, ChangeRolesCommand command) {
         Map<UUID, RoleChange> changes = new LinkedHashMap<>();
@@ -259,15 +258,15 @@ public class RoleServiceImpl implements RoleService {
         return changes;
     }
 
-    /**
-     * Comprueba que ningun usuario quede sin roles. Si alguno queda sin roles, se audita un fallo por
-     * cada uno y lanza 400
+        /**
+     * Checks that no user is left without roles. If any is left without roles, a failure is audited for each one and
+     * 400 is thrown
      *
-     * @param requester identidad de quien solicita
-     * @param command peticion validada con los roles a agregar y a retirar
-     * @param changes cambio previsto de cada usuario
+     * @param requester identity of whoever requests
+     * @param command validated request with the roles to add and to remove
+     * @param changes planned change of each user
      * @param corr correlationId
-     * @throws InvalidRequestException si algun usuario quedaria sin ningun rol
+     * @throws InvalidRequestException if any user would be left without any role
      */
     private void verifyNobodyLosesAllRoles(RequesterIdentity requester, ChangeRolesCommand command,
             Map<UUID, RoleChange> changes, String corr) {
@@ -280,20 +279,20 @@ public class RoleServiceImpl implements RoleService {
             }
         }
         if (anyEmpty) {
-            log.warn("Cambio de roles rechazado: algún usuario quedaría sin roles");
+            log.warn("Role change rejected: some user would be left without roles");
             throw new InvalidRequestException(LAST_ROLE_MESSAGE, List.of());
         }
     }
 
-    /**
-     * Comprueba que ningún usuario quede con más roles que el máximo permitido. Si alguno lo supera, se audita
-     * un fallo por cada uno y se rechaza la petición con 422 sin cambiar nada
+        /**
+     * Checks that no user is left with more roles than the maximum allowed. If any exceeds it, a failure is audited for
+     * each one and the request is rejected with 422 without changing anything
      *
-     * @param requester identidad de quien solicita
-     * @param command petición validada con los usuarios objetivo
-     * @param changes cambio previsto de cada usuario
+     * @param requester identity of whoever requests
+     * @param command validated request with the target users
+     * @param changes planned change of each user
      * @param corr correlationId
-     * @throws BusinessRuleException si algún usuario quedaría con más roles que el máximo permitido
+     * @throws BusinessRuleException if any user would be left with more roles than the maximum allowed
      */
     private void verifyNobodyExceedsMaxRoles(RequesterIdentity requester, ChangeRolesCommand command,
             Map<UUID, RoleChange> changes, String corr) {
@@ -306,20 +305,19 @@ public class RoleServiceImpl implements RoleService {
             }
         }
         if (anyExceeds) {
-            log.warn("Cambio de roles rechazado: algún usuario quedaría con más de {} roles",
+            log.warn("Role change rejected: some user would be left with more than {} roles",
                     GlobalValues.MAX_ROLES_PER_USER);
             throw new BusinessRuleException(MAX_ROLES_MESSAGE);
         }
     }
 
-    /**
-     * Asigna los roles nuevos a los usuarios y registra su corte de sesión, si ya los tenian no se hace
-     * cambios
+        /**
+     * Assigns the new roles to the users and records their session cut, if they already had them no changes are made
      *
-     * @param changes cambio previsto de cada usuario
-     * @param referencedRoles roles nombrados en la petición, por nombre
-     * @param cut instante del corte de sesión de cada usuario modificado, truncado a segundos
-     * @return los usuarios con los nuevos roles
+     * @param changes planned change of each user
+     * @param referencedRoles roles named in the request, by name
+     * @param cut instant of the session cut of each modified user, truncated to seconds
+     * @return the users with the new roles
      */
     private List<UserEntity> applyChanges(Map<UUID, RoleChange> changes, Map<String, RoleEntity> referencedRoles,
             Instant cut) {
@@ -342,13 +340,13 @@ public class RoleServiceImpl implements RoleService {
         return modified;
     }
 
-    /**
-     * Audita en MS08 el cambio de roles exitoso de un usuario, el detalle lista los roles que realmente
-     * se agregaron y se retiraron
+        /**
+     * Audits in MS08 the successful role change of a user, the detail lists the roles that were actually added and
+     * removed
      *
-     * @param requester identidad de quien realizó el cambio
-     * @param change cambio aplicado al usuario
-     * @param corr correlation id de la petición
+     * @param requester identity of whoever made the change
+     * @param change change applied to the user
+     * @param corr correlation id of the request
      */
     private void publishSuccess(RequesterIdentity requester, RoleChange change, String corr) {
         Set<String> added = new HashSet<>(change.after());
@@ -363,25 +361,25 @@ public class RoleServiceImpl implements RoleService {
                 AuditRecorder.userResource(change.user().getId()), detail, corr);
     }
 
-    /**
-     * Audita en MS08 un cambio de roles rechazado
+        /**
+     * Audits in MS08 a rejected role change
      *
-     * @param requester identidad de quien hizo la petición
-     * @param targetId usuario afectado, null si el rechazo no corresponde a un usuario concreto
-     * @param reason motivo del rechazo
-     * @param corr correlation id de la petición
+     * @param requester identity of whoever made the request
+     * @param targetId affected user, null if the rejection does not correspond to a specific user
+     * @param reason reason for the rejection
+     * @param corr correlation id of the request
      */
     private void publishFailure(RequesterIdentity requester, UUID targetId, String reason, String corr) {
         auditRecorder.recordAs(AuditAction.CAMBIO_ROL, AuditResult.FALLO, requester,
                 AuditRecorder.userResource(targetId), reason, corr);
     }
 
-    /**
-     * Cambio solicitado para un usuario
+        /**
+     * Change requested for a user
      *
-     * @param user usuario
-     * @param before roles que tiene actualmente
-     * @param after roles que tendria al aplicar el cambio
+     * @param user user
+     * @param before roles that it currently has
+     * @param after roles that it would have after applying the change
      */
     private record RoleChange(UserEntity user, Set<String> before, Set<String> after) {
     }

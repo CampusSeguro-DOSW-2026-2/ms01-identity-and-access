@@ -4,25 +4,25 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 /**
- * Serializador JSON minimo y determinista
+ * Minimal and deterministic JSON serializer
  *
- * Se usa para el encabezado y el cuerpo del JWT y para el cuerpo del evento de auditoria, donde la
- * forma es fija y pequena. Asi la emision del token no depende de la version de Jackson ni de su
- * configuracion. Soporta: null, CharSequence, Boolean, Number, Enum, Map y cualquier Iterable
+ * It is used for the header and the body of the JWT and for the body of the audit event, where the shape is fixed and
+ * small. This way the token issuance does not depend on the Jackson version or its configuration. It supports: null,
+ * CharSequence, Boolean, Number, Enum, Map and any Iterable
  */
 public final class MiniJson {
 
-    /**
-     * No se instancia
+        /**
+     * It is not instantiated
      */
     private MiniJson() {
     }
 
-    /**
-     * Serializa un objeto soportado en una cadena de texto con formato JSON
+        /**
+     * Serializes a supported object into a text string in JSON format
      *
-     * @param value el objeto a serializar, puede ser Map, Iterable, Number, Boolean, Enum, CharSequence o null
-     * @return una cadena de texto que representa el objeto en formato JSON
+     * @param value the object to serialize, may be Map, Iterable, Number, Boolean, Enum, CharSequence or null
+     * @return a text string that represents the object in JSON format
      */
     public static String write(Object value) {
         StringBuilder out = new StringBuilder();
@@ -30,12 +30,12 @@ public final class MiniJson {
         return out.toString();
     }
 
-    /**
-     * Evalúa el tipo del objeto recibido y lo serializa adecuadamente, acumulando el resultado
-     * en el acumulador de texto proporcionado
+        /**
+     * Evaluates the type of the received object and serializes it accordingly, accumulating the result in the provided
+     * text accumulator
      *
-     * @param value el objeto actual a procesar y adjuntar
-     * @param out el constructor de cadenas acumulativo donde se escribe el resultado
+     * @param value the current object to process and append
+     * @param out the accumulating string builder where the result is written
      */
     private static void append(Object value, StringBuilder out) {
         if (value == null) {
@@ -53,15 +53,15 @@ public final class MiniJson {
         } else if (value instanceof Iterable<?> items) {
             appendArray(items, out);
         } else {
-            throw new IllegalArgumentException("Tipo no soportado para JSON: " + value.getClass().getName());
+            throw new IllegalArgumentException("Unsupported type for JSON: " + value.getClass().getName());
         }
     }
 
-    /**
-     * Serializa un mapa de tipo llave-valor en un objeto JSON con llaves delimitadas por llaves {}
+        /**
+     * Serializes a key-value map into a JSON object with keys delimited by braces {}
      *
-     * @param map el mapa de entradas a serializar como propiedades del objeto JSON
-     * @param out el acumulador de cadenas donde se escribe el objeto JSON resultante
+     * @param map the map of entries to serialize as properties of the JSON object
+     * @param out the string accumulator where the resulting JSON object is written
      */
     private static void appendObject(Map<?, ?> map, StringBuilder out) {
         out.append('{');
@@ -78,11 +78,11 @@ public final class MiniJson {
         out.append('}');
     }
 
-    /**
-     * Serializa una colección iterable de elementos en un arreglo JSON delimitado por corchetes []
+        /**
+     * Serializes an iterable collection of elements into a JSON array delimited by brackets []
      *
-     * @param items la colección de elementos a serializar
-     * @param out el acumulador de cadenas donde se escribe el arreglo JSON resultante
+     * @param items the collection of elements to serialize
+     * @param out the string accumulator where the resulting JSON array is written
      */
     private static void appendArray(Iterable<?> items, StringBuilder out) {
         out.append('[');
@@ -97,18 +97,18 @@ public final class MiniJson {
         out.append(']');
     }
 
-    /**
-     * Serializa un valor numérico asegurando un formato válido para JSON, manejando de forma plana
-     * los decimales y restringiendo valores no válidos como NaN o infinitos
+        /**
+     * Serializes a numeric value ensuring a valid JSON format, handling decimals plainly and restricting invalid values
+     * such as NaN or infinite ones
      *
-     * @param number el objeto numérico a serializar
-     * @param out el acumulador de cadenas donde se adjunta la representación numérica
+     * @param number the numeric object to serialize
+     * @param out the string accumulator where the numeric representation is appended
      */
     private static void appendNumber(Number number, StringBuilder out) {
         if (number instanceof Double || number instanceof Float) {
             double d = number.doubleValue();
             if (Double.isNaN(d) || Double.isInfinite(d)) {
-                throw new IllegalArgumentException("NaN e infinito no son valores JSON validos.");
+                throw new IllegalArgumentException("NaN and infinity are not valid JSON values.");
             }
             out.append(number);
         } else if (number instanceof BigDecimal decimal) {
@@ -118,12 +118,12 @@ public final class MiniJson {
         }
     }
 
-    /**
-     * Serializa una cadena de texto escapando correctamente los caracteres especiales
-     * exigidos por el estándar JSON y delimitándola entre comillas dobles
+        /**
+     * Serializes a text string, correctly escaping the special characters required by the JSON standard and delimiting
+     * it between double quotes
      *
-     * @param text la cadena de texto plano a escapar y serializar
-     * @param out el acumulador de cadenas donde se escribe el texto formateado
+     * @param text the plain text string to escape and serialize
+     * @param out the string accumulator where the formatted text is written
      */
     private static void appendString(String text, StringBuilder out) {
         out.append('"');

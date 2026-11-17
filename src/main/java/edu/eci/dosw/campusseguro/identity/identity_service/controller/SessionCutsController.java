@@ -9,7 +9,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.SessionCutsRespon
 import edu.eci.dosw.campusseguro.identity.identity_service.service.SessionCutService;
 
 /**
- * Consulta interna de los cortes de sesión vigentes (RF-MS01-11), solo la atiende el servicio gateway
+ * Internal query of the current session cuts (RF-MS01-11), only the gateway service is served
  */
 @RestController
 @RequestMapping("/api/v1/internal")
@@ -17,21 +17,21 @@ public class SessionCutsController {
 
     private final SessionCutService sessionCutService;
 
-    /**
-     * Crea el controlador con su servicio
+        /**
+     * Creates the controller with its service
      *
-     * @param sessionCutService servicio de consulta de cortes de sesión
+     * @param sessionCutService session cut query service
      */
     public SessionCutsController(SessionCutService sessionCutService) {
         this.sessionCutService = sessionCutService;
     }
 
-    /**
-     * GET /api/v1/internal/session-cuts: instantánea de los cortes de sesión (RF-MS01-11)
+        /**
+     * GET /api/v1/internal/session-cuts: snapshot of the session cuts (RF-MS01-11)
      *
-     * 200 cortes vigentes, 401 falta X-Service-Name, 403 el servicio no es gateway, no se audita
+     * 200 current cuts, 401 missing X-Service-Name, 403 the service is not gateway, it is not audited
      *
-     * @return la instantánea de cortes de usuarios y roles de los últimos 3700 segundos
+     * @return the snapshot of cuts of users and roles of the last 3700 seconds
      */
     @GetMapping("/session-cuts")
     public ResponseEntity<SessionCutsResponse> getSessionCuts() {

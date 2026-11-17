@@ -12,8 +12,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Cierre de sesión (RF-MS01-04), a diferencia del registro y el login no es público: la identidad del
- * solicitante llega en las cabeceras que inyecta el API Gateway y nunca en el cuerpo de la petición
+ * Logout (RF-MS01-04), unlike the registration and the login it is not public: the identity of the requester arrives in
+ * the headers injected by the API Gateway and never in the body of the request
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -23,25 +23,26 @@ public class SessionController {
 
     private final SessionService sessionService;
 
-    /**
-     * Crea el controlador con su servicio
+        /**
+     * Creates the controller with its service
      *
-     * @param sessionService servicio de cierre de sesión
+     * @param sessionService logout service
      */
     public SessionController(SessionService sessionService) {
         this.sessionService = sessionService;
     }
 
-    /**
-     * POST /api/v1/auth/logout: cierra la sesión del usuario autenticado (RF-MS01-04)
+        /**
+     * POST /api/v1/auth/logout: closes the session of the authenticated user (RF-MS01-04)
      *
-     * 200 sesión cerrada y registrada en la auditoría, 401 identidad ausente, 403 sin permiso
+     * 200 session closed and recorded in the audit, 401 missing identity, 403 no permission
      *
-     * No recibe cuerpo y no revoca el token: el cliente lo descarta y el token expira por sí solo (RN-MS01-10)
+     * It receives no body and does not revoke the token: the client discards it and the token expires on its own
+     * (RN-MS01-10)
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el mensaje de confirmación
+     * @param requester identity of the requester taken from the headers
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the confirmation message
      */
     @PostMapping("/logout")
     public ResponseEntity<MessageResponse> logout(RequesterIdentity requester, HttpServletRequest httpRequest) {

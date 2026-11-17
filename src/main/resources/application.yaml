@@ -13,8 +13,8 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
-  # Correo real por Gmail (RF-MS01-08): SMTP con STARTTLS en el 587 y la cuenta del proyecto. La contraseña es una
-  # contraseña de aplicación de Google y solo llega por MAIL_PASSWORD (nunca en el repositorio)
+  # Real email through Gmail (RF-MS01-08): SMTP with STARTTLS on 587 and the account of the project. The password is an
+  # Google application password and it only arrives through MAIL_PASSWORD (never in the repository)
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -46,14 +46,14 @@ management:
     health:
       show-details: never
       show-components: never
-  # El health refleja MS01 y su BD: una caída del SMTP externo solo afecta la recuperación de contraseña
+  # The health reflects MS01 and its DB: a failure of the external SMTP only affects the password recovery
   health:
     mail:
       enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}
 
 logging:
   pattern:
-    console: "%X{correlation_id:-sin-correlacion} %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level %logger{36} - %msg%n"
+    console: "%X{correlation_id:-no-correlation} %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level %logger{36} - %msg%n"
 
 springdoc:
   api-docs:
@@ -70,7 +70,7 @@ gateway:
   service-key: ${GATEWAY_SERVICE_KEY:}
 
 internal:
-  allowed-services: ${INTERNAL_ALLOWED_SERVICES:ms03,ms05}
+  allowed-services: ${INTERNAL_ALLOWED_SERVICES:ms03,ms04,ms05}
 
 identity:
   institutional-domains: ${INSTITUTIONAL_EMAIL_DOMAINS:escuelaing.edu.co,mail.escuelaing.edu.co}
@@ -79,7 +79,7 @@ recovery:
   code-ttl-minutes: ${RECOVERY_CODE_TTL_MINUTES:15}
   max-attempts: ${RECOVERY_MAX_ATTEMPTS:5}
   resend-cooldown-seconds: ${RECOVERY_RESEND_COOLDOWN_SECONDS:60}
-  # Con Gmail el remitente debe ser la misma cuenta que autentica
+  # With Gmail the sender must be the same account that authenticates
   mail-from: ${MAIL_FROM:CampusSeguro <proyectometx@gmail.com>}
 
 bootstrap:

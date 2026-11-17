@@ -35,7 +35,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
 
 /**
- * Pruebas de GET /api/v1/users (RF-MS01-07, formulario F-07)
+ * Tests of GET /api/v1/users (RF-MS01-07, form F-07)
  */
 @ExtendWith(MockitoExtension.class)
 class UserListControllerTest {
@@ -55,8 +55,8 @@ class UserListControllerTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Prepara el controlador y el cliente de pruebas con el manejador global de errores y la resolución de identidad
+        /**
+     * Prepares the controller and the test client with the global error handler and the identity resolution
      */
     @BeforeEach
     void setUp() {
@@ -66,21 +66,21 @@ class UserListControllerTest {
                 .build();
     }
 
-    /**
-     * Construye una respuesta de perfil de ejemplo
+        /**
+     * Builds a sample profile response
      *
-     * @param email correo del usuario
-     * @return el perfil de ejemplo
+     * @param email email of the user
+     * @return the sample profile
      */
     private UserProfileResponse response(String email) {
         return new UserProfileResponse(UUID.randomUUID(), "Ana", null, "Perez", null, email,
                 List.of("ESTUDIANTE"), UserState.ACTIVO);
     }
 
-    /**
-     * El listado responde 200 con los nombres de paginación del contrato
+        /**
+     * The list answers 200 with the pagination names of the contract
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void list_asAdmin_returns200WithThePaginationWireNames() throws Exception {
@@ -107,10 +107,10 @@ class UserListControllerTest {
                 .andExpect(jsonPath("$.total_paginas").value(1));
     }
 
-    /**
-     * Sin parámetros se entregan nulos para que el servicio aplique los valores por defecto
+        /**
+     * Without parameters nulls are delivered so the service applies the default values
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void list_withoutParams_passesNullsSoTheServiceAppliesTheDefaults() throws Exception {
@@ -128,10 +128,10 @@ class UserListControllerTest {
                 isNull());
     }
 
-    /**
-     * La página y el tamaño se entregan como texto para validarse con los mensajes del formulario
+        /**
+     * The page and the size are delivered as text to be validated with the messages of the form
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void list_pageAndSizeAreForwardedAsTextToBeValidatedWithTheFormMessages() throws Exception {
@@ -154,10 +154,10 @@ class UserListControllerTest {
                 .andExpect(jsonPath("$.errores[1].campo").value("size"));
     }
 
-    /**
-     * El listado sin permiso responde 403
+        /**
+     * The list without permission answers 403
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void list_withoutPermission_returns403() throws Exception {
@@ -173,10 +173,10 @@ class UserListControllerTest {
                 .andExpect(jsonPath("$.codigo").value("PROHIBIDO"));
     }
 
-    /**
-     * Sin cabeceras de identidad la respuesta es 401 y no se llama al servicio
+        /**
+     * Without identity headers the response is 401 and the service is not called
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void list_withoutIdentityHeaders_returns401AndDoesNotCallTheService() throws Exception {
@@ -187,10 +187,10 @@ class UserListControllerTest {
         verifyNoInteractions(userService);
     }
 
-    /**
-     * Una cabecera de roles inválida responde 401
+        /**
+     * An invalid roles header answers 401
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void list_invalidRoleHeader_returns401() throws Exception {

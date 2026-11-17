@@ -52,7 +52,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * Pruebas del registro (RF-MS01-01), el perfil propio (RF-MS01-06) y la consulta por id (RF-MS01-07)
+ * Tests of the registration (RF-MS01-01), the own profile (RF-MS01-06) and the query by id (RF-MS01-07)
  */
 class UserServiceTest {
 
@@ -66,8 +66,8 @@ class UserServiceTest {
     private AuditEventPublisher auditPublisher;
     private UserServiceImpl userService;
 
-    /**
-     * Prepara el servicio con sus dependencias simuladas
+        /**
+     * Prepares the service with its simulated dependencies
      */
     @BeforeEach
     void setUp() {
@@ -80,11 +80,11 @@ class UserServiceTest {
         userService = serviceWithDomains(DOMAINS);
     }
 
-    /**
-     * Construye el servicio con las dependencias simuladas y los dominios institucionales indicados
+        /**
+     * Builds the service with the simulated dependencies and the indicated institutional domains
      *
-     * @param domains dominios institucionales con los que se configura el servicio
-     * @return el servicio configurado
+     * @param domains institutional domains with which the service is configured
+     * @return the configured service
      */
     private UserServiceImpl serviceWithDomains(List<String> domains) {
         Clock clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC);
@@ -95,11 +95,11 @@ class UserServiceTest {
                 FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), domains);
     }
 
-    /**
-     * Construye una petición de registro válida
+        /**
+     * Builds a valid registration request
      *
-     * @param email correo de la petición
-     * @return la petición de registro
+     * @param email email of the request
+     * @return the registration request
      */
     private UserCreateRequest registrationRequest(String email) {
         UserCreateRequest request = new UserCreateRequest();
@@ -113,12 +113,12 @@ class UserServiceTest {
         return request;
     }
 
-    /**
-     * Construye un usuario guardado de ejemplo
+        /**
+     * Builds a sample stored user
      *
-     * @param id identificador del usuario
-     * @param email correo del usuario
-     * @return el usuario de ejemplo
+     * @param id identifier of the user
+     * @param email email of the user
+     * @return the sample user
      */
     private UserEntity entity(UUID id, String email) {
         UserEntity entity = new UserEntity();
@@ -132,21 +132,21 @@ class UserServiceTest {
         return entity;
     }
 
-    /**
-     * Construye la identidad de un solicitante
+        /**
+     * Builds the identity of a requester
      *
-     * @param id identificador del solicitante
-     * @param roles roles del solicitante
-     * @return la identidad del solicitante
+     * @param id identifier of the requester
+     * @param roles roles of the requester
+     * @return the identity of the requester
      */
     private RequesterIdentity identity(UUID id, String... roles) {
         return TestIdentities.of(id, roles);
     }
 
-    /**
-     * Obtiene el único evento de auditoría que se publicó
+        /**
+     * Gets the only audit event that was published
      *
-     * @return el evento de auditoría publicado
+     * @return the published audit event
      */
     private AuditEvent singleAuditEvent() {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -154,8 +154,8 @@ class UserServiceTest {
         return captor.getValue();
     }
 
-    /**
-     * Un registro válido guarda al usuario con la contraseña cifrada y los valores por defecto
+        /**
+     * A valid registration stores the user with the encrypted password and the default values
      */
     @Test
     void create_validRequest_savesUserWithHashedPasswordAndDefaults() {
@@ -188,8 +188,8 @@ class UserServiceTest {
         assertEquals(UserState.ACTIVO, response.state());
     }
 
-    /**
-     * Si el rol de sistema ESTUDIANTE no existe en la tabla roles el registro falla sin guardar nada
+        /**
+     * If the ESTUDIANTE system role does not exist in the roles table the registration fails without saving anything
      */
     @Test
     void create_studentRoleMissingInTheDatabase_failsWithoutSaving() {
@@ -203,8 +203,8 @@ class UserServiceTest {
         verify(userRepository, never()).saveAndFlush(any());
     }
 
-    /**
-     * Un registro exitoso se audita sin datos personales
+        /**
+     * A successful registration is audited without personal data
      */
     @Test
     void create_success_auditsRegistroWithoutPersonalData() {
@@ -229,8 +229,8 @@ class UserServiceTest {
         assertNull(event.detalle());
     }
 
-    /**
-     * Los nombres opcionales en blanco se guardan como nulos
+        /**
+     * The blank optional names are stored as null
      */
     @Test
     void create_blankOptionalNames_areSavedAsNull() {
@@ -250,8 +250,8 @@ class UserServiceTest {
         assertNull(captor.getValue().getSecondLastName());
     }
 
-    /**
-     * Un correo ya registrado lanza el conflicto, se audita y no se guarda
+        /**
+     * An already registered email throws the conflict, is audited and is not saved
      */
     @Test
     void create_emailAlreadyExists_throwsAuditsAndDoesNotSave() {
@@ -269,8 +269,8 @@ class UserServiceTest {
         assertNull(event.recursoAfectado());
     }
 
-    /**
-     * Una violación de la restricción de unicidad se informa como conflicto de correo
+        /**
+     * A violation of the uniqueness constraint is reported as an email conflict
      */
     @Test
     void create_uniqueConstraintViolation_isReportedAsEmailConflict() {
@@ -278,7 +278,7 @@ class UserServiceTest {
         when(userRepository.existsByEmail("carlos.gomez@escuelaing.edu.co")).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn("$2a$10$hash");
         when(userRepository.saveAndFlush(any(UserEntity.class)))
-                .thenThrow(new DataIntegrityViolationException("uq_users_correo"));
+                .thenThrow(new DataIntegrityViolationException("uq_users_email"));
 
         assertThrows(EmailAlreadyExistsException.class, () -> userService.create(request, CORRELATION_ID));
 
@@ -287,8 +287,8 @@ class UserServiceTest {
         assertEquals("CONFLICTO", event.detalle());
     }
 
-    /**
-     * Un dominio ajeno a la institución se rechaza con el mensaje genérico de correo
+        /**
+     * A domain outside the institution is rejected with the generic email message
      */
     @Test
     void create_foreignDomain_isRejectedWithGenericEmailMessage() {
@@ -304,10 +304,10 @@ class UserServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * El correo de cada dominio institucional configurado se acepta
+        /**
+     * The email of each configured institutional domain is accepted
      *
-     * @param email correo con el dominio institucional que se prueba
+     * @param email email with the institutional domain that is tested
      */
     @ParameterizedTest
     @ValueSource(strings = { "carlos.gomez@escuelaing.edu.co", "carlos.gomez@mail.escuelaing.edu.co" })
@@ -327,11 +327,11 @@ class UserServiceTest {
         assertEquals(id, response.id());
     }
 
-    /**
-     * Un dominio que no es igual a alguno de los configurados se rechaza, incluidos los subdominios
-     * y los dominios que solo contienen uno de los configurados
+        /**
+     * A domain that is not equal to any of the configured ones is rejected, including subdomains and domains that only
+     * contain one of the configured ones
      *
-     * @param email correo con un dominio no permitido
+     * @param email email with a domain that is not allowed
      */
     @ParameterizedTest
     @ValueSource(strings = { "carlos.gomez@otro.escuelaing.edu.co", "carlos.gomez@mail.mail.escuelaing.edu.co",
@@ -347,8 +347,8 @@ class UserServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * Los dominios configurados se normalizan: se ignoran los espacios, las mayúsculas y los valores vacíos
+        /**
+     * The configured domains are normalized: spaces, uppercase and empty values are ignored
      */
     @Test
     void create_configuredDomainsAreNormalized() {
@@ -370,8 +370,8 @@ class UserServiceTest {
         assertThrows(InvalidRequestException.class, () -> service.create(rejected, CORRELATION_ID));
     }
 
-    /**
-     * Datos inválidos se auditan como fallo y se informan todos los campos
+        /**
+     * Invalid data is audited as a failure and all the fields are reported
      */
     @Test
     void create_invalidData_auditsFalloAndReportsEveryField() {
@@ -397,8 +397,8 @@ class UserServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * Un fallo de la auditoría no cambia la respuesta del registro
+        /**
+     * A failure of the audit does not change the response of the registration
      */
     @Test
     void create_auditFailure_doesNotChangeTheResponse() {
@@ -410,7 +410,7 @@ class UserServiceTest {
             saved.setId(id);
             return saved;
         });
-        doThrow(new IllegalStateException("MS08 caído")).when(auditPublisher).publish(any(AuditEvent.class));
+        doThrow(new IllegalStateException("MS08 down")).when(auditPublisher).publish(any(AuditEvent.class));
 
         UserResponse response = userService.create(registrationRequest("carlos.gomez@escuelaing.edu.co"),
                 CORRELATION_ID);
@@ -418,8 +418,8 @@ class UserServiceTest {
         assertEquals(id, response.id());
     }
 
-    /**
-     * La consulta del propio perfil devuelve el perfil del usuario
+        /**
+     * The query of the own profile returns the profile of the user
      */
     @Test
     void getMyProfile_existingUser_returnsProfile() {
@@ -432,8 +432,8 @@ class UserServiceTest {
         assertEquals("Carlos", result.firstName());
     }
 
-    /**
-     * La consulta del propio perfil de un usuario inexistente lanza no encontrado
+        /**
+     * The query of the own profile of a non-existent user throws not found
      */
     @Test
     void getMyProfile_unknownUser_throwsUserNotFoundException() {
@@ -444,8 +444,8 @@ class UserServiceTest {
                 () -> userService.getMyProfile(identity(id, "ESTUDIANTE")));
     }
 
-    /**
-     * Una actualización válida modifica y devuelve el perfil
+        /**
+     * A valid update modifies and returns the profile
      */
     @Test
     void updateProfile_validRequest_updatesAndReturnsProfile() {
@@ -465,8 +465,8 @@ class UserServiceTest {
         verify(userRepository).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * Nombres inválidos lanzan petición inválida y no se guarda
+        /**
+     * Invalid names throw invalid request and nothing is saved
      */
     @Test
     void updateProfile_invalidNames_throwsInvalidRequestAndDoesNotSave() {
@@ -482,8 +482,8 @@ class UserServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * Los campos rechazados informan los mensajes del formulario
+        /**
+     * The rejected fields report the messages of the form
      */
     @Test
     void updateProfile_rejectedFields_reportTheFormMessages() {
@@ -508,8 +508,8 @@ class UserServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * La consulta de un usuario por id con permiso devuelve su perfil
+        /**
+     * The query of a user by id with permission returns their profile
      */
     @Test
     void getUserById_withReadPermission_returnsProfile() {
@@ -524,8 +524,8 @@ class UserServiceTest {
         assertEquals("carlos.gomez@escuelaing.edu.co", result.email());
     }
 
-    /**
-     * La consulta de un usuario inexistente lanza no encontrado
+        /**
+     * The query of a non-existent user throws not found
      */
     @Test
     void getUserById_unknownUser_throwsUserNotFoundException() {
@@ -536,8 +536,8 @@ class UserServiceTest {
                 () -> userService.getUserById(identity(UUID.randomUUID(), "ADMIN"), targetId));
     }
 
-    /**
-     * Sin permiso de lectura la consulta se prohíbe y no se consulta la base de datos
+        /**
+     * Without read permission the query is forbidden and the database is not queried
      */
     @Test
     void getUserById_withoutReadPermission_isForbiddenAndDoesNotQuery() {
@@ -549,8 +549,8 @@ class UserServiceTest {
         verify(userRepository, never()).findById(any());
     }
 
-    /**
-     * La respuesta incluye los nombres opcionales solo cuando existen
+        /**
+     * The response includes the optional names only when they exist
      */
     @Test
     void getUserById_responseIncludesOptionalNamesOnlyWhenPresent() {

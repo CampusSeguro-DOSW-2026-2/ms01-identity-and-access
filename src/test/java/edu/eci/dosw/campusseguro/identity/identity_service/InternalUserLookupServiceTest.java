@@ -45,7 +45,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * Pruebas de las consultas internas de usuarios por id y por rol (RF-MS01-09)
+ * Tests of the internal queries of users by id and by role (RF-MS01-09)
  */
 class InternalUserLookupServiceTest {
 
@@ -54,8 +54,8 @@ class InternalUserLookupServiceTest {
     private AuditEventPublisher auditPublisher;
     private UserServiceImpl userService;
 
-    /**
-     * Prepara el servicio con sus dependencias simuladas
+        /**
+     * Prepares the service with its simulated dependencies
      */
     @BeforeEach
     void setUp() {
@@ -71,13 +71,13 @@ class InternalUserLookupServiceTest {
                 new AuditRecorder(auditPublisher, clock), requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
     }
 
-    /**
-     * Construye un usuario de prueba
+        /**
+     * Builds a test user
      *
-     * @param id id del usuario
-     * @param state estado del usuario
-     * @param roles roles del usuario
-     * @return el usuario de prueba
+     * @param id id of the user
+     * @param state status of the user
+     * @param roles roles of the user
+     * @return the test user
      */
     private static UserEntity user(UUID id, UserState state, String... roles) {
         UserEntity u = new UserEntity();
@@ -91,11 +91,11 @@ class InternalUserLookupServiceTest {
         return u;
     }
 
-    /**
-     * Construye el cuerpo del batch con los ids indicados
+        /**
+     * Builds the batch body with the indicated ids
      *
-     * @param ids ids como texto
-     * @return el cuerpo del batch
+     * @param ids ids as text
+     * @return the batch body
      */
     private static BatchUsersRequest batch(List<String> ids) {
         BatchUsersRequest request = new BatchUsersRequest();
@@ -103,11 +103,11 @@ class InternalUserLookupServiceTest {
         return request;
     }
 
-    /**
-     * Obtiene el mensaje del error del campo ids
+        /**
+     * Gets the error message of the ids field
      *
-     * @param e excepción de validación
-     * @return el mensaje del campo ids
+     * @param e validation exception
+     * @return the message of the ids field
      */
     private static String idsMessage(InvalidRequestException e) {
         return e.getErrors().stream()
@@ -117,8 +117,8 @@ class InternalUserLookupServiceTest {
                 .orElseThrow();
     }
 
-    /**
-     * El batch devuelve los usuarios en el orden pedido, sin repetidos, e informa los que no existen
+        /**
+     * The batch returns the users in the requested order, without repeated ones, and reports those that do not exist
      */
     @Test
     void findUsersByIds_keepsTheRequestOrderAndReportsTheMissingIds() {
@@ -136,8 +136,8 @@ class InternalUserLookupServiceTest {
         assertEquals(List.of(missing), response.noEncontrados());
     }
 
-    /**
-     * El batch consulta cada id una sola vez
+        /**
+     * The batch queries each id only once
      */
     @Test
     @SuppressWarnings("unchecked")
@@ -154,8 +154,8 @@ class InternalUserLookupServiceTest {
         assertEquals(List.of(id), queried);
     }
 
-    /**
-     * El batch incluye a los usuarios inactivos con su estado, el llamante decide si los usa
+        /**
+     * The batch includes the inactive users with their status, the caller decides whether to use them
      */
     @Test
     void findUsersByIds_includesInactiveUsersWithTheirState() {
@@ -168,8 +168,8 @@ class InternalUserLookupServiceTest {
         assertEquals(UserState.INACTIVO, response.usuarios().get(0).state());
     }
 
-    /**
-     * El batch no audita las lecturas
+        /**
+     * The batch does not audit the reads
      */
     @Test
     void findUsersByIds_isNotAudited() {
@@ -180,8 +180,8 @@ class InternalUserLookupServiceTest {
         verifyNoInteractions(auditPublisher);
     }
 
-    /**
-     * Una lista ausente o vacía se rechaza con el mensaje del contrato
+        /**
+     * An absent or empty list is rejected with the message of the contract
      */
     @Test
     void findUsersByIds_emptyOrMissingList_isRejected() {
@@ -195,8 +195,8 @@ class InternalUserLookupServiceTest {
         verify(userRepository, never()).findAllById(any());
     }
 
-    /**
-     * Más de 100 ids se rechazan con el mensaje del contrato
+        /**
+     * More than 100 ids are rejected with the message of the contract
      */
     @Test
     void findUsersByIds_moreThan100Ids_isRejected() {
@@ -211,8 +211,8 @@ class InternalUserLookupServiceTest {
         assertEquals(BatchUsersRequest.INVALID_LIST_MESSAGE, idsMessage(e));
     }
 
-    /**
-     * Un id que no es UUID se rechaza con el mensaje del contrato
+        /**
+     * An id that is not a UUID is rejected with the message of the contract
      */
     @Test
     void findUsersByIds_invalidId_isRejected() {
@@ -222,8 +222,8 @@ class InternalUserLookupServiceTest {
         assertEquals(BatchUsersRequest.INVALID_ID_MESSAGE, idsMessage(e));
     }
 
-    /**
-     * Un campo fuera del contrato se rechaza
+        /**
+     * A field outside the contract is rejected
      */
     @Test
     void findUsersByIds_unknownField_isRejected() {
@@ -236,8 +236,8 @@ class InternalUserLookupServiceTest {
         assertEquals("estado", e.getErrors().get(0).campo());
     }
 
-    /**
-     * La consulta por rol ordena por id ascendente y usa la paginación pedida
+        /**
+     * The query by role sorts by ascending id and uses the requested pagination
      */
     @Test
     void searchByRole_withoutCutoff_ordersByIdAscending() {
@@ -255,8 +255,8 @@ class InternalUserLookupServiceTest {
         verify(userRepository, never()).findByRoleCreatedUpTo(any(), any(), any());
     }
 
-    /**
-     * Con fecha de corte la consulta por rol filtra por creación
+        /**
+     * With a cut-off date the query by role filters by creation
      */
     @Test
     void searchByRole_withCutoff_usesTheCutoffQuery() {
@@ -272,8 +272,8 @@ class InternalUserLookupServiceTest {
         verify(userRepository, never()).findByRole(any(), any());
     }
 
-    /**
-     * La consulta por rol devuelve todos los estados y no se audita
+        /**
+     * The query by role returns all the statuses and is not audited
      */
     @Test
     void searchByRole_returnsEveryStateAndIsNotAudited() {
@@ -290,8 +290,8 @@ class InternalUserLookupServiceTest {
         verifyNoInteractions(auditPublisher);
     }
 
-    /**
-     * Un rol sin el formato guardado se rechaza sin consultar roles ni usuarios
+        /**
+     * A role without the stored format is rejected without querying roles or users
      */
     @Test
     void searchByRole_roleWithoutTheStoredFormat_isRejectedWithoutQuerying() {
@@ -303,8 +303,8 @@ class InternalUserLookupServiceTest {
         verify(userRepository, never()).findByRole(any(), any());
     }
 
-    /**
-     * Un rol con formato válido que no existe en la tabla de roles se rechaza sin buscar usuarios
+        /**
+     * A role with a valid format that does not exist in the roles table is rejected without looking up users
      */
     @Test
     void searchByRole_roleThatDoesNotExist_isRejectedWithoutQueryingUsers() {
@@ -319,8 +319,8 @@ class InternalUserLookupServiceTest {
         verify(userRepository, never()).findByRoleCreatedUpTo(any(), any(), any());
     }
 
-    /**
-     * El rol es obligatorio en la consulta interna
+        /**
+     * The role is required in the internal query
      */
     @Test
     void searchByRole_missingRole_isRejected() {

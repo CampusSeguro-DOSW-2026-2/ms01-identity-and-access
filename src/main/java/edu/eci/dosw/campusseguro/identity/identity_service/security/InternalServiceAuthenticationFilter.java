@@ -20,11 +20,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Autentica las rutas internas (RF-MS01-09) con la cabecera X-Service-Name que inyecta el API Gateway a
- * partir de la clave de servicio, no usa X-User-Id ni X-User-Role
+ * Authenticates the internal routes (RF-MS01-09) with the X-Service-Name header injected by the API Gateway from the
+ * service key, it does not use X-User-Id or X-User-Role
  *
- * Sin la cabecera la petición queda sin autenticar y responde 401 con el motivo, un servicio que no está en
- * la lista de autorizados queda autenticado sin autoridades y responde 403
+ * Without the header the request is left unauthenticated and answers 401 with the reason, a service that is not in the
+ * list of authorized ones is authenticated without authorities and answers 403
  */
 public class InternalServiceAuthenticationFilter extends OncePerRequestFilter {
 
@@ -34,11 +34,10 @@ public class InternalServiceAuthenticationFilter extends OncePerRequestFilter {
 
     private final Set<String> allowedServices;
 
-    /**
-     * Crea el filtro con la lista de servicios autorizados
+        /**
+     * Creates the filter with the list of authorized services
      *
-     * @param allowedServices nombres de los servicios separados por coma, se ignoran los espacios, las
-     *        mayúsculas y los valores vacíos
+     * @param allowedServices names of the services separated by comma, spaces, uppercase and empty values are ignored
      */
     public InternalServiceAuthenticationFilter(String allowedServices) {
         this.allowedServices = Arrays.stream(allowedServices == null ? new String[0] : allowedServices.split(","))
@@ -47,14 +46,14 @@ public class InternalServiceAuthenticationFilter extends OncePerRequestFilter {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    /**
-     * Construye la autenticación del servicio que llama y la deja en el contexto de seguridad
+        /**
+     * Builds the authentication of the calling service and leaves it in the security context
      *
-     * @param request petición recibida
-     * @param response respuesta que se devuelve al cliente
-     * @param filterChain cadena de filtros que sigue
-     * @throws ServletException si falla algún filtro posterior
-     * @throws IOException si falla la escritura o lectura de la petición
+     * @param request received request
+     * @param response response returned to the client
+     * @param filterChain filter chain that follows
+     * @throws ServletException if any later filter fails
+     * @throws IOException if writing or reading the request fails
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,

@@ -55,8 +55,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * RF-MS01-02: flujo base, flujos alternos A1 y A2, RN-MS01-05, RN-MS01-06 y auditoría de todos los
- * intentos
+ * RF-MS01-02: base flow, alternate flows A1 and A2, RN-MS01-05, RN-MS01-06 and audit of all the attempts
  */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -84,41 +83,41 @@ class AuthServiceTest {
 
     private AuthServiceImpl authService;
 
-    /**
-     * Prepara el servicio de autenticación con sus dependencias simuladas
+        /**
+     * Prepares the authentication service with its simulated dependencies
      */
     @BeforeEach
     void setUp() {
-        // El servicio calcula un hash de relleno al construirse (igualacion de tiempos).
+        // The service computes a padding hash when it is built (time equalization).
         when(passwordEncoder.encode(anyString())).thenReturn(DUMMY_HASH);
         authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtService, recorder(),
                 requestValidator());
     }
 
-    /**
-     * Crea el registrador de auditoría que usa el servicio bajo prueba
+        /**
+     * Creates the audit recorder used by the service under test
      *
-     * @return el registrador de auditoría
+     * @return the audit recorder
      */
     private AuditRecorder recorder() {
         return new AuditRecorder(auditPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
-    /**
-     * Crea el validador de peticiones que usa el servicio bajo prueba
+        /**
+     * Creates the request validator used by the service under test
      *
-     * @return el validador de peticiones
+     * @return the request validator
      */
     private RequestValidator requestValidator() {
         return new RequestValidator(Validation.buildDefaultValidatorFactory().getValidator());
     }
 
-    /**
-     * Construye una petición de login
+        /**
+     * Builds a login request
      *
-     * @param email correo de la petición
-     * @param password contraseña de la petición
-     * @return la petición de login
+     * @param email email of the request
+     * @param password password of the request
+     * @return the login request
      */
     private LoginRequest request(String email, String password) {
         LoginRequest request = new LoginRequest();
@@ -127,23 +126,23 @@ class AuthServiceTest {
         return request;
     }
 
-    /**
-     * Construye un usuario de prueba con la contraseña esperada y roles que solo tienen ms01:profile:read
+        /**
+     * Builds a test user with the expected password and roles that only have ms01:profile:read
      *
-     * @param state estado del usuario
-     * @param roles nombres de los roles del usuario
-     * @return el usuario de prueba
+     * @param state status of the user
+     * @param roles names of the roles of the user
+     * @return the test user
      */
     private UserEntity user(UserState state, String... roles) {
         return user(state, TestEntities.roles(roles));
     }
 
-    /**
-     * Construye un usuario de prueba con la contraseña esperada y los roles guardados indicados
+        /**
+     * Builds a test user with the expected password and the given stored roles
      *
-     * @param state estado del usuario
-     * @param roles roles del usuario con sus permisos
-     * @return el usuario de prueba
+     * @param state status of the user
+     * @param roles roles of the user with their permissions
+     * @return the test user
      */
     private UserEntity user(UserState state, Set<RoleEntity> roles) {
         UserEntity entity = new UserEntity();
@@ -157,10 +156,10 @@ class AuthServiceTest {
         return entity;
     }
 
-    /**
-     * Obtiene el único evento de auditoría que se publicó
+        /**
+     * Gets the only audit event that was published
      *
-     * @return el evento de auditoría publicado
+     * @return the published audit event
      */
     private AuditEvent publishedEvent() {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -168,10 +167,10 @@ class AuthServiceTest {
         return captor.getValue();
     }
 
-    // ---------------------------------------------------------------- flujo base
+    // ---------------------------------------------------------------- base flow
 
-    /**
-     * Un usuario activo con la contraseña correcta recibe el token y se audita el éxito
+        /**
+     * An active user with the correct password receives the token and the success is audited
      */
     @Test
     void login_activeUserWithCorrectPassword_returnsTokenAndAuditsSuccess() {
@@ -203,8 +202,8 @@ class AuthServiceTest {
         assertEquals(NOW, event.fecha());
     }
 
-    /**
-     * Los roles se ordenan alfabéticamente en el token y en la respuesta
+        /**
+     * The roles are sorted alphabetically in the token and in the response
      */
     @Test
     void login_rolesAreSortedAlphabeticallyInTokenAndResponse() {
@@ -224,8 +223,8 @@ class AuthServiceTest {
         assertEquals(alphabetical, response.usuario().roles());
     }
 
-    /**
-     * El correo se normaliza antes de consultar al usuario
+        /**
+     * The email is normalized before querying the user
      */
     @Test
     void login_emailIsNormalizedBeforeLookup() {
@@ -240,8 +239,8 @@ class AuthServiceTest {
         verify(userRepository).findByEmail(EMAIL);
     }
 
-    /**
-     * La contraseña nunca se recorta ni se normaliza
+        /**
+     * The password is never trimmed or normalized
      */
     @Test
     void login_passwordIsNeverTrimmedOrNormalized() {
@@ -256,8 +255,8 @@ class AuthServiceTest {
         verify(passwordEncoder).matches(" Campus#2026 ", STORED_HASH);
     }
 
-    /**
-     * La verificación funciona con un hash BCrypt real como el que se guarda en el registro
+        /**
+     * The verification works with a real BCrypt hash like the one stored in the registration
      */
     @Test
     void login_verifiesAgainstRealBCryptHashLikeTheOneStoredAtRegistration() {
@@ -274,9 +273,9 @@ class AuthServiceTest {
         assertThrows(InvalidCredentialsException.class, () -> service.login(request(EMAIL, "Otra#2026x"), CORR_2));
     }
 
-    /**
-     * Los permisos del token son la unión de los de todos los roles del usuario, sin repetidos y en orden
-     * alfabético
+        /**
+     * The permissions of the token are the union of those of all the roles of the user, without repeated ones and in
+     * alphabetical order
      */
     @Test
     void login_tokenPermissionsAreTheUnionOfTheRolePermissions() {
@@ -294,8 +293,8 @@ class AuthServiceTest {
                 List.of("ms01:profile:read", "ms05:panel:read_own", "ms08:audit:read"));
     }
 
-    /**
-     * Un rol personalizado entra al token igual que uno sembrado
+        /**
+     * A custom role enters the token the same as a seeded one
      */
     @Test
     void login_customRolePermissionsEnterTheToken() {
@@ -311,8 +310,8 @@ class AuthServiceTest {
                 List.of("ms04:checkin:write"));
     }
 
-    /**
-     * Los permisos de otros módulos que están en la base entran al token tal como se guardaron
+        /**
+     * The permissions of other modules that are in the database enter the token as they were stored
      */
     @Test
     void login_permissionsOfOtherModulesEnterTheTokenAsStored() {
@@ -329,8 +328,8 @@ class AuthServiceTest {
                 List.of("ms01:profile:read", "ms02:campus:read", "ms07:tutor:use"));
     }
 
-    /**
-     * Un permiso repetido en varios roles aparece una sola vez en el token
+        /**
+     * A permission repeated in several roles appears only once in the token
      */
     @Test
     void login_permissionRepeatedInSeveralRoles_appearsOnceInTheToken() {
@@ -350,8 +349,8 @@ class AuthServiceTest {
 
     // ---------------------------------------------------------------- A1: credenciales incorrectas
 
-    /**
-     * Un correo desconocido produce credenciales incorrectas y se audita el fallo
+        /**
+     * An unknown email produces incorrect credentials and the failure is audited
      */
     @Test
     void login_unknownEmail_throwsInvalidCredentialsAndAuditsFailure() {
@@ -369,8 +368,8 @@ class AuthServiceTest {
         verifyNoInteractions(jwtService);
     }
 
-    /**
-     * Un correo desconocido también compara contra un hash de relleno para igualar los tiempos de respuesta
+        /**
+     * An unknown email also compares against a padding hash to equalize the response times
      */
     @Test
     void login_unknownEmail_stillComparesAgainstDummyHashToEqualizeResponseTime() {
@@ -381,8 +380,8 @@ class AuthServiceTest {
         verify(passwordEncoder).matches(PASSWORD, DUMMY_HASH);
     }
 
-    /**
-     * Una contraseña incorrecta produce credenciales incorrectas y se audita el fallo
+        /**
+     * An incorrect password produces incorrect credentials and the failure is audited
      */
     @Test
     void login_wrongPassword_throwsInvalidCredentialsAndAuditsFailure() {
@@ -399,8 +398,8 @@ class AuthServiceTest {
         verifyNoInteractions(jwtService);
     }
 
-    /**
-     * Un correo desconocido y una contraseña incorrecta producen el mismo error
+        /**
+     * An unknown email and an incorrect password produce the same error
      */
     @Test
     void login_unknownEmailAndWrongPassword_areIndistinguishable() {
@@ -424,8 +423,8 @@ class AuthServiceTest {
 
     // ---------------------------------------------------------------- A2: cuenta inactiva
 
-    /**
-     * Una cuenta inactiva con la contraseña correcta produce cuenta inactiva y se audita el fallo
+        /**
+     * An inactive account with the correct password produces inactive account and the failure is audited
      */
     @Test
     void login_inactiveAccountWithCorrectPassword_throwsInactiveAccountAndAuditsFailure() {
@@ -444,8 +443,8 @@ class AuthServiceTest {
         verifyNoInteractions(jwtService);
     }
 
-    /**
-     * Una cuenta inactiva con contraseña incorrecta no revela el estado de la cuenta
+        /**
+     * An inactive account with an incorrect password does not reveal the status of the account
      */
     @Test
     void login_inactiveAccountWithWrongPassword_doesNotRevealTheAccountState() {
@@ -458,8 +457,8 @@ class AuthServiceTest {
         assertEquals("CREDENCIALES_INCORRECTAS", publishedEvent().detalle());
     }
 
-    /**
-     * Una cuenta sin estado se trata como inactiva
+        /**
+     * An account without status is treated as inactive
      */
     @Test
     void login_accountWithoutState_isTreatedAsInactive() {
@@ -472,15 +471,15 @@ class AuthServiceTest {
         verifyNoInteractions(jwtService);
     }
 
-    // ---------------------------------------------------------------- errores internos y auditoria
+    // ---------------------------------------------------------------- internal errors and audit
 
-    /**
-     * Si falla la emisión del token se audita el fallo y se propaga el error
+        /**
+     * If the issuance of the token fails the failure is audited and the error is propagated
      */
     @Test
     void login_tokenIssuanceFails_auditsFailureAndPropagatesTheError() {
         UserEntity user = user(UserState.ACTIVO, "ESTUDIANTE");
-        IllegalStateException failure = new IllegalStateException("No fue posible firmar el JWT.");
+        IllegalStateException failure = new IllegalStateException("The JWT could not be signed.");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
         when(jwtService.issueToken(any(), any(), any(), any())).thenThrow(failure);
@@ -494,8 +493,8 @@ class AuthServiceTest {
         assertEquals("ERROR_INTERNO", event.detalle());
     }
 
-    /**
-     * Un fallo de la auditoría no cambia la respuesta del login
+        /**
+     * A failure of the audit does not change the response of the login
      */
     @Test
     void login_auditFailureDoesNotChangeTheResponse() {
@@ -504,26 +503,26 @@ class AuthServiceTest {
         when(passwordEncoder.matches(PASSWORD, STORED_HASH)).thenReturn(true);
         when(jwtService.issueToken(any(), any(), any(), any()))
                 .thenReturn(new IssuedToken(TOKEN, NOW.plusSeconds(3600)));
-        doThrow(new RuntimeException("MS08 caido")).when(auditPublisher).publish(any(AuditEvent.class));
+        doThrow(new RuntimeException("MS08 down")).when(auditPublisher).publish(any(AuditEvent.class));
 
         LoginResponse response = authService.login(request(EMAIL, PASSWORD), CORR);
 
         assertEquals(TOKEN, response.token());
     }
 
-    /**
-     * Un fallo de la auditoría no oculta el error de autenticación
+        /**
+     * A failure of the audit does not hide the authentication error
      */
     @Test
     void login_auditFailureDoesNotHideTheAuthenticationError() {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
-        doThrow(new RuntimeException("MS08 caido")).when(auditPublisher).publish(any(AuditEvent.class));
+        doThrow(new RuntimeException("MS08 down")).when(auditPublisher).publish(any(AuditEvent.class));
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(request(EMAIL, PASSWORD), CORR));
     }
 
-    /**
-     * Cada intento de login se audita exactamente una vez
+        /**
+     * Every login attempt is audited exactly once
      */
     @Test
     void login_everyAttemptIsAuditedExactlyOnce() {
@@ -538,8 +537,8 @@ class AuthServiceTest {
         verify(auditPublisher, times(1)).publish(any(AuditEvent.class));
     }
 
-    /**
-     * El evento de auditoría nunca incluye la contraseña, su hash ni el token
+        /**
+     * The audit event never includes the password, its hash or the token
      */
     @Test
     void login_auditEventNeverCarriesPasswordHashOrToken() {
@@ -557,10 +556,10 @@ class AuthServiceTest {
         assertFalse(printed.contains(TOKEN));
     }
 
-    // ---------------------------------------------------------------- validacion del formulario F-02
+    // ---------------------------------------------------------------- validation of form F-02
 
-    /**
-     * Un correo con formato inválido se rechaza con el mensaje del formulario antes de consultar la base de datos
+        /**
+     * An email with an invalid format is rejected with the message of the form before querying the database
      */
     @Test
     void login_invalidEmail_isRejectedWithTheFormMessageBeforeQueryingTheDatabase() {
@@ -574,8 +573,8 @@ class AuthServiceTest {
         verifyNoInteractions(jwtService);
     }
 
-    /**
-     * Una contraseña en blanco se rechaza con el mensaje del formulario
+        /**
+     * A blank password is rejected with the message of the form
      */
     @Test
     void login_blankPassword_isRejectedWithTheFormMessage() {
@@ -587,8 +586,8 @@ class AuthServiceTest {
         verifyNoInteractions(userRepository);
     }
 
-    /**
-     * Si faltan los dos campos se informan ambos en un orden estable
+        /**
+     * If both fields are missing both are reported in a stable order
      */
     @Test
     void login_missingBothFields_reportsBothFieldsInStableOrder() {
@@ -601,8 +600,8 @@ class AuthServiceTest {
         assertEquals("Datos inválidos.", error.getMessage());
     }
 
-    /**
-     * Una contraseña de más de 64 caracteres se rechaza
+        /**
+     * A password of more than 64 characters is rejected
      */
     @Test
     void login_passwordLongerThan64Characters_isRejected() {
@@ -612,8 +611,8 @@ class AuthServiceTest {
         assertEquals("La contraseña no puede superar los 64 caracteres.", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Un campo que no está en el contrato se rechaza (RG-04)
+        /**
+     * A field that is not in the contract is rejected (RG-04)
      */
     @Test
     void login_fieldNotDefinedInTheContract_isRejected() {
@@ -627,8 +626,8 @@ class AuthServiceTest {
         verifyNoInteractions(userRepository);
     }
 
-    /**
-     * Las peticiones mal formadas no se auditan como intentos de autenticación
+        /**
+     * Malformed requests are not audited as authentication attempts
      */
     @Test
     void login_malformedRequests_areNotAuditedAsAuthenticationAttempts() {
@@ -639,8 +638,8 @@ class AuthServiceTest {
 
     // ---------------------------------------------------------------- Correlation ID
 
-    /**
-     * Sin correlation id se genera uno para los logs y la auditoría
+        /**
+     * Without a correlation id one is generated for the logs and the audit
      */
     @Test
     void login_missingCorrelationId_generatesOneForLogsAndAudit() {
@@ -653,8 +652,8 @@ class AuthServiceTest {
         assertFalse(generated.isBlank());
     }
 
-    /**
-     * Un correlation id que no es un UUID v4 se reemplaza por uno generado
+        /**
+     * A correlation id that is not a UUID v4 is replaced by a generated one
      */
     @Test
     void login_unsafeCorrelationId_isReplacedByAGeneratedOne() {
@@ -668,8 +667,8 @@ class AuthServiceTest {
         assertTrue(used.matches("[0-9a-f-]{36}"));
     }
 
-    /**
-     * El login nunca escribe en el repositorio de usuarios
+        /**
+     * The login never writes to the user repository
      */
     @Test
     void login_userRepositoryIsNeverWrittenTo() {
@@ -680,12 +679,12 @@ class AuthServiceTest {
         verify(userRepository, never()).save(any());
     }
 
-    // ---------------------------------------------------------------- transaccion
+    // ---------------------------------------------------------------- transaction
 
-    /**
-     * El login se ejecuta en una transacción de solo lectura
+        /**
+     * The login runs in a read-only transaction
      *
-     * @throws NoSuchMethodException si no se encuentra el método del servicio
+     * @throws NoSuchMethodException if the method of the service is not found
      */
     @Test
     void login_runsInAReadOnlyTransaction() throws NoSuchMethodException {

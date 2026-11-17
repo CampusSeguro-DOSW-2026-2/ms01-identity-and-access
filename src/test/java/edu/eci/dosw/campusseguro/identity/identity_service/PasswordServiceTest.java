@@ -85,8 +85,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * RF-MS01-08: recuperación de la contraseña olvidada (flujo base A) y cambio de contraseña autenticado (flujo
- * base B), flujos alternos A1, A2 y A3, RN-MS01-20, RN-MS01-21, RN-MS01-22 y auditoría de cada intento
+ * RF-MS01-08: recovery of the forgotten password (base flow A) and authenticated password change (base flow B),
+ * alternate flows A1, A2 and A3, RN-MS01-20, RN-MS01-21, RN-MS01-22 and audit of each attempt
  */
 class PasswordServiceTest {
 
@@ -107,9 +107,9 @@ class PasswordServiceTest {
     private UUID userId;
     private UserEntity user;
 
-    /**
-     * Prepara el servicio con repositorios simulados, un codificador BCrypt real de bajo costo, un reloj fijo y
-     * un ejecutor que envía los correos en el mismo hilo
+        /**
+     * Prepares the service with simulated repositories, a real low-cost BCrypt encoder, a fixed clock and an executor
+     * that sends the emails in the same thread
      */
     @BeforeEach
     void setUp() {
@@ -129,8 +129,8 @@ class PasswordServiceTest {
                 .thenAnswer(call -> call.getArgument(0));
     }
 
-    /**
-     * Deja limpia la sincronización de transacciones y el contexto de logs que algunas pruebas activan
+        /**
+     * Leaves clean the transaction synchronization and the log context that some tests activate
      */
     @AfterEach
     void tearDown() {
@@ -140,13 +140,13 @@ class PasswordServiceTest {
         MDC.clear();
     }
 
-    /**
-     * Construye el servicio con la política y el ejecutor indicados, y deja sin contar las invocaciones que el
-     * constructor hace al codificador
+        /**
+     * Builds the service with the indicated policy and executor, and leaves uncounted the invocations that the
+     * constructor makes to the encoder
      *
-     * @param policy política de los códigos
-     * @param executor ejecutor de los envíos de correo
-     * @return el servicio configurado
+     * @param policy policy of the codes
+     * @param executor executor of the email sending
+     * @return the configured service
      */
     private PasswordServiceImpl serviceWith(RecoveryPolicy policy, Executor executor) {
         PasswordServiceImpl created = new PasswordServiceImpl(userRepository, codeRepository, passwordEncoder,
@@ -157,14 +157,14 @@ class PasswordServiceTest {
         return created;
     }
 
-    /**
-     * Construye un usuario con la contraseña codificada
+        /**
+     * Builds a user with the encoded password
      *
-     * @param id identificador del usuario
-     * @param email correo del usuario
-     * @param rawPassword contraseña en claro que se guarda codificada
-     * @param state estado del usuario
-     * @return el usuario construido
+     * @param id identifier of the user
+     * @param email email of the user
+     * @param rawPassword password in clear text that is stored encoded
+     * @param state status of the user
+     * @return the built user
      */
     private UserEntity user(UUID id, String email, String rawPassword, UserState state) {
         UserEntity entity = new UserEntity();
@@ -176,14 +176,14 @@ class PasswordServiceTest {
         return entity;
     }
 
-    /**
-     * Construye un código de recuperación del usuario
+        /**
+     * Builds a recovery code of the user
      *
-     * @param plainCode código en claro que se guarda codificado
-     * @param expiresAt instante de expiración
-     * @param attempts intentos fallidos acumulados
-     * @param usedAt instante de uso, null si no se ha usado
-     * @return el código construido
+     * @param plainCode code in clear text that is stored encoded
+     * @param expiresAt expiration instant
+     * @param attempts accumulated failed attempts
+     * @param usedAt instant of use, null if it has not been used
+     * @return the built code
      */
     private PasswordResetCodeEntity storedCode(String plainCode, Instant expiresAt, int attempts, Instant usedAt) {
         PasswordResetCodeEntity code = new PasswordResetCodeEntity();
@@ -196,10 +196,10 @@ class PasswordServiceTest {
         return code;
     }
 
-    /**
-     * Deja un código vigente como el último sin usar del usuario
+        /**
+     * Leaves a valid code as the last unused one of the user
      *
-     * @return el código guardado
+     * @return the stored code
      */
     private PasswordResetCodeEntity givenActiveCode() {
         PasswordResetCodeEntity code = storedCode(CODE, NOW.plusSeconds(600), 0, null);
@@ -208,11 +208,11 @@ class PasswordServiceTest {
         return code;
     }
 
-    /**
-     * Construye una solicitud de código
+        /**
+     * Builds a code request
      *
-     * @param email correo de la solicitud
-     * @return la solicitud construida
+     * @param email email of the request
+     * @return the built request
      */
     private ForgotPasswordRequest forgot(String email) {
         ForgotPasswordRequest request = new ForgotPasswordRequest();
@@ -220,14 +220,14 @@ class PasswordServiceTest {
         return request;
     }
 
-    /**
-     * Construye una petición de restablecimiento
+        /**
+     * Builds a reset request
      *
-     * @param email correo de la petición
-     * @param code código de la petición
-     * @param password nueva contraseña
-     * @param confirmation confirmación de la nueva contraseña
-     * @return la petición construida
+     * @param email email of the request
+     * @param code code of the request
+     * @param password new password
+     * @param confirmation confirmation of the new password
+     * @return the built request
      */
     private ResetPasswordRequest reset(String email, String code, String password, String confirmation) {
         ResetPasswordRequest request = new ResetPasswordRequest();
@@ -238,22 +238,22 @@ class PasswordServiceTest {
         return request;
     }
 
-    /**
-     * Construye una petición de restablecimiento válida
+        /**
+     * Builds a valid reset request
      *
-     * @return la petición construida
+     * @return the built request
      */
     private ResetPasswordRequest validReset() {
         return reset(EMAIL, CODE, NEW_PASSWORD, NEW_PASSWORD);
     }
 
-    /**
-     * Construye una petición de cambio de contraseña
+        /**
+     * Builds a password change request
      *
-     * @param current contraseña actual
-     * @param password nueva contraseña
-     * @param confirmation confirmación de la nueva contraseña
-     * @return la petición construida
+     * @param current current password
+     * @param password new password
+     * @param confirmation confirmation of the new password
+     * @return the built request
      */
     private ChangePasswordRequest change(String current, String password, String confirmation) {
         ChangePasswordRequest request = new ChangePasswordRequest();
@@ -263,28 +263,28 @@ class PasswordServiceTest {
         return request;
     }
 
-    /**
-     * Construye una petición de cambio de contraseña válida
+        /**
+     * Builds a valid password change request
      *
-     * @return la petición construida
+     * @return the built request
      */
     private ChangePasswordRequest validChange() {
         return change(OLD_PASSWORD, NEW_PASSWORD, NEW_PASSWORD);
     }
 
-    /**
-     * Construye la identidad del usuario que cambia su contraseña
+        /**
+     * Builds the identity of the user who changes their password
      *
-     * @return la identidad con el rol ESTUDIANTE
+     * @return the identity with the role ESTUDIANTE
      */
     private RequesterIdentity requester() {
         return TestIdentities.of(userId, "ESTUDIANTE");
     }
 
-    /**
-     * Captura el único evento de auditoría emitido
+        /**
+     * Captures the only audit event emitted
      *
-     * @return el evento emitido
+     * @return the emitted event
      */
     private AuditEvent singleAuditEvent() {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -292,10 +292,10 @@ class PasswordServiceTest {
         return captor.getValue();
     }
 
-    /**
-     * Captura el código que el servicio entrega al servicio de correo
+        /**
+     * Captures the code that the service delivers to the mail service
      *
-     * @return el código enviado por correo
+     * @return the code sent by email
      */
     private String sentCode() {
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
@@ -303,10 +303,10 @@ class PasswordServiceTest {
         return captor.getValue();
     }
 
-    /**
-     * Captura el código de recuperación que el servicio guarda
+        /**
+     * Captures the recovery code that the service stores
      *
-     * @return el código guardado
+     * @return the stored code
      */
     private PasswordResetCodeEntity savedCode() {
         ArgumentCaptor<PasswordResetCodeEntity> captor = ArgumentCaptor.forClass(PasswordResetCodeEntity.class);
@@ -314,12 +314,12 @@ class PasswordServiceTest {
         return captor.getValue();
     }
 
-    /**
-     * Obtiene los errores por campo de una petición rechazada
+        /**
+     * Gets the errors by field of a rejected request
      *
-     * @param error excepción lanzada por el servicio
-     * @param field nombre del campo en el contrato
-     * @return el mensaje del campo, null si el campo no tiene error
+     * @param error exception thrown by the service
+     * @param field name of the field in the contract
+     * @return the message of the field, null if the field has no error
      */
     private String messageOf(InvalidRequestException error, String field) {
         for (ErrorResponse.ErrorDetail detail : error.getErrors()) {
@@ -330,9 +330,9 @@ class PasswordServiceTest {
         return null;
     }
 
-    /**
-     * Una solicitud para una cuenta activa guarda solo el hash de un código de 6 dígitos con la vigencia
-     * configurada y lo envía por correo
+        /**
+     * A request for an active account stores only the hash of a 6-digit code with the configured validity and sends it
+     * by email
      */
     @Test
     void requestRecoveryCode_activeAccount_storesOnlyTheHashAndSendsTheCode() {
@@ -350,8 +350,8 @@ class PasswordServiceTest {
         assertNull(saved.getUsedAt());
     }
 
-    /**
-     * El código siempre tiene exactamente 6 dígitos, también cuando empieza por ceros
+        /**
+     * The code always has exactly 6 digits, also when it starts with zeros
      */
     @RepeatedTest(25)
     void requestRecoveryCode_generatedCode_alwaysHasSixDigits() {
@@ -360,8 +360,8 @@ class PasswordServiceTest {
         assertTrue(sentCode().matches("^[0-9]{6}$"));
     }
 
-    /**
-     * Al generar un código nuevo se invalidan antes los anteriores, solo hay un código vigente (RN-MS01-21)
+        /**
+     * When a new code is generated the previous ones are invalidated first, there is only one valid code (RN-MS01-21)
      */
     @Test
     void requestRecoveryCode_newCode_invalidatesThePreviousOnesBeforeSavingTheNewOne() {
@@ -372,8 +372,8 @@ class PasswordServiceTest {
         order.verify(codeRepository).saveAndFlush(any(PasswordResetCodeEntity.class));
     }
 
-    /**
-     * El correo se busca normalizado: recortado y en minúsculas (RG-01)
+        /**
+     * The email is looked up normalized: trimmed and in lowercase (RG-01)
      */
     @Test
     void requestRecoveryCode_mixedCaseEmail_isLookedUpNormalized() {
@@ -383,8 +383,8 @@ class PasswordServiceTest {
         assertNotNull(sentCode());
     }
 
-    /**
-     * Un correo que no está registrado no guarda ni envía nada y la solicitud termina sin error (RN-MS01-20)
+        /**
+     * An email that is not registered stores and sends nothing and the request ends without error (RN-MS01-20)
      */
     @Test
     void requestRecoveryCode_unknownEmail_storesAndSendsNothingWithoutFailing() {
@@ -395,8 +395,8 @@ class PasswordServiceTest {
         verifyNoInteractions(codeRepository, emailService);
     }
 
-    /**
-     * Una cuenta inactiva no recibe código y la solicitud termina sin error (RN-MS01-20)
+        /**
+     * An inactive account does not receive a code and the request ends without error (RN-MS01-20)
      */
     @Test
     void requestRecoveryCode_inactiveAccount_storesAndSendsNothingWithoutFailing() {
@@ -407,8 +407,8 @@ class PasswordServiceTest {
         verifyNoInteractions(codeRepository, emailService);
     }
 
-    /**
-     * Si el último código se generó hace menos del tiempo de espera no se genera otro ni se envía otro correo
+        /**
+     * If the last code was generated less than the wait time ago no other is generated and no other email is sent
      */
     @Test
     void requestRecoveryCode_withinTheCooldown_doesNotIssueAnotherCode() {
@@ -423,8 +423,8 @@ class PasswordServiceTest {
         verifyNoInteractions(emailService);
     }
 
-    /**
-     * Cuando se cumple el tiempo de espera se genera un código nuevo
+        /**
+     * When the wait time has passed a new code is generated
      */
     @Test
     void requestRecoveryCode_afterTheCooldown_issuesANewCode() {
@@ -437,8 +437,8 @@ class PasswordServiceTest {
         assertNotNull(sentCode());
     }
 
-    /**
-     * Con la espera desactivada se genera un código nuevo en cada solicitud sin consultar el último
+        /**
+     * With the wait deactivated a new code is generated on each request without querying the last one
      */
     @Test
     void requestRecoveryCode_cooldownDisabled_issuesACodeEveryTime() {
@@ -451,8 +451,8 @@ class PasswordServiceTest {
         verify(codeRepository, never()).findFirstByUserIdOrderByCreatedAtDesc(any(UUID.class));
     }
 
-    /**
-     * La vigencia del código sale de la política configurada
+        /**
+     * The validity of the code comes from the configured policy
      */
     @Test
     void requestRecoveryCode_customTtl_isUsedForTheExpirationAndTheEmail() {
@@ -464,8 +464,8 @@ class PasswordServiceTest {
         verify(emailService).sendRecoveryCode(eq(EMAIL), anyString(), eq(30));
     }
 
-    /**
-     * Un correo con formato inválido se rechaza con el mensaje del formulario F-04 sin consultar nada
+        /**
+     * An email with an invalid format is rejected with the message of form F-04 without querying anything
      */
     @Test
     void requestRecoveryCode_invalidEmail_isRejectedWithTheFormMessage() {
@@ -476,8 +476,8 @@ class PasswordServiceTest {
         verifyNoInteractions(userRepository, codeRepository, emailService);
     }
 
-    /**
-     * Un campo que el contrato no define se rechaza (RG-04)
+        /**
+     * A field that the contract does not define is rejected (RG-04)
      */
     @Test
     void requestRecoveryCode_unknownField_isRejected() {
@@ -491,8 +491,8 @@ class PasswordServiceTest {
         verifyNoInteractions(userRepository, emailService);
     }
 
-    /**
-     * La solicitud de código no se audita: solo el restablecimiento y el cambio tienen evento
+        /**
+     * The code request is not audited: only the reset and the change have an event
      */
     @Test
     void requestRecoveryCode_isNotAudited() {
@@ -502,8 +502,8 @@ class PasswordServiceTest {
         verifyNoInteractions(auditPublisher);
     }
 
-    /**
-     * La rama que genera un código calcula un hash del código y no verifica ninguno
+        /**
+     * The branch that generates a code computes a hash of the code and does not verify any
      */
     @Test
     void requestRecoveryCode_issuingBranch_spendsOneHashOfWork() {
@@ -513,9 +513,9 @@ class PasswordServiceTest {
         verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 
-    /**
-     * Un correo no registrado gasta un hash de trabajo, igual que la rama que genera el código, así el tiempo de
-     * respuesta no revela si el correo está registrado (RN-MS01-20)
+        /**
+     * An unregistered email spends a work hash, like the branch that generates the code, so the response time does not
+     * reveal whether the email is registered (RN-MS01-20)
      */
     @Test
     void requestRecoveryCode_unknownEmail_spendsOneHashOfWork() {
@@ -525,8 +525,8 @@ class PasswordServiceTest {
         verify(passwordEncoder, never()).encode(anyString());
     }
 
-    /**
-     * Una cuenta inactiva gasta un hash de trabajo, igual que la rama que genera el código (RN-MS01-20)
+        /**
+     * An inactive account spends a work hash, like the branch that generates the code (RN-MS01-20)
      */
     @Test
     void requestRecoveryCode_inactiveAccount_spendsOneHashOfWork() {
@@ -538,9 +538,8 @@ class PasswordServiceTest {
         verify(passwordEncoder, never()).encode(anyString());
     }
 
-    /**
-     * Una solicitud dentro de la espera mínima gasta un hash de trabajo, igual que la rama que genera el código
-     * (RN-MS01-20)
+        /**
+     * A request within the minimum wait spends a work hash, like the branch that generates the code (RN-MS01-20)
      */
     @Test
     void requestRecoveryCode_withinTheCooldown_spendsOneHashOfWork() {
@@ -555,8 +554,8 @@ class PasswordServiceTest {
         verify(passwordEncoder, never()).encode(anyString());
     }
 
-    /**
-     * El correo no se envía en el hilo de la petición: se entrega al ejecutor y la solicitud termina antes
+        /**
+     * The email is not sent in the request thread: it is handed to the executor and the request ends earlier
      */
     @Test
     void requestRecoveryCode_activeAccount_handsTheEmailToTheExecutor() {
@@ -573,9 +572,9 @@ class PasswordServiceTest {
         assertNotNull(sentCode());
     }
 
-    /**
-     * El correo solo se entrega al ejecutor después de confirmar la transacción, nunca se envía un código que no
-     * quedó guardado
+        /**
+     * The email is only handed to the executor after the transaction is committed, a code that was not stored is never
+     * sent
      */
     @Test
     void requestRecoveryCode_insideATransaction_sendsTheEmailOnlyAfterTheCommit() {
@@ -590,8 +589,8 @@ class PasswordServiceTest {
         assertNotNull(sentCode());
     }
 
-    /**
-     * Si la transacción se revierte el correo nunca se envía
+        /**
+     * If the transaction is rolled back the email is never sent
      */
     @Test
     void requestRecoveryCode_transactionRolledBack_neverSendsTheEmail() {
@@ -603,24 +602,24 @@ class PasswordServiceTest {
         verifyNoInteractions(emailService);
     }
 
-    /**
-     * Si el servidor de correo falla la solicitud termina igual y la respuesta no cambia
+        /**
+     * If the mail server fails the request ends the same and the response does not change
      */
     @Test
     void requestRecoveryCode_whenTheMailServerFails_stillCompletes() {
-        doThrow(new MailSendException("SMTP caído")).when(emailService)
+        doThrow(new MailSendException("SMTP down")).when(emailService)
                 .sendRecoveryCode(anyString(), anyString(), anyInt());
 
         assertDoesNotThrow(() -> service.requestRecoveryCode(forgot(EMAIL), CORR));
     }
 
-    /**
-     * Si la cola de envíos está llena la solicitud termina igual y la respuesta no cambia
+        /**
+     * If the sending queue is full the request ends the same and the response does not change
      */
     @Test
     void requestRecoveryCode_whenTheMailQueueIsFull_stillCompletes() {
         Executor full = task -> {
-            throw new RejectedExecutionException("cola llena");
+            throw new RejectedExecutionException("queue full");
         };
         PasswordServiceImpl saturated = serviceWith(POLICY, full);
 
@@ -629,9 +628,9 @@ class PasswordServiceTest {
         verifyNoInteractions(emailService);
     }
 
-    /**
-     * El envío se hace con el correlation id de la petición en el contexto de logs del hilo de envío, y el
-     * contexto se limpia al terminar
+        /**
+     * The sending is done with the correlation id of the request in the log context of the sending thread, and the
+     * context is cleared at the end
      */
     @Test
     void requestRecoveryCode_delivery_runsWithTheCorrelationIdInTheLogContext() {
@@ -647,9 +646,8 @@ class PasswordServiceTest {
         assertNull(MDC.get(CorrelationIds.MDC_KEY));
     }
 
-    /**
-     * El código y el correo nunca se escriben en los logs, ni cuando el envío falla ni cuando se rechaza un
-     * restablecimiento
+        /**
+     * The code and the email are never written to the logs, neither when the sending fails nor when a reset is rejected
      */
     @Test
     void recoveryFlow_neverWritesTheCodeThePasswordsOrTheEmailToTheLogs() {
@@ -658,7 +656,7 @@ class PasswordServiceTest {
         appender.start();
         logger.addAppender(appender);
         try {
-            doThrow(new MailSendException("550 5.1.1 <" + EMAIL + "> rechazado")).when(emailService)
+            doThrow(new MailSendException("550 5.1.1 <" + EMAIL + "> rejected")).when(emailService)
                     .sendRecoveryCode(anyString(), anyString(), anyInt());
             service.requestRecoveryCode(forgot(EMAIL), CORR);
             String issued = savedCode().getCodeHash();
@@ -690,9 +688,9 @@ class PasswordServiceTest {
         }
     }
 
-    /**
-     * Un código correcto actualiza la contraseña con su hash, consume el código y audita RECUPERACION exitosa
-     * sin datos sensibles (flujo base A)
+        /**
+     * A correct code updates the password with its hash, consumes the code and audits a successful RECUPERACION without
+     * sensitive data (base flow A)
      */
     @Test
     void resetPassword_validCode_updatesThePasswordConsumesTheCodeAndAuditsTheSuccess() {
@@ -719,8 +717,8 @@ class PasswordServiceTest {
         assertNull(event.usuarioRoles());
     }
 
-    /**
-     * Después de restablecer la contraseña anterior deja de funcionar y la nueva funciona
+        /**
+     * After the reset the previous password stops working and the new one works
      */
     @Test
     void resetPassword_validCode_theOldPasswordStopsWorkingAndTheNewOneWorks() {
@@ -732,9 +730,9 @@ class PasswordServiceTest {
         assertTrue(passwordEncoder.matches(NEW_PASSWORD, user.getPassword()));
     }
 
-    /**
-     * Un código incorrecto responde con el error genérico, cuenta un intento, no cambia la contraseña y audita el
-     * fallo (flujo alterno A1)
+        /**
+     * An incorrect code answers with the generic error, counts an attempt, does not change the password and audits the
+     * failure (alternate flow A1)
      */
     @Test
     void resetPassword_wrongCode_rejectsCountsTheAttemptAndAuditsTheFailure() {
@@ -757,8 +755,8 @@ class PasswordServiceTest {
         assertEquals("CODIGO_INVALIDO", event.detalle());
     }
 
-    /**
-     * Al llegar al máximo de intentos fallidos el código se invalida y ya no sirve ni el correcto
+        /**
+     * When the maximum of failed attempts is reached the code is invalidated and not even the correct one works anymore
      */
     @Test
     void resetPassword_lastAllowedWrongAttempt_invalidatesTheCode() {
@@ -774,8 +772,8 @@ class PasswordServiceTest {
         assertFalse(code.isActiveAt(NOW));
     }
 
-    /**
-     * Antes del último intento el código sigue vigente
+        /**
+     * Before the last attempt the code is still valid
      */
     @Test
     void resetPassword_wrongAttemptBeforeTheLimit_keepsTheCodeActive() {
@@ -790,9 +788,9 @@ class PasswordServiceTest {
         assertTrue(code.isActiveAt(NOW));
     }
 
-    /**
-     * Un código vencido se rechaza con el error genérico aunque sea el correcto, justo en el instante de
-     * expiración ya no es válido
+        /**
+     * An expired code is rejected with the generic error even if it is the correct one, right at the expiration instant
+     * it is no longer valid
      */
     @Test
     void resetPassword_expiredCode_isRejectedEvenIfItIsTheRightOne() {
@@ -807,8 +805,8 @@ class PasswordServiceTest {
         assertEquals(AuditResult.FALLO, singleAuditEvent().resultado());
     }
 
-    /**
-     * Un código ya usado se rechaza con el error genérico
+        /**
+     * An already used code is rejected with the generic error
      */
     @Test
     void resetPassword_alreadyUsedCode_isRejected() {
@@ -821,8 +819,8 @@ class PasswordServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * Un código no se puede usar dos veces: tras un restablecimiento exitoso queda consumido
+        /**
+     * A code cannot be used twice: after a successful reset it is consumed
      */
     @Test
     void resetPassword_sameCodeTwice_theSecondUseIsRejected() {
@@ -835,8 +833,8 @@ class PasswordServiceTest {
                 () -> service.resetPassword(reset(EMAIL, CODE, "Otra#2026xyz", "Otra#2026xyz"), CORR));
     }
 
-    /**
-     * Si el usuario no tiene ningún código sin usar se rechaza con el error genérico
+        /**
+     * If the user has no unused code it is rejected with the generic error
      */
     @Test
     void resetPassword_userWithoutAnyCode_isRejected() {
@@ -850,9 +848,9 @@ class PasswordServiceTest {
         assertEquals(userId, event.usuarioId());
     }
 
-    /**
-     * Un correo que no está registrado recibe exactamente el mismo error que un código incorrecto y el evento
-     * de auditoría no lleva usuario
+        /**
+     * An email that is not registered receives exactly the same error as an incorrect code and the audit event carries
+     * no user
      */
     @Test
     void resetPassword_unknownEmail_isRejectedWithTheSameErrorAndAuditsWithoutUser() {
@@ -870,8 +868,8 @@ class PasswordServiceTest {
         assertEquals("CODIGO_INVALIDO", event.detalle());
     }
 
-    /**
-     * Una cuenta inactiva recibe el mismo error genérico aunque tenga un código vigente
+        /**
+     * An inactive account receives the same generic error even if it has a valid code
      */
     @Test
     void resetPassword_inactiveAccount_isRejectedWithTheSameError() {
@@ -885,9 +883,9 @@ class PasswordServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * Un correo no registrado gasta un solo hash de trabajo, igual que un código incorrecto, así el tiempo no
-     * distingue las causas del rechazo
+        /**
+     * An unregistered email spends a single work hash, like an incorrect code, so the time does not distinguish the
+     * causes of the rejection
      */
     @Test
     void resetPassword_unknownEmail_spendsOneHashOfWork() {
@@ -899,8 +897,8 @@ class PasswordServiceTest {
         verify(passwordEncoder, times(1)).matches(anyString(), anyString());
     }
 
-    /**
-     * Una cuenta inactiva gasta un solo hash de trabajo, igual que un código incorrecto
+        /**
+     * An inactive account spends a single work hash, like an incorrect code
      */
     @Test
     void resetPassword_inactiveAccount_spendsOneHashOfWork() {
@@ -911,8 +909,8 @@ class PasswordServiceTest {
         verify(passwordEncoder, times(1)).matches(anyString(), anyString());
     }
 
-    /**
-     * Un usuario sin código gasta un solo hash de trabajo, igual que un código incorrecto
+        /**
+     * A user without a code spends a single work hash, like an incorrect code
      */
     @Test
     void resetPassword_userWithoutCode_spendsOneHashOfWork() {
@@ -921,8 +919,8 @@ class PasswordServiceTest {
         verify(passwordEncoder, times(1)).matches(anyString(), anyString());
     }
 
-    /**
-     * Un código vencido gasta un solo hash de trabajo, igual que un código incorrecto
+        /**
+     * An expired code spends a single work hash, like an incorrect code
      */
     @Test
     void resetPassword_expiredCode_spendsOneHashOfWork() {
@@ -936,8 +934,8 @@ class PasswordServiceTest {
         verify(passwordEncoder, times(1)).matches(anyString(), anyString());
     }
 
-    /**
-     * Un código incorrecto gasta un solo hash de trabajo, el de la verificación
+        /**
+     * An incorrect code spends a single work hash, the one of the verification
      */
     @Test
     void resetPassword_wrongCode_spendsOneHashOfWork() {
@@ -950,9 +948,9 @@ class PasswordServiceTest {
         verify(passwordEncoder, times(1)).matches(anyString(), anyString());
     }
 
-    /**
-     * Una nueva contraseña que incumple la política se rechaza con el mensaje del formulario F-05, sin buscar el
-     * código, y se audita (flujo alterno A2)
+        /**
+     * A new password that breaks the policy is rejected with the message of form F-05, without looking up the code, and
+     * is audited (alternate flow A2)
      */
     @Test
     void resetPassword_weakNewPassword_isRejectedWithThePolicyMessageAndAudited() {
@@ -969,9 +967,9 @@ class PasswordServiceTest {
         assertEquals("VALIDACION", event.detalle());
     }
 
-    /**
-     * Una confirmación distinta se rechaza con el mensaje del formulario F-05 y no consume ni cuenta el código
-     * (flujo alterno A2)
+        /**
+     * A different confirmation is rejected with the message of form F-05 and neither consumes nor counts the code
+     * (alternate flow A2)
      */
     @Test
     void resetPassword_confirmationDoesNotMatch_isRejectedWithoutTouchingTheCode() {
@@ -983,8 +981,8 @@ class PasswordServiceTest {
         assertEquals("VALIDACION", singleAuditEvent().detalle());
     }
 
-    /**
-     * Un código con formato inválido se rechaza como dato inválido con el mensaje del formulario F-05
+        /**
+     * A code with an invalid format is rejected as invalid data with the message of form F-05
      */
     @Test
     void resetPassword_malformedCode_isRejectedAsInvalidData() {
@@ -995,8 +993,8 @@ class PasswordServiceTest {
         verifyNoInteractions(userRepository, codeRepository);
     }
 
-    /**
-     * Los campos faltantes se informan todos a la vez
+        /**
+     * The missing fields are all reported at once
      */
     @Test
     void resetPassword_emptyBody_reportsEveryRequiredField() {
@@ -1009,8 +1007,8 @@ class PasswordServiceTest {
         assertNotNull(messageOf(error, "confirmar_nueva_contrasena"));
     }
 
-    /**
-     * Un campo que el contrato no define se rechaza (RG-04)
+        /**
+     * A field that the contract does not define is rejected (RG-04)
      */
     @Test
     void resetPassword_unknownField_isRejected() {
@@ -1024,9 +1022,9 @@ class PasswordServiceTest {
         verifyNoInteractions(userRepository, codeRepository);
     }
 
-    /**
-     * Si la nueva contraseña es igual a la actual y el código es correcto se rechaza como dato inválido sin
-     * consumir el código, y se audita (flujo alterno A2)
+        /**
+     * If the new password is equal to the current one and the code is correct it is rejected as invalid data without
+     * consuming the code, and is audited (alternate flow A2)
      */
     @Test
     void resetPassword_newPasswordEqualToTheCurrent_isRejectedWithoutConsumingTheCode() {
@@ -1046,9 +1044,9 @@ class PasswordServiceTest {
         assertEquals(userId, event.usuarioId());
     }
 
-    /**
-     * La igualdad con la contraseña actual solo se revisa con un código correcto: con uno incorrecto el error
-     * es el genérico y no revela nada de la contraseña
+        /**
+     * The equality with the current password is only checked with a correct code: with an incorrect one the error is
+     * the generic one and reveals nothing about the password
      */
     @Test
     void resetPassword_equalToTheCurrentWithAWrongCode_doesNotRevealAnythingAboutThePassword() {
@@ -1058,21 +1056,21 @@ class PasswordServiceTest {
                 () -> service.resetPassword(reset(EMAIL, "000000", OLD_PASSWORD, OLD_PASSWORD), CORR));
     }
 
-    /**
-     * Si la auditoría falla el restablecimiento se completa igual, la respuesta no cambia
+        /**
+     * If the audit fails the reset completes the same, the response does not change
      */
     @Test
     void resetPassword_whenTheAuditFails_stillCompletes() {
         givenActiveCode();
-        doThrow(new IllegalStateException("MS08 caído")).when(auditPublisher).publish(any(AuditEvent.class));
+        doThrow(new IllegalStateException("MS08 down")).when(auditPublisher).publish(any(AuditEvent.class));
 
         assertDoesNotThrow(() -> service.resetPassword(validReset(), CORR));
 
         assertTrue(passwordEncoder.matches(NEW_PASSWORD, user.getPassword()));
     }
 
-    /**
-     * El evento de auditoría no contiene la contraseña, el código ni el hash
+        /**
+     * The audit event does not contain the password, the code or the hash
      */
     @Test
     void resetPassword_auditEvent_neverContainsPasswordsCodesOrHashes() {
@@ -1088,8 +1086,8 @@ class PasswordServiceTest {
         assertFalse(event.contains(EMAIL));
     }
 
-    /**
-     * Sin X-Correlation-ID el servicio genera uno válido para el evento
+        /**
+     * Without X-Correlation-ID the service generates a valid one for the event
      */
     @Test
     void resetPassword_withoutCorrelationId_generatesOneForTheEvent() {
@@ -1102,11 +1100,11 @@ class PasswordServiceTest {
         assertEquals('4', generated.charAt(14));
     }
 
-    /**
-     * El conteo de intentos fallidos debe sobrevivir al rechazo: la transacción no se revierte con el error del
-     * código inválido, de lo contrario el límite de intentos no serviría
+        /**
+     * The count of failed attempts must survive the rejection: the transaction is not rolled back with the invalid code
+     * error, otherwise the attempt limit would be useless
      *
-     * @throws NoSuchMethodException si el método del servicio no existe
+     * @throws NoSuchMethodException if the method of the service does not exist
      */
     @Test
     void resetPassword_isTransactionalAndKeepsTheFailedAttemptsWhenTheCodeIsRejected()
@@ -1120,9 +1118,9 @@ class PasswordServiceTest {
         assertEquals(List.of(InvalidResetCodeException.class), List.of(transactional.noRollbackFor()));
     }
 
-    /**
-     * Una contraseña correcta actual y una nueva válida actualizan la contraseña con su hash y auditan
-     * CAMBIO_CONTRASENA exitoso con la identidad del solicitante (flujo base B)
+        /**
+     * A correct current password and a valid new one update the password with its hash and audit a successful
+     * CAMBIO_CONTRASENA with the identity of the requester (base flow B)
      */
     @Test
     void changePassword_validRequest_updatesThePasswordAndAuditsTheSuccess() {
@@ -1143,10 +1141,10 @@ class PasswordServiceTest {
         assertNull(event.detalle());
     }
 
-    /**
-     * Cualquier rol del catálogo puede cambiar su propia contraseña
+        /**
+     * Any role of the catalog can change their own password
      *
-     * @param role rol del solicitante
+     * @param role role of the requester
      */
     @ParameterizedTest
     @MethodSource("edu.eci.dosw.campusseguro.identity.identity_service.SeedRoles#names")
@@ -1158,9 +1156,9 @@ class PasswordServiceTest {
         assertEquals(role, singleAuditEvent().usuarioRoles());
     }
 
-    /**
-     * Una contraseña actual incorrecta se rechaza con el mensaje del formulario F-06 en su campo, no cambia la
-     * contraseña y se audita (flujo alterno A3)
+        /**
+     * An incorrect current password is rejected with the message of form F-06 in its field, does not change the
+     * password and is audited (alternate flow A3)
      */
     @Test
     void changePassword_wrongCurrentPassword_isRejectedAndAudited() {
@@ -1180,9 +1178,9 @@ class PasswordServiceTest {
         assertEquals(userId, event.usuarioId());
     }
 
-    /**
-     * Una nueva contraseña igual a la actual se rechaza con el mensaje del formulario F-06 y se audita (flujo
-     * alterno A2)
+        /**
+     * A new password equal to the current one is rejected with the message of form F-06 and is audited (alternate flow
+     * A2)
      */
     @Test
     void changePassword_newPasswordEqualToTheCurrent_isRejectedAndAudited() {
@@ -1195,9 +1193,9 @@ class PasswordServiceTest {
         assertEquals("NUEVA_IGUAL_A_ACTUAL", singleAuditEvent().detalle());
     }
 
-    /**
-     * Una nueva contraseña que incumple la política se rechaza con el mensaje del formulario F-06, sin consultar
-     * al usuario, y se audita (flujo alterno A2)
+        /**
+     * A new password that breaks the policy is rejected with the message of form F-06, without querying the user, and
+     * is audited (alternate flow A2)
      */
     @Test
     void changePassword_weakNewPassword_isRejectedWithTheFormMessageAndAudited() {
@@ -1210,8 +1208,8 @@ class PasswordServiceTest {
         assertEquals("VALIDACION", singleAuditEvent().detalle());
     }
 
-    /**
-     * Una confirmación distinta se rechaza con el mensaje del formulario F-06 y se audita (flujo alterno A2)
+        /**
+     * A different confirmation is rejected with the message of form F-06 and is audited (alternate flow A2)
      */
     @Test
     void changePassword_confirmationDoesNotMatch_isRejectedAndAudited() {
@@ -1224,8 +1222,8 @@ class PasswordServiceTest {
         assertEquals("VALIDACION", singleAuditEvent().detalle());
     }
 
-    /**
-     * Los campos faltantes se informan todos a la vez
+        /**
+     * The missing fields are all reported at once
      */
     @Test
     void changePassword_emptyBody_reportsEveryRequiredField() {
@@ -1237,9 +1235,9 @@ class PasswordServiceTest {
         assertNotNull(messageOf(error, "confirmar_nueva_contrasena"));
     }
 
-    /**
-     * Un campo que el contrato no define, como un id de usuario, se rechaza: la contraseña que se cambia es
-     * siempre la del usuario identificado por las cabeceras (RG-04)
+        /**
+     * A field that the contract does not define, such as a user id, is rejected: the password that is changed is always
+     * that of the user identified by the headers (RG-04)
      */
     @Test
     void changePassword_unknownField_isRejected() {
@@ -1253,8 +1251,9 @@ class PasswordServiceTest {
         verifyNoInteractions(userRepository);
     }
 
-    /**
-     * Sin el permiso requerido se responde 403 sin validar ni consultar nada, y se audita el rechazo
+        /**
+     * Without the required permission 403 is answered without validating or querying anything, and the rejection is
+     * audited
      */
     @Test
     void changePassword_withoutThePermission_isForbiddenAndAudited() {
@@ -1270,8 +1269,8 @@ class PasswordServiceTest {
         assertEquals("SIN_PERMISO", event.detalle());
     }
 
-    /**
-     * Si el usuario del token ya no existe se responde 404
+        /**
+     * If the user of the token no longer exists 404 is answered
      */
     @Test
     void changePassword_userNoLongerExists_isNotFound() {
@@ -1282,20 +1281,20 @@ class PasswordServiceTest {
         verify(userRepository, never()).saveAndFlush(any(UserEntity.class));
     }
 
-    /**
-     * Si la auditoría falla el cambio se completa igual, la respuesta no cambia
+        /**
+     * If the audit fails the change completes the same, the response does not change
      */
     @Test
     void changePassword_whenTheAuditFails_stillCompletes() {
-        doThrow(new IllegalStateException("MS08 caído")).when(auditPublisher).publish(any(AuditEvent.class));
+        doThrow(new IllegalStateException("MS08 down")).when(auditPublisher).publish(any(AuditEvent.class));
 
         assertDoesNotThrow(() -> service.changePassword(requester(), validChange(), CORR));
 
         assertTrue(passwordEncoder.matches(NEW_PASSWORD, user.getPassword()));
     }
 
-    /**
-     * Ningún evento de auditoría del cambio contiene contraseñas ni hashes
+        /**
+     * No audit event of the change contains passwords or hashes
      */
     @Test
     void changePassword_auditEvents_neverContainPasswordsOrHashes() {
@@ -1307,8 +1306,8 @@ class PasswordServiceTest {
         assertFalse(event.contains(user.getPassword()));
     }
 
-    /**
-     * El cambio de contraseña no envía correos ni toca los códigos de recuperación
+        /**
+     * The password change neither sends emails nor touches the recovery codes
      */
     @Test
     void changePassword_doesNotTouchTheRecoveryCodesNorSendEmails() {

@@ -1,15 +1,15 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
 /**
- * La operación choca con el estado actual de un recurso, por ejemplo un nombre de rol repetido o un rol de
- * sistema que no se puede renombrar ni eliminar, se traduce a HTTP 409 con código CONFLICTO
+ * The operation clashes with the current state of a resource, for example a repeated role name or a system role that
+ * cannot be renamed or deleted, it is translated to HTTP 409 with code CONFLICTO
  */
 public class ConflictException extends RuntimeException {
 
-    /**
-     * Crea la excepción con el motivo del conflicto
+        /**
+     * Creates the exception with the reason for the conflict
      *
-     * @param message motivo que se devuelve al cliente
+     * @param message reason that is returned to the client
      */
     public ConflictException(String message) {
         super(message);

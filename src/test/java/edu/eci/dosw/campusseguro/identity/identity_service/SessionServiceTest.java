@@ -37,8 +37,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIde
 import edu.eci.dosw.campusseguro.identity.identity_service.service.SessionServiceImpl;
 
 /**
- * Pruebas del cierre de sesión (RF-MS01-04), la regla central es que el logout queda auditado con el usuario
- * y la fecha, que no depende de la base de datos y que no cambia la respuesta si la auditoría falla
+ * Tests of the logout (RF-MS01-04), the central rule is that the logout is audited with the user and the date, that it
+ * does not depend on the database and that it does not change the response if the audit fails
  */
 class SessionServiceTest {
 
@@ -48,8 +48,8 @@ class SessionServiceTest {
     private AuditEventPublisher auditPublisher;
     private SessionServiceImpl sessionService;
 
-    /**
-     * Prepara el servicio con un publicador de auditoría simulado y un reloj fijo
+        /**
+     * Prepares the service with a simulated audit publisher and a fixed clock
      */
     @BeforeEach
     void setUp() {
@@ -57,32 +57,32 @@ class SessionServiceTest {
         sessionService = serviceWith(auditPublisher);
     }
 
-    /**
-     * Construye el servicio con el publicador indicado y un reloj fijo en UTC
+        /**
+     * Builds the service with the indicated publisher and a fixed UTC clock
      *
-     * @param publisher publicador de eventos de auditoría
-     * @return el servicio configurado
+     * @param publisher audit event publisher
+     * @return the configured service
      */
     private SessionServiceImpl serviceWith(AuditEventPublisher publisher) {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         return new SessionServiceImpl(new AuditRecorder(publisher, clock));
     }
 
-    /**
-     * Construye la identidad de un solicitante con los roles indicados
+        /**
+     * Builds the identity of a requester with the indicated roles
      *
-     * @param id identificador del usuario
-     * @param roles roles del usuario
-     * @return la identidad del solicitante
+     * @param id identifier of the user
+     * @param roles roles of the user
+     * @return the identity of the requester
      */
     private RequesterIdentity requester(UUID id, Set<String> roles) {
         return TestIdentities.of(id, roles.toArray(new String[0]));
     }
 
-    /**
-     * Captura el único evento de auditoría emitido
+        /**
+     * Captures the only audit event emitted
      *
-     * @return el evento emitido
+     * @return the emitted event
      */
     private AuditEvent singleAuditEvent() {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -90,9 +90,9 @@ class SessionServiceTest {
         return captor.getValue();
     }
 
-    /**
-     * Un logout correcto emite un único evento LOGOUT exitoso con el usuario, el recurso, la fecha y el
-     * correlation id
+        /**
+     * A correct logout emits a single successful LOGOUT event with the user, the resource, the date and the correlation
+     * id
      */
     @Test
     void logout_validRequester_emitsOneSuccessfulLogoutEventWithUserDateAndCorrelationId() {
@@ -111,10 +111,10 @@ class SessionServiceTest {
         verifyNoMoreInteractions(auditPublisher);
     }
 
-    /**
-     * El logout funciona con cualquier rol del catálogo
+        /**
+     * The logout works with any role of the catalog
      *
-     * @param role rol del solicitante
+     * @param role role of the requester
      */
     @ParameterizedTest
     @MethodSource("edu.eci.dosw.campusseguro.identity.identity_service.SeedRoles#names")
@@ -128,8 +128,8 @@ class SessionServiceTest {
         assertEquals(role, event.usuarioRoles());
     }
 
-    /**
-     * Con varios roles el evento propaga los roles tal como viajan en X-User-Role, en orden alfabético
+        /**
+     * With several roles the event propagates the roles as they travel in X-User-Role, in alphabetical order
      */
     @Test
     void logout_severalRoles_propagatesThemInAlphabeticalOrder() {
@@ -141,8 +141,8 @@ class SessionServiceTest {
         assertEquals("BRIGADISTA,ESTUDIANTE", singleAuditEvent().usuarioRoles());
     }
 
-    /**
-     * Si no llega el correlation id se genera uno nuevo y válido para el evento
+        /**
+     * If the correlation id does not arrive a new valid one is generated for the event
      */
     @Test
     void logout_withoutCorrelationId_generatesOneForTheEvent() {
@@ -153,8 +153,8 @@ class SessionServiceTest {
         assertEquals('4', generated.charAt(14));
     }
 
-    /**
-     * Un correlation id que no es un UUID v4 se reemplaza por uno válido
+        /**
+     * A correlation id that is not a UUID v4 is replaced by a valid one
      */
     @Test
     void logout_withInvalidCorrelationId_replacesItWithAValidOne() {
@@ -165,13 +165,13 @@ class SessionServiceTest {
         assertEquals(used, UUID.fromString(used).toString());
     }
 
-    /**
-     * Si la auditoría falla el logout se completa igual, la respuesta al usuario no cambia
+        /**
+     * If the audit fails the logout completes the same, the response to the user does not change
      */
     @Test
     void logout_whenTheAuditFails_stillCompletes() {
         AuditEventPublisher failing = mock(AuditEventPublisher.class);
-        doThrow(new IllegalStateException("MS08 no disponible")).when(failing).publish(any(AuditEvent.class));
+        doThrow(new IllegalStateException("MS08 unavailable")).when(failing).publish(any(AuditEvent.class));
         SessionServiceImpl service = serviceWith(failing);
 
         assertDoesNotThrow(() -> service.logout(requester(UUID.randomUUID(), Set.of("ESTUDIANTE")),
@@ -180,8 +180,8 @@ class SessionServiceTest {
         verify(failing).publish(any(AuditEvent.class));
     }
 
-    /**
-     * Cerrar sesión varias veces es válido: el token no se revoca, así que cada cierre se audita
+        /**
+     * Logging out several times is valid: the token is not revoked, so each logout is audited
      */
     @Test
     void logout_calledTwice_auditsEachCall() {
@@ -195,8 +195,8 @@ class SessionServiceTest {
         assertTrue(captor.getAllValues().stream().allMatch(event -> event.resultado() == AuditResult.EXITO));
     }
 
-    /**
-     * Un solicitante sin ningún permiso se rechaza con 403 y se audita el fallo con un motivo genérico
+        /**
+     * A requester without any permission is rejected with 403 and the failure is audited with a generic reason
      */
     @Test
     void logout_withoutPermission_isRejectedAndTheFailureIsAudited() {
@@ -215,8 +215,8 @@ class SessionServiceTest {
         assertEquals("usuario:" + id, event.recursoAfectado());
     }
 
-    /**
-     * Un rechazo por falta de permiso emite un solo evento y nunca uno exitoso
+        /**
+     * A rejection for lack of permission emits a single event and never a successful one
      */
     @Test
     void logout_withoutPermission_neverEmitsASuccessfulEvent() {
@@ -229,8 +229,8 @@ class SessionServiceTest {
         verifyNoMoreInteractions(auditPublisher);
     }
 
-    /**
-     * El evento no contiene tokens, contraseñas ni datos personales: solo ids, roles y códigos
+        /**
+     * The event contains no tokens, passwords or personal data: only ids, roles and codes
      */
     @Test
     void logout_event_containsNoSecretsOrPersonalData() {

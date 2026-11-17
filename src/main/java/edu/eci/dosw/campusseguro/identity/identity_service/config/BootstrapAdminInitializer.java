@@ -19,12 +19,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserReposi
 import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
- * Crea el primer administrador al arrancar (RN-MS01-12)
+ * Creates the first administrator at startup (RN-MS01-12)
  *
- * Solo se crea si todavia no existe ningun administrador y si estan definidas las variables de entorno
- * BOOTSTRAP_ADMIN_EMAIL y BOOTSTRAP_ADMIN_PASSWORD (o las propiedades bootstrap.admin.email y
- * bootstrap.admin.password); El usuario queda activo y con BOOTSTRAP_ADMIN_FIRST_NAME y
- * BOOTSTRAP_ADMIN_LAST_NAME se le da un nombre
+ * It is created only if no administrator exists yet and if the environment variables BOOTSTRAP_ADMIN_EMAIL and
+ * BOOTSTRAP_ADMIN_PASSWORD are defined (or the properties bootstrap.admin.email and bootstrap.admin.password); the user
+ * is active and BOOTSTRAP_ADMIN_FIRST_NAME and BOOTSTRAP_ADMIN_LAST_NAME give it a name
  */
 @Component
 public class BootstrapAdminInitializer implements ApplicationRunner {
@@ -42,16 +41,16 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     private final String firstName;
     private final String lastName;
 
-    /**
-     * Crea el inicializador con el repositorio y los datos del primer administrador
+        /**
+     * Creates the initializer with the repository and the data of the first administrator
      *
-     * @param userRepository repositorio de acceso a los usuarios
-     * @param roleRepository repositorio de acceso a los roles
-     * @param passwordEncoder codificador con el que se guarda la contrasena
-     * @param email correo del primer administrador; vacio desactiva el arranque
-     * @param password contrasena del primer administrador; vacia desactiva el arranque
-     * @param firstName primer nombre del administrador; si esta vacio se usa un valor por defecto
-     * @param lastName primer apellido del administrador; si esta vacio se usa un valor por defecto
+     * @param userRepository repository to access the users
+     * @param roleRepository repository to access the roles
+     * @param passwordEncoder encoder with which the password is stored
+     * @param email email of the first administrator; empty disables the startup creation
+     * @param password password of the first administrator; empty disables the startup creation
+     * @param firstName first name of the administrator; if it is empty a default value is used
+     * @param lastName first lastname of the administrator; if it is empty a default value is used
      */
     public BootstrapAdminInitializer(
             UserRepository userRepository,
@@ -70,43 +69,43 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
         this.lastName = lastName;
     }
 
-    /**
-     * Ejecuta la creacion del primer administrador una vez arrancada la aplicacion
+        /**
+     * Runs the creation of the first administrator once the application has started
      *
-     * @param args argumentos de arranque de la aplicación
+     * @param args startup arguments of the application
      */
     @Override
     public void run(ApplicationArguments args) {
         createFirstAdminIfNeeded();
     }
 
-    /**
-     * Crea el primer administrador si hay datos configurados, si todavia no existe ningun administrador y si
-     * el correo no pertenece ya a otro usuario
+        /**
+     * Creates the first administrator if there is configured data, if no administrator exists yet and if the email does
+     * not already belong to another user
      *
-     * @return true si se creo el administrador; false si no hizo falta o no fue posible
+     * @return true if the administrator was created; false if it was not needed or was not possible
      */
     public boolean createFirstAdminIfNeeded() {
         if (isBlank(email) || isBlank(password)) {
-            log.info("Primer administrador no configurado (BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD): "
-                    + "no se crea ninguno.");
+            log.info("First administrator not configured (BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD): "
+                    + "none is created.");
             return false;
         }
 
         if (userRepository.countWithRole(RoleNames.ADMIN) > 0) {
-            log.info("Ya existe un administrador: no se crea el primer administrador.");
+            log.info("An administrator already exists: the first administrator is not created.");
             return false;
         }
 
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmail(normalizedEmail)) {
-            log.warn("El correo del primer administrador ya pertenece a un usuario sin rol ADMIN: no se crea "
-                    + "ni se asciende automaticamente.");
+            log.warn("The email of the first administrator already belongs to a user without the ADMIN role: "
+                    + "it is neither created nor promoted automatically.");
             return false;
         }
 
         RoleEntity adminRole = roleRepository.findByName(RoleNames.ADMIN).orElseThrow(
-                () -> new IllegalStateException("El rol de sistema " + RoleNames.ADMIN + " no existe"));
+                () -> new IllegalStateException("The system role " + RoleNames.ADMIN + " does not exist"));
 
         UserEntity admin = new UserEntity();
         admin.setFirstName(valueOrDefault(firstName, DEFAULT_FIRST_NAME));
@@ -117,26 +116,26 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
         admin.setState(UserState.ACTIVO);
 
         userRepository.save(admin);
-        log.info("Primer administrador creado con el rol ADMIN.");
+        log.info("First administrator created with the ADMIN role.");
         return true;
     }
 
-    /**
-     * Indica si un valor de configuracion esta ausente o solo contiene espacios
+        /**
+     * Tells whether a configuration value is missing or contains only spaces
      *
-     * @param value String de la configuracion
-     * @return true si el valor es null o esta en blanco
+     * @param value configuration String
+     * @return true if the value is null or blank
      */
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
 
-    /**
-     * Devuelve el valor recortado, o uno por defecto si esta vacio
+        /**
+     * Returns the trimmed value, or a default one if it is empty
      *
-     * @param value valor leido de la configuracion
-     * @param defaultValue valor que se usa cuando no hay uno configurado
-     * @return el valor final
+     * @param value value read from the configuration
+     * @param defaultValue value used when none is configured
+     * @return the final value
      */
     private static String valueOrDefault(String value, String defaultValue) {
         if (isBlank(value)) {

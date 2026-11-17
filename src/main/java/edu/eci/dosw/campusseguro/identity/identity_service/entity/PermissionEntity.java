@@ -10,63 +10,63 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Permiso del catálogo de CampusSeguro (tabla permisos del modelo de datos), el código es lo que viaja en el
- * token y en las cabeceras, el id es interno y no sale de MS01
+ * Permission of the CampusSeguro catalog (table permissions of the data model), the code is what travels in the token
+ * and in the headers, the id is internal and does not leave MS01
  */
 @Entity
-@Table(name = "permisos")
+@Table(name = "permissions")
 public class PermissionEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "nombre", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "descripcion", nullable = false, length = 200)
+    @Column(name = "description", nullable = false, length = 200)
     private String description;
 
-    /**
-     * Devuelve el identificador interno del permiso
+        /**
+     * Returns the internal identifier of the permission
      *
-     * @return el id del permiso, null si todavía no se guardó
+     * @return the id of the permission, null if it has not been saved yet
      */
     public UUID getId() {
         return this.id;
     }
 
-    /**
-     * Devuelve el código del permiso
+        /**
+     * Returns the code of the permission
      *
-     * @return el código con el formato modulo:recurso:accion
+     * @return the code with the format module:resource:action
      */
     public String getName() {
         return this.name;
     }
 
-    /**
-     * Coloca el código del permiso
+        /**
+     * Sets the code of the permission
      *
-     * @param name código con el formato modulo:recurso:accion
+     * @param name code with the format module:resource:action
      */
     public void setName(String name) {
         this.name = name;
     }
 
-    /**
-     * Devuelve la descripción del permiso
+        /**
+     * Returns the description of the permission
      *
-     * @return qué permite hacer el permiso
+     * @return what the permission allows to do
      */
     public String getDescription() {
         return this.description;
     }
 
-    /**
-     * Coloca la descripción del permiso
+        /**
+     * Sets the description of the permission
      *
-     * @param description qué permite hacer el permiso
+     * @param description what the permission allows to do
      */
     public void setDescription(String description) {
         this.description = description;

@@ -56,8 +56,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.RoleServiceIm
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 
 /**
- * RF-MS01-05 / historias KAIR-36 y KAIR-41: consulta de roles con permisos, flujo base del cambio de roles,
- * flujos alternos A1 a A4, atomicidad, auditoria CAMBIO_ROL y reglas RN-MS01-11 a RN-MS01-14
+ * RF-MS01-05 / stories KAIR-36 and KAIR-41: query of roles with permissions, base flow of the role change, alternate
+ * flows A1 to A4, atomicity, CAMBIO_ROL audit and rules RN-MS01-11 to RN-MS01-14
  */
 @ExtendWith(MockitoExtension.class)
 class RoleServiceTest {
@@ -79,9 +79,9 @@ class RoleServiceTest {
 
     private RoleServiceImpl roleService;
 
-    /**
-     * Crea el servicio con un reloj fijo para que la fecha de los eventos y del corte de sesión sea predecible,
-     * por defecto todos los roles pedidos existen
+        /**
+     * Creates the service with a fixed clock so the date of the events and of the session cut is predictable, by
+     * default all the requested roles exist
      */
     @BeforeEach
     void setUp() {
@@ -100,42 +100,42 @@ class RoleServiceTest {
         });
     }
 
-    /**
-     * Identidad de un administrador
+        /**
+     * Identity of an administrator
      *
-     * @return identidad con el rol ADMIN
+     * @return identity with the ADMIN role
      */
     private RequesterIdentity admin() {
         return TestIdentities.of(ADMIN_ID, "ADMIN");
     }
 
-    /**
-     * Identidad de un usuario con los roles indicados
+        /**
+     * Identity of a user with the indicated roles
      *
-     * @param roles roles del solicitante
-     * @return identidad con esos roles
+     * @param roles roles of the requester
+     * @return identity with those roles
      */
     private RequesterIdentity requesterWith(String... roles) {
         return TestIdentities.of(ADMIN_ID, roles);
     }
 
-    /**
-     * Rol guardado con los permisos indicados
+        /**
+     * Stored role with the indicated permissions
      *
-     * @param name nombre del rol
-     * @param permissions códigos de permiso del rol
-     * @return la entidad del rol
+     * @param name name of the role
+     * @param permissions permission codes of the role
+     * @return the entity of the role
      */
     private RoleEntity role(String name, String... permissions) {
         return TestEntities.role(name, permissions);
     }
 
-    /**
-     * Usuario con roles modificables, como los que entrega Hibernate
+        /**
+     * User with modifiable roles, like the ones delivered by Hibernate
      *
-     * @param id identificador del usuario
-     * @param roles roles actuales
-     * @return la entidad
+     * @param id identifier of the user
+     * @param roles current roles
+     * @return the entity
      */
     private UserEntity user(UUID id, String... roles) {
         UserEntity entity = new UserEntity();
@@ -145,13 +145,13 @@ class RoleServiceTest {
         return entity;
     }
 
-    /**
-     * Arma el cuerpo de la peticion
+        /**
+     * Builds the body of the request
      *
-     * @param ids identificadores de usuario
-     * @param add nombres de roles a agregar
-     * @param remove nombres de roles a retirar
-     * @return la peticion
+     * @param ids user identifiers
+     * @param add names of the roles to add
+     * @param remove names of the roles to remove
+     * @return the request
      */
     private ChangeRolesRequest request(List<String> ids, List<String> add, List<String> remove) {
         ChangeRolesRequest request = new ChangeRolesRequest();
@@ -161,11 +161,11 @@ class RoleServiceTest {
         return request;
     }
 
-    /**
-     * Captura los eventos de auditoria publicados
+        /**
+     * Captures the published audit events
      *
-     * @param expected cantidad de eventos que debieron publicarse
-     * @return los eventos, en el orden en que se publicaron
+     * @param expected number of events that should have been published
+     * @return the events, in the order in which they were published
      */
     private List<AuditEvent> publishedEvents(int expected) {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -175,9 +175,9 @@ class RoleServiceTest {
 
     // ------------------------------------------------------------------ GET /roles
 
-    /**
-     * Quien tiene el permiso ms01:role:read_all recibe todos los roles guardados, ordenados por nombre, cada uno
-     * con los códigos de sus permisos
+        /**
+     * Whoever has the permission ms01:role:read_all receives all the stored roles, sorted by name, each one with the
+     * codes of its permissions
      */
     @Test
     void getRoles_withReadAll_returnsEveryStoredRole() {
@@ -196,9 +196,9 @@ class RoleServiceTest {
         verifyNoInteractions(userRepository, auditPublisher);
     }
 
-    /**
-     * El permiso decide, no el nombre del rol: un rol personalizado con ms01:role:read_all también recibe el
-     * catálogo completo
+        /**
+     * The permission decides, not the name of the role: a custom role with ms01:role:read_all also receives the
+     * complete catalog
      */
     @Test
     void getRoles_customRoleWithReadAll_returnsEveryStoredRole() {
@@ -211,8 +211,8 @@ class RoleServiceTest {
         assertEquals(2, roles.size());
     }
 
-    /**
-     * Quien no tiene ms01:role:read_all recibe solo sus propios roles, ordenados por nombre
+        /**
+     * Whoever does not have ms01:role:read_all receives only their own roles, sorted by name
      */
     @Test
     void getRoles_withoutReadAll_returnsOnlyItsOwnRoles() {
@@ -227,8 +227,8 @@ class RoleServiceTest {
         verify(roleRepository, never()).findAllByOrderByNameAsc();
     }
 
-    /**
-     * Los códigos de permiso se entregan tal como están guardados en la base de datos
+        /**
+     * The permission codes are delivered as they are stored in the database
      */
     @Test
     void getRoles_returnsTheStoredCodesOfEachRole() {
@@ -240,8 +240,8 @@ class RoleServiceTest {
         assertEquals(List.of("ms05:panel:read_own", "ms99:viejo:permiso"), roles.get(0).permisos());
     }
 
-    /**
-     * Un rol del solicitante que ya no existe en la tabla no aparece en la respuesta
+        /**
+     * A role of the requester that no longer exists in the table does not appear in the response
      */
     @Test
     void getRoles_roleMissingFromTheTable_isOmitted() {
@@ -250,11 +250,11 @@ class RoleServiceTest {
         assertTrue(roleService.getRoles(requesterWith("AUDITOR")).isEmpty());
     }
 
-    // ------------------------------------------------------------------ PATCH /users/roles: flujo base
+    // ------------------------------------------------------------------ PATCH /users/roles: base flow
 
-    /**
-     * Flujo base: agregar un rol responde con los roles resultantes, persiste el cambio y audita un
-     * evento EXITO con quien, a quien y los roles anterior y nuevo
+        /**
+     * Base flow: adding a role answers with the resulting roles, persists the change and audits an EXITO event with
+     * who, to whom and the previous and new roles
      */
     @Test
     void changeRoles_addRole_updatesPersistsAndAudits() {
@@ -281,8 +281,8 @@ class RoleServiceTest {
         assertEquals("ADMIN", event.usuarioRoles());
     }
 
-    /**
-     * El usuario modificado recibe el corte de sesión con la hora del reloj truncada a segundos (RF-MS01-11)
+        /**
+     * The modified user receives the session cut with the time of the clock truncated to seconds (RF-MS01-11)
      */
     @Test
     void changeRoles_addRole_setsTheSessionCutOnTheModifiedUser() {
@@ -296,9 +296,8 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * El corte es la hora de la base de datos, se consulta una sola vez y se aplica a todos los usuarios
-     * modificados
+        /**
+     * The cut is the database time, it is queried only once and is applied to all the modified users
      */
     @Test
     void changeRoles_sessionCutIsTheDatabaseTimeQueriedOnce() {
@@ -321,8 +320,8 @@ class RoleServiceTest {
         publishedEvents(2);
     }
 
-    /**
-     * Un usuario cuyos roles no cambian no recibe corte de sesión
+        /**
+     * A user whose roles do not change does not receive a session cut
      */
     @Test
     void changeRoles_unchangedUser_hasNoSessionCut() {
@@ -338,8 +337,8 @@ class RoleServiceTest {
         publishedEvents(2);
     }
 
-    /**
-     * Un rol personalizado que existe en la tabla se puede asignar
+        /**
+     * A custom role that exists in the table can be assigned
      */
     @Test
     void changeRoles_customRoleThatExists_isAssigned() {
@@ -354,8 +353,8 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * Retirar un rol deja al usuario con los demas
+        /**
+     * Removing a role leaves the user with the others
      */
     @Test
     void changeRoles_removeRole_keepsTheOthers() {
@@ -370,8 +369,8 @@ class RoleServiceTest {
         assertEquals("agregados=;retirados=PROFESOR", publishedEvents(1).get(0).detalle());
     }
 
-    /**
-     * Agregar y retirar en la misma peticion permite reemplazar un rol por otro
+        /**
+     * Adding and removing in the same request allows replacing one role with another
      */
     @Test
     void changeRoles_addAndRemove_replacesTheRole() {
@@ -384,8 +383,8 @@ class RoleServiceTest {
         assertEquals(List.of("BRIGADISTA"), response.resultados().get(0).roles());
     }
 
-    /**
-     * Los roles resultantes se entregan en orden alfabetico, sin importar el orden en que se agregaron
+        /**
+     * The resulting roles are delivered in alphabetical order, regardless of the order in which they were added
      */
     @Test
     void changeRoles_resultingRolesAreSortedAlphabetically() {
@@ -400,9 +399,9 @@ class RoleServiceTest {
                 response.resultados().get(0).roles());
     }
 
-    /**
-     * Varios usuarios en una sola operacion: se responde en el orden de la peticion y se audita un
-     * evento por usuario
+        /**
+     * Several users in a single operation: the response follows the order of the request and one event per user is
+     * audited
      */
     @Test
     void changeRoles_severalUsers_respondsInRequestOrderAndAuditsEach() {
@@ -424,8 +423,8 @@ class RoleServiceTest {
         verify(userRepository).saveAllAndFlush(any());
     }
 
-    /**
-     * Se consulta el repositorio una sola vez con los ids pedidos, sin repetidos
+        /**
+     * The repository is queried only once with the requested ids, without repeated ones
      */
     @Test
     void changeRoles_looksUpTheDistinctIdsInOneQuery() {
@@ -442,9 +441,9 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * Agregar un rol que ya tiene, o retirar uno que no tiene, no cambia nada: no se reescribe la fila
-     * del usuario, pero la peticion se audita
+        /**
+     * Adding a role that the user already has, or removing one that the user does not have, changes nothing: the row of
+     * the user is not rewritten, but the request is audited
      */
     @Test
     void changeRoles_noEffectiveChange_doesNotSaveButAudits() {
@@ -459,8 +458,8 @@ class RoleServiceTest {
         assertEquals("agregados=;retirados=", publishedEvents(1).get(0).detalle());
     }
 
-    /**
-     * Solo se persisten los usuarios cuyos roles realmente cambian
+        /**
+     * Only the users whose roles actually change are persisted
      */
     @Test
     void changeRoles_savesOnlyTheUsersThatChange() {
@@ -475,8 +474,8 @@ class RoleServiceTest {
         publishedEvents(2);
     }
 
-    /**
-     * Un usuario sin ningun rol se trata como un usuario sin roles actuales
+        /**
+     * A user without any role is treated as a user without current roles
      */
     @Test
     void changeRoles_userWithoutRoles_isTreatedAsEmpty() {
@@ -492,9 +491,9 @@ class RoleServiceTest {
 
     // ------------------------------------------------------------------ A1, A2
 
-    /**
-     * A1 / MR-05 / RN-MS01-12: el administrador no puede modificar sus propios roles. Responde 403, no
-     * toca la base de datos y audita un FALLO
+        /**
+     * A1 / MR-05 / RN-MS01-12: the administrator cannot modify their own roles. It answers 403, does not touch the
+     * database and audits a FALLO
      */
     @Test
     void changeRoles_adminModifiesItself_isForbiddenAndAudited() {
@@ -512,8 +511,8 @@ class RoleServiceTest {
         assertEquals("AUTOMODIFICACION_DE_ROLES", event.detalle());
     }
 
-    /**
-     * A1: si entre los usuarios objetivo esta el propio administrador, no se cambia a ninguno (atomico)
+        /**
+     * A1: if the administrator themselves is among the target users, none is changed (atomic)
      */
     @Test
     void changeRoles_selfAmongSeveralTargets_changesNobody() {
@@ -525,9 +524,9 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * A2 / RN-MS01-11: quien no tiene el permiso ms01:user:roles recibe 403, no se toca la base de datos y se
-     * audita un FALLO sin usuario afectado
+        /**
+     * A2 / RN-MS01-11: whoever does not have the ms01:user:roles permission receives 403, the database is not touched
+     * and a FALLO is audited without an affected user
      */
     @Test
     void changeRoles_nonAdmin_isForbiddenAndAudited() {
@@ -544,8 +543,8 @@ class RoleServiceTest {
         assertEquals("SIN_PERMISO", event.detalle());
     }
 
-    /**
-     * MR-01: ningun rol hereda de otro, asi que combinar COORDINADOR y AUDITOR no da permiso de cambiar
+        /**
+     * MR-01: no role inherits from another, so combining COORDINADOR and AUDITOR does not give permission to change
      * roles
      */
     @Test
@@ -557,8 +556,8 @@ class RoleServiceTest {
         verifyNoInteractions(userRepository);
     }
 
-    /**
-     * El permiso decide, no el nombre del rol: un rol personalizado con ms01:user:roles puede cambiar roles
+        /**
+     * The permission decides, not the name of the role: a custom role with ms01:user:roles can change roles
      */
     @Test
     void changeRoles_customRoleWithTheUserRolesPermission_isAllowed() {
@@ -574,8 +573,8 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * Quien tiene el nombre de rol ADMIN pero no el permiso ms01:user:roles no puede cambiar roles
+        /**
+     * Whoever has the role name ADMIN but not the ms01:user:roles permission cannot change roles
      */
     @Test
     void changeRoles_adminNameWithoutThePermission_isForbidden() {
@@ -588,8 +587,8 @@ class RoleServiceTest {
         verifyNoInteractions(userRepository);
     }
 
-    /**
-     * Quien tiene ADMIN junto con otros roles si puede cambiar roles (MR-01: union de permisos)
+        /**
+     * Whoever has ADMIN together with other roles can change roles (MR-01: union of permissions)
      */
     @Test
     void changeRoles_adminWithOtherRoles_isAllowed() {
@@ -603,9 +602,8 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * La autorizacion se comprueba antes que el cuerpo: un no administrador con un cuerpo invalido recibe
-     * 403 y no 400
+        /**
+     * The authorization is checked before the body: a non-administrator with an invalid body receives 403 and not 400
      */
     @Test
     void changeRoles_nonAdminWithInvalidBody_getsForbiddenFirst() {
@@ -617,9 +615,9 @@ class RoleServiceTest {
 
     // ------------------------------------------------------------------ A3
 
-    /**
-     * A3: si algun usuario no existe responde 404, no se aplica ningun cambio (ni a los que si existen)
-     * y se audita un FALLO por cada id inexistente
+        /**
+     * A3: if any user does not exist it answers 404, no change is applied (not even to those that do exist) and a FALLO
+     * is audited for each non-existent id
      */
     @Test
     void changeRoles_unknownUser_isNotFoundAndChangesNobody() {
@@ -644,9 +642,8 @@ class RoleServiceTest {
 
     // ------------------------------------------------------------------ A4
 
-    /**
-     * A4 / RN-MS01-13: si el resultado deja a un usuario sin roles responde 400, no aplica ningun cambio
-     * y audita un FALLO
+        /**
+     * A4 / RN-MS01-13: if the result leaves a user without roles it answers 400, applies no change and audits a FALLO
      */
     @Test
     void changeRoles_userWouldLoseAllRoles_isRejected() {
@@ -667,8 +664,8 @@ class RoleServiceTest {
         assertEquals("USUARIO_SIN_ROLES", event.detalle());
     }
 
-    /**
-     * Atomicidad: si uno de varios usuarios quedaria sin roles, ninguno de los demas se modifica
+        /**
+     * Atomicity: if one of several users would be left without roles, none of the others is modified
      */
     @Test
     void changeRoles_oneOfSeveralWouldBeEmpty_changesNobody() {
@@ -686,8 +683,8 @@ class RoleServiceTest {
         assertEquals("usuario:" + USER_B, publishedEvents(1).get(0).recursoAfectado());
     }
 
-    /**
-     * Retirar el unico rol esta permitido si en la misma peticion se agrega otro
+        /**
+     * Removing the only role is allowed if another one is added in the same request
      */
     @Test
     void changeRoles_removingTheOnlyRoleWhileAddingAnother_isAllowed() {
@@ -701,13 +698,13 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    // ------------------------------------------------------------------ tope de roles por usuario
+    // ------------------------------------------------------------------ limit of roles per user
 
-    /**
-     * Genera nombres de rol válidos y distintos
+        /**
+     * Generates valid and distinct role names
      *
-     * @param count cantidad de nombres
-     * @return los nombres ROL_01, ROL_02, ...
+     * @param count number of names
+     * @return the names ROL_01, ROL_02, ...
      */
     private String[] roleNames(int count) {
         String[] names = new String[count];
@@ -717,8 +714,8 @@ class RoleServiceTest {
         return names;
     }
 
-    /**
-     * RN-MS01-40: un usuario puede quedar con exactamente 50 roles
+        /**
+     * RN-MS01-40: a user can end up with exactly 50 roles
      */
     @Test
     void changeRoles_userReachingExactlyTheMaximum_isAllowed() {
@@ -734,9 +731,9 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * RN-MS01-40: si el resultado dejaría al usuario con más de 50 roles responde 422, no cambia nada y audita
-     * un FALLO
+        /**
+     * RN-MS01-40: if the result would leave the user with more than 50 roles it answers 422, changes nothing and audits
+     * a FALLO
      */
     @Test
     void changeRoles_userExceedingTheMaximum_isRejectedAndAudited() {
@@ -758,8 +755,8 @@ class RoleServiceTest {
         assertEquals("MAXIMO_DE_ROLES_POR_USUARIO", event.detalle());
     }
 
-    /**
-     * Atomicidad: si uno de varios usuarios superaría el tope, ninguno de los demás se modifica
+        /**
+     * Atomicity: if one of several users would exceed the limit, none of the others is modified
      */
     @Test
     void changeRoles_oneOfSeveralExceedsTheMaximum_changesNobody() {
@@ -778,8 +775,8 @@ class RoleServiceTest {
         assertEquals("usuario:" + USER_B, events.get(0).recursoAfectado());
     }
 
-    /**
-     * RN-MS01-40: las listas agregar y retirar no tienen límite por operación, solo el total de roles del usuario
+        /**
+     * RN-MS01-40: the agregar and retirar lists have no limit per operation, only the total roles of the user
      */
     @Test
     void changeRoles_listsWithMoreThanEightRoles_areAccepted() {
@@ -795,8 +792,8 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    /**
-     * Retirar muchos roles de una sola vez también es válido mientras el usuario conserve al menos uno
+        /**
+     * Removing many roles at once is also valid as long as the user keeps at least one
      */
     @Test
     void changeRoles_removingManyRolesAtOnce_isAllowed() {
@@ -812,10 +809,10 @@ class RoleServiceTest {
         publishedEvents(1);
     }
 
-    // ------------------------------------------------------------------ validacion, auditoria, errores
+    // ------------------------------------------------------------------ validation, audit, errors
 
-    /**
-     * Un cuerpo invalido responde 400 sin consultar usuarios ni auditar (no hubo cambio que auditar)
+        /**
+     * An invalid body answers 400 without querying users or auditing (there was no change to audit)
      */
     @Test
     void changeRoles_invalidBody_isRejectedBeforeTouchingAnything() {
@@ -825,9 +822,9 @@ class RoleServiceTest {
         verifyNoInteractions(userRepository, auditPublisher);
     }
 
-    /**
-     * Un rol con formato válido que no existe en la tabla responde 400 en el campo agregar, sin consultar
-     * usuarios ni auditar
+        /**
+     * A role with a valid format that does not exist in the table answers 400 in the agregar field, without querying
+     * users or auditing
      */
     @Test
     void changeRoles_roleToAddThatDoesNotExist_isRejected() {
@@ -843,8 +840,8 @@ class RoleServiceTest {
         verifyNoInteractions(userRepository, auditPublisher);
     }
 
-    /**
-     * Un rol a retirar que no existe en la tabla responde 400 en el campo retirar
+        /**
+     * A role to remove that does not exist in the table answers 400 in the retirar field
      */
     @Test
     void changeRoles_roleToRemoveThatDoesNotExist_isRejected() {
@@ -858,8 +855,8 @@ class RoleServiceTest {
         verifyNoInteractions(userRepository, auditPublisher);
     }
 
-    /**
-     * Si tanto agregar como retirar traen roles inexistentes, el error trae un detalle por lista
+        /**
+     * If both agregar and retirar carry non-existent roles, the error carries one detail per list
      */
     @Test
     void changeRoles_bothListsWithUnknownRoles_reportsBothFields() {
@@ -872,8 +869,8 @@ class RoleServiceTest {
         assertEquals(2, error.getErrors().size());
     }
 
-    /**
-     * Un X-Correlation-ID invalido o ausente se reemplaza por uno generado, que se usa en la auditoria
+        /**
+     * An invalid or absent X-Correlation-ID is replaced by a generated one, which is used in the audit
      */
     @Test
     void changeRoles_invalidOrMissingCorrelationId_generatesOne() {
@@ -892,8 +889,8 @@ class RoleServiceTest {
         }
     }
 
-    /**
-     * Un X-Correlation-ID valido se usa recortado
+        /**
+     * A valid X-Correlation-ID is used trimmed
      */
     @Test
     void changeRoles_validCorrelationId_isUsedTrimmed() {
@@ -906,14 +903,14 @@ class RoleServiceTest {
         assertEquals("c19b472d-7a2a-4d3b-a12b-abcdef123456", publishedEvents(1).get(0).correlationId());
     }
 
-    /**
-     * RNF-MS01-10: si MS08 falla, la respuesta al cliente no cambia
+        /**
+     * RNF-MS01-10: if MS08 fails, the response to the client does not change
      */
     @Test
     void changeRoles_auditFailure_doesNotChangeTheResponse() {
         UserEntity target = user(USER_A, "ESTUDIANTE");
         when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
-        doThrow(new IllegalStateException("MS08 no disponible")).when(auditPublisher).publish(any());
+        doThrow(new IllegalStateException("MS08 unavailable")).when(auditPublisher).publish(any());
 
         ChangeRolesResponse response = roleService.changeRoles(admin(),
                 request(List.of(USER_A.toString()), List.of("PROFESOR"), null), CORRELATION_ID);
@@ -921,14 +918,14 @@ class RoleServiceTest {
         assertEquals(List.of("ESTUDIANTE", "PROFESOR"), response.resultados().get(0).roles());
     }
 
-    /**
-     * Si falla la persistencia no se emite ningun evento de exito
+        /**
+     * If the persistence fails no success event is emitted
      */
     @Test
     void changeRoles_persistenceFailure_emitsNoSuccessEvent() {
         UserEntity target = user(USER_A, "ESTUDIANTE");
         when(userRepository.findAllByIdInOrderById(any())).thenReturn(List.of(target));
-        doThrow(new IllegalStateException("fallo de base de datos")).when(userRepository).saveAllAndFlush(any());
+        doThrow(new IllegalStateException("database failure")).when(userRepository).saveAllAndFlush(any());
 
         assertThrows(IllegalStateException.class, () -> roleService.changeRoles(admin(),
                 request(List.of(USER_A.toString()), List.of("PROFESOR"), null), CORRELATION_ID));
@@ -936,10 +933,10 @@ class RoleServiceTest {
         verifyNoInteractions(auditPublisher);
     }
 
-    /**
-     * El cambio de roles corre en una sola transaccion, que es lo que lo hace atomico
+        /**
+     * The role change runs in a single transaction, which is what makes it atomic
      *
-     * @throws NoSuchMethodException si el metodo no existe
+     * @throws NoSuchMethodException if the method does not exist
      */
     @Test
     void changeRoles_runsInOneTransaction() throws NoSuchMethodException {

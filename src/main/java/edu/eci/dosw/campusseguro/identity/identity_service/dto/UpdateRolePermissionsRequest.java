@@ -5,30 +5,30 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Cuerpo de PUT /api/v1/roles/{rol}/permissions (formulario F-12)
+ * Body of PUT /api/v1/roles/{rol}/permissions (form F-12)
  *
- * permisos: lista completa que reemplaza a la actual
+ * permisos: complete list that replaces the current one
  *
- * cualquier campo no definido en el contrato se rechaza con HTTP 400 (RG-04)
+ * any field not defined in the contract is rejected with HTTP 400 (RG-04)
  */
 public class UpdateRolePermissionsRequest extends RoleRequest {
 
     @JsonProperty("permisos")
     private List<String> permisos;
 
-    /**
-     * Devuelve los permisos del rol
+        /**
+     * Returns the permissions of the role
      *
-     * @return códigos de permiso recibidos
+     * @return permission codes received
      */
     public List<String> getPermisos() {
         return permisos;
     }
 
-    /**
-     * Coloca los permisos del rol
+        /**
+     * Sets the permissions of the role
      *
-     * @param permisos códigos de permiso que reemplazan a los actuales
+     * @param permisos permission codes that replace the current ones
      */
     public void setPermisos(List<String> permisos) {
         this.permisos = permisos;

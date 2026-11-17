@@ -19,17 +19,17 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHead
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * RN-MS01-23 / estándares de integración: la identidad de quien llama se toma de las cabeceras X-User-Id,
- * X-User-Role y X-User-Permission del API Gateway, si faltan o no son válidas la petición es 401. También cubre
- * la autorización por permisos de RequesterIdentity (MR-01, MR-07)
+ * RN-MS01-23 / integration standards: the identity of the caller is taken from the headers X-User-Id, X-User-Role and
+ * X-User-Permission of the API Gateway, if they are missing or not valid the request is 401. It also covers the
+ * authorization by permissions of RequesterIdentity (MR-01, MR-07)
  */
 class IdentityHeaderParserTest {
 
     private static final String USER_ID = "5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c";
     private static final String PERMISSIONS = "ms01:profile:read,ms01:user:roles";
 
-    /**
-     * Una identidad con un solo rol y un permiso se interpreta correctamente
+        /**
+     * An identity with a single role and a permission is interpreted correctly
      */
     @Test
     void parse_singleRole_returnsTheIdentity() {
@@ -40,8 +40,8 @@ class IdentityHeaderParserTest {
         assertEquals(Set.of("ms01:user:roles"), identity.permissions());
     }
 
-    /**
-     * Varios roles y permisos separados por coma se interpretan todos, ignorando espacios y repetidos
+        /**
+     * Several roles and permissions separated by comma are all interpreted, ignoring spaces and repeated ones
      */
     @Test
     void parse_severalValues_ignoresSpacesAndDuplicates() {
@@ -53,8 +53,8 @@ class IdentityHeaderParserTest {
         assertEquals(Set.of("ms01:profile:read", "ms05:incident:report"), identity.permissions());
     }
 
-    /**
-     * Un rol personalizado con formato válido se acepta, el parser no consulta el catálogo de roles
+        /**
+     * A custom role with a valid format is accepted, the parser does not query the role catalog
      */
     @Test
     void parse_customRoleName_isAccepted() {
@@ -63,9 +63,9 @@ class IdentityHeaderParserTest {
         assertEquals(Set.of("MONITOR_EVACUACION"), identity.roles());
     }
 
-    /**
-     * Un código de permiso con formato válido se acepta aunque no esté en el catálogo del código, el catálogo
-     * solo lo aplica el emisor del token
+        /**
+     * A permission code with a valid format is accepted even if it is not in the catalog of the code, the catalog is
+     * only applied by the issuer of the token
      */
     @Test
     void parse_permissionWithValidFormat_isAccepted() {
@@ -74,8 +74,8 @@ class IdentityHeaderParserTest {
         assertEquals(Set.of("ms09:futuro:permiso"), identity.permissions());
     }
 
-    /**
-     * Una coma sobrante no invalida las cabeceras siempre que haya al menos un valor
+        /**
+     * A leftover comma does not invalidate the headers as long as there is at least one value
      */
     @Test
     void parse_trailingComma_isTolerated() {
@@ -85,8 +85,8 @@ class IdentityHeaderParserTest {
         assertEquals(Set.of("ms05:panel:read_own"), identity.permissions());
     }
 
-    /**
-     * Sin X-User-Id la identidad no se puede establecer (401)
+        /**
+     * Without X-User-Id the identity cannot be established (401)
      */
     @Test
     void parse_missingUserId_throwsUnauthenticated() {
@@ -96,8 +96,8 @@ class IdentityHeaderParserTest {
         assertEquals(IdentityHeaderParser.MISSING_MESSAGE, error.getMessage());
     }
 
-    /**
-     * Sin X-User-Role la identidad no se puede establecer (401)
+        /**
+     * Without X-User-Role the identity cannot be established (401)
      */
     @Test
     void parse_missingRole_throwsUnauthenticated() {
@@ -107,8 +107,8 @@ class IdentityHeaderParserTest {
         assertEquals(IdentityHeaderParser.MISSING_MESSAGE, error.getMessage());
     }
 
-    /**
-     * Sin X-User-Permission la identidad no se puede establecer (401), la autorización solo usa los permisos
+        /**
+     * Without X-User-Permission the identity cannot be established (401), the authorization only uses the permissions
      */
     @Test
     void parse_missingPermission_throwsUnauthenticated() {
@@ -118,8 +118,8 @@ class IdentityHeaderParserTest {
         assertEquals(IdentityHeaderParser.MISSING_MESSAGE, error.getMessage());
     }
 
-    /**
-     * Las cabeceras en blanco cuentan como ausentes
+        /**
+     * Blank headers count as absent
      */
     @Test
     void parse_blankHeaders_throwUnauthenticated() {
@@ -128,8 +128,8 @@ class IdentityHeaderParserTest {
         assertThrows(UnauthenticatedException.class, () -> IdentityHeaderParser.parse(USER_ID, "ADMIN", "   "));
     }
 
-    /**
-     * Una cabecera de roles o de permisos que solo tiene separadores no establece ningún valor (401)
+        /**
+     * A roles or permissions header that only has separators does not establish any value (401)
      */
     @Test
     void parse_onlySeparators_throwsUnauthenticated() {
@@ -142,8 +142,8 @@ class IdentityHeaderParserTest {
         assertEquals(IdentityHeaderParser.MISSING_MESSAGE, permissions.getMessage());
     }
 
-    /**
-     * Un X-User-Id que no es un UUID se rechaza (401)
+        /**
+     * An X-User-Id that is not a UUID is rejected (401)
      */
     @Test
     void parse_userIdWithoutUuidFormat_throwsUnauthenticated() {
@@ -153,8 +153,8 @@ class IdentityHeaderParserTest {
         assertEquals(IdentityHeaderParser.INVALID_USER_ID_MESSAGE, error.getMessage());
     }
 
-    /**
-     * Un nombre de rol con formato inválido se rechaza (401), aunque los demás sean válidos
+        /**
+     * A role name with an invalid format is rejected (401), even if the others are valid
      */
     @ParameterizedTest
     @ValueSource(strings = {"ESTUDIANTE,SUPER-USUARIO", "ESTUDIANTE,1ROL", "ESTUDIANTE,R", "admin", "Admin",
@@ -166,8 +166,8 @@ class IdentityHeaderParserTest {
         assertEquals(IdentityHeaderParser.INVALID_ROLE_MESSAGE, error.getMessage());
     }
 
-    /**
-     * Un código de permiso con formato inválido se rechaza (401), aunque los demás sean válidos
+        /**
+     * A permission code with an invalid format is rejected (401), even if the others are valid
      */
     @ParameterizedTest
     @ValueSource(strings = {"ms01:profile:read,PERMISO", "ms01:profile", "MS01:profile:read", "ms1:profile:read",
@@ -179,8 +179,8 @@ class IdentityHeaderParserTest {
         assertEquals(IdentityHeaderParser.INVALID_PERMISSION_MESSAGE, error.getMessage());
     }
 
-    /**
-     * MR-01: los permisos del solicitante son los que trae X-User-Permission, la unión de los de sus roles
+        /**
+     * MR-01: the permissions of the requester are those carried by X-User-Permission, the union of those of their roles
      */
     @Test
     void requesterPermissions_areTheOnesInTheHeader() {
@@ -192,9 +192,9 @@ class IdentityHeaderParserTest {
         assertFalse(identity.hasPermission(Permission.MS01_USER_ROLES));
     }
 
-    /**
-     * La autorización no depende del nombre del rol: ADMIN sin el permiso no puede cambiar roles y un rol
-     * cualquiera con el permiso sí
+        /**
+     * The authorization does not depend on the name of the role: ADMIN without the permission cannot change roles and
+     * any role with the permission can
      */
     @Test
     void authorization_dependsOnThePermissionAndNotOnTheRoleName() {
@@ -206,8 +206,8 @@ class IdentityHeaderParserTest {
         assertTrue(supportWithPermission.hasPermission(Permission.MS01_USER_ROLES));
     }
 
-    /**
-     * Los roles y permisos de la identidad son conjuntos inmutables que no cambian si cambian los originales
+        /**
+     * The roles and permissions of the identity are immutable sets that do not change if the originals change
      */
     @Test
     void requesterIdentity_valuesAreAnImmutableCopy() {

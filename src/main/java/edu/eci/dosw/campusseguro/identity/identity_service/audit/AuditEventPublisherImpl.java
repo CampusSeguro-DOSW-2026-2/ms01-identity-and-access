@@ -18,16 +18,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
 
 /**
- * Publica los eventos de auditoría en MS08 a través del API Gateway, de forma asíncrona y sin esperar el
- * resultado, por lo que no bloquea la petición (RNF-MS01-03, RNF-MS01-10, Estándares de Integración,
- * secciones 5 y 12)
+ * Publishes the audit events in MS08 through the API Gateway, asynchronously and without waiting for the result, so it
+ * does not block the request (RNF-MS01-03, RNF-MS01-10, Integration Standards, sections 5 and 12)
  *
- * Envía POST gateway-url/api/v1/audit/events con el cuerpo JSON del evento y las cabeceras
- * X-Service-Key, X-Correlation-ID y, si la acción la ejecuta un usuario autenticado, X-User-Id y
- * X-User-Role sin modificar
+ * Sends POST gateway-url/api/v1/audit/events with the JSON body of the event and the headers X-Service-Key,
+ * X-Correlation-ID and, if the action is executed by an authenticated user, X-User-Id and X-User-Role unmodified
  *
- * Si no hay URL del Gateway configurada el evento solo se deja en el log. Cualquier fallo se registra y se
- * descarta, sin reintentos ni colas: nunca afecta al cliente
+ * If no Gateway URL is configured the event is only left in the log. Any failure is logged and discarded, without
+ * retries or queues: it never affects the client
  */
 public class AuditEventPublisherImpl implements AuditEventPublisher {
 
@@ -44,13 +42,13 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
     private final String serviceKey;
     private final Duration requestTimeout;
 
-    /**
-     * Crea el publicador con el cliente HTTP y los datos del Gateway
+        /**
+     * Creates the publisher with the HTTP client and the data of the Gateway
      *
-     * @param httpClient cliente HTTP con el timeout de conexión de las llamadas internas
-     * @param gatewayUrl URL base del API Gateway; vacía o nula desactiva el envío (solo log)
-     * @param serviceKey clave de servicio de MS01 con la que el Gateway autentica la llamada
-     * @param requestTimeout tiempo máximo de espera de la respuesta
+     * @param httpClient HTTP client with the connection timeout of the internal calls
+     * @param gatewayUrl base URL of the API Gateway; empty or null disables the sending (log only)
+     * @param serviceKey service key of MS01 with which the Gateway authenticates the call
+     * @param requestTimeout maximum time to wait for the response
      */
     public AuditEventPublisherImpl(HttpClient httpClient, String gatewayUrl, String serviceKey,
             Duration requestTimeout) {
@@ -60,16 +58,16 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
         this.endpoint = buildEndpoint(gatewayUrl);
     }
 
-    /**
-     * Envía el evento al Gateway sin bloquear, o lo deja en el log si el envío está desactivado
+        /**
+     * Sends the event to the Gateway without blocking, or leaves it in the log if the sending is disabled
      *
-     * @param event evento que se emite
+     * @param event event that is emitted
      */
     @Override
     public void publish(AuditEvent event) {
         try {
             if (endpoint == null) {
-                log.info("Auditoría (Gateway no configurado): accion={} resultado={} usuario={} recurso={} detalle={}",
+                log.info("Audit (Gateway not configured): action={} result={} user={} resource={} detail={}",
                         event.accion(), event.resultado(), event.usuarioId(), event.recursoAfectado(),
                         event.detalle());
                 return;
@@ -82,17 +80,17 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
             httpClient.sendAsync(request.build(), HttpResponse.BodyHandlers.discarding())
                     .whenComplete((response, error) -> reportOutcome(event, response, error));
         } catch (RuntimeException e) {
-            log.error("No se pudo preparar el evento de auditoría {}/{}: {}", event.accion(), event.resultado(),
+            log.error("The audit event {}/{} could not be prepared: {}", event.accion(), event.resultado(),
                     e.toString());
         }
     }
 
-    /**
-     * Agrega a la petición las cabeceras técnicas del evento: la clave de servicio, el correlation id y la
-     * identidad del usuario cuando la acción la ejecutó uno autenticado
+        /**
+     * Adds to the request the technical headers of the event: the service key, the correlation id and the identity of
+     * the user when the action was executed by an authenticated one
      *
-     * @param request constructor de la petición HTTP
-     * @param event evento que se emite
+     * @param request builder of the HTTP request
+     * @param event event that is emitted
      */
     private void addHeaders(HttpRequest.Builder request, AuditEvent event) {
         if (serviceKey != null && !serviceKey.isBlank()) {
@@ -107,14 +105,14 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
         }
     }
 
-    /**
-     * Registra en los logs el resultado de la petición asíncrona enviada a MS08, informando si
-     * ocurrió un error de conexión o si el servidor remoto rechazó el evento, el hilo de respuesta no tiene
-     * el correlation id de la petición, por eso se publica en el MDC mientras se escribe el log
+        /**
+     * Logs the result of the asynchronous request sent to MS08, reporting whether a connection error occurred or the
+     * remote server rejected the event, the response thread does not have the correlation id of the request, so it is
+     * published in the MDC while the log is written
      *
-     * @param event el evento de auditoría que se intentó reportar
-     * @param response la respuesta HTTP recibida por parte de MS08 (puede ser nula si hubo fallo de red)
-     * @param error la excepción o error generado durante el envío asíncrono (si lo hubo)
+     * @param event the audit event that was attempted to be reported
+     * @param response the HTTP response received from MS08 (may be null if there was a network failure)
+     * @param error the exception or error generated during the asynchronous sending (if there was one)
      */
     private void reportOutcome(AuditEvent event, HttpResponse<Void> response, Throwable error) {
         if (event.correlationId() != null) {
@@ -122,10 +120,10 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
         }
         try {
             if (error != null) {
-                log.error("MS08 no recibió el evento de auditoría {}/{}: {}", event.accion(), event.resultado(),
+                log.error("MS08 did not receive the audit event {}/{}: {}", event.accion(), event.resultado(),
                         error.toString());
             } else if (response.statusCode() >= 300) {
-                log.error("MS08 rechazó el evento de auditoría {}/{} con HTTP {}", event.accion(),
+                log.error("MS08 rejected the audit event {}/{} with HTTP {}", event.accion(),
                         event.resultado(), response.statusCode());
             }
         } finally {
@@ -133,12 +131,12 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
         }
     }
 
-    /**
-     * Convierte un evento de auditoría en una cadena con formato JSON con los campos del contrato de
-     * auditoría, los campos opcionales sin valor se envían como null
+        /**
+     * Converts an audit event into a string in JSON format with the fields of the audit contract, the optional fields
+     * without value are sent as null
      *
-     * @param event el objeto de evento de auditoría a serializar
-     * @return una cadena de texto en formato JSON que representa el evento
+     * @param event the audit event object to serialize
+     * @return a text string in JSON format that represents the event
      */
     static String toJson(AuditEvent event) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -153,11 +151,11 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
         return MiniJson.write(body);
     }
 
-    /**
-     * Convierte el usuario del evento en texto
+        /**
+     * Converts the user of the event to text
      *
-     * @param event evento de auditoría
-     * @return el id del usuario como texto, o null si el evento es anónimo
+     * @param event audit event
+     * @return the id of the user as text, or null if the event is anonymous
      */
     private static String uuidText(AuditEvent event) {
         if (event.usuarioId() == null) {
@@ -166,12 +164,12 @@ public class AuditEventPublisherImpl implements AuditEventPublisher {
         return event.usuarioId().toString();
     }
 
-    /**
-     * Construye la URI del endpoint de eventos combinando la URL del Gateway y la ruta fija del contrato,
-     * asegurando que no existan barras duplicadas y manejando el caso en que la URL no esté configurada
+        /**
+     * Builds the URI of the events endpoint by combining the Gateway URL and the fixed route of the contract, making
+     * sure there are no duplicated slashes and handling the case in which the URL is not configured
      *
-     * @param gatewayUrl la URL base del API Gateway
-     * @return un objeto URI completamente formado, o null si la URL base está vacía o es nula
+     * @param gatewayUrl the base URL of the API Gateway
+     * @return a fully formed URI object, or null if the base URL is empty or null
      */
     private static URI buildEndpoint(String gatewayUrl) {
         if (gatewayUrl == null || gatewayUrl.isBlank()) {

@@ -16,17 +16,17 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserUpdateProfileRequest;
 
 /**
- * Rechazo de campos que no están en el contrato (RG-04): se registran al leer el JSON y cada uno se
- * informa como un error por campo
+ * Rejection of fields that are not in the contract (RG-04): they are registered when reading the JSON and each one is
+ * reported as an error per field
  */
 class StrictRequestTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    /**
-     * Los campos desconocidos se registran sin que falle la lectura del JSON
+        /**
+     * The unknown fields are registered without making the reading of the JSON fail
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void jsonWithUnknownFields_registersThemWithoutFailingTheRead() throws Exception {
@@ -38,10 +38,10 @@ class StrictRequestTest {
         assertEquals("a@escuelaing.edu.co", request.getCorreo());
     }
 
-    /**
-     * Un JSON sin campos desconocidos no registra nada
+        /**
+     * A JSON without unknown fields registers nothing
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void jsonWithoutUnknownFields_registersNothing() throws Exception {
@@ -52,8 +52,8 @@ class StrictRequestTest {
         assertTrue(request.unknownFieldErrors().isEmpty());
     }
 
-    /**
-     * Cada campo desconocido produce un error con el mensaje genérico
+        /**
+     * Each unknown field produces an error with the generic message
      */
     @Test
     void unknownFieldErrors_haveOneEntryPerFieldWithTheGenericMessage() {
@@ -67,8 +67,8 @@ class StrictRequestTest {
                 request.unknownFieldErrors());
     }
 
-    /**
-     * Los nombres de campo inseguros se reemplazan por un marcador para no devolverlos
+        /**
+     * The unsafe field names are replaced by a marker so they are not returned
      */
     @Test
     void unsafeFieldNames_areReplacedByAPlaceholderSoTheyAreNeverEchoed() {
@@ -82,8 +82,8 @@ class StrictRequestTest {
         assertTrue(errors.stream().allMatch(error -> "campo_desconocido".equals(error.campo())));
     }
 
-    /**
-     * La petición de perfil usa los mensajes del formulario para los campos rechazados
+        /**
+     * The profile request uses the messages of the form for the rejected fields
      */
     @Test
     void profileRequest_usesTheFormMessagesForTheRejectedFields() {
@@ -101,8 +101,8 @@ class StrictRequestTest {
         assertEquals("El campo no está permitido.", errors.get(3).mensaje());
     }
 
-    /**
-     * La colección de campos desconocidos no se puede modificar desde fuera
+        /**
+     * The collection of unknown fields cannot be modified from outside
      */
     @Test
     void unknownFieldNames_isReadOnly() {
@@ -111,10 +111,10 @@ class StrictRequestTest {
         assertThrows(UnsupportedOperationException.class, () -> request.unknownFieldNames().add("x"));
     }
 
-    /**
-     * La petición de cambio de roles también registra los campos desconocidos
+        /**
+     * The role change request also registers the unknown fields
      *
-     * @throws Exception si falla la lectura del JSON
+     * @throws Exception if reading the JSON fails
      */
     @Test
     void changeRolesRequest_alsoRegistersUnknownFields() throws Exception {

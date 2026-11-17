@@ -44,7 +44,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * Pruebas del cambio de estado de usuarios (RF-MS01-07, formulario F-08)
+ * Tests of the status change of users (RF-MS01-07, form F-08)
  */
 class BulkUserStatusOperationServiceTest {
 
@@ -57,8 +57,8 @@ class BulkUserStatusOperationServiceTest {
     private final UUID adminId = UUID.randomUUID();
     private final RequesterIdentity admin = TestIdentities.of(adminId, "ADMIN");
 
-    /**
-     * Prepara el servicio con sus dependencias simuladas
+        /**
+     * Prepares the service with its simulated dependencies
      */
     @BeforeEach
     void setUp() {
@@ -72,12 +72,12 @@ class BulkUserStatusOperationServiceTest {
                 auditRecorder, requestValidator, FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")), List.of("escuelaing.edu.co"));
     }
 
-    /**
-     * Construye un usuario de prueba
+        /**
+     * Builds a test user
      *
-     * @param id identificador del usuario
-     * @param state estado inicial del usuario
-     * @return el usuario de prueba
+     * @param id identifier of the user
+     * @param state initial status of the user
+     * @return the test user
      */
     private UserEntity user(UUID id, UserState state) {
         UserEntity user = new UserEntity();
@@ -87,12 +87,12 @@ class BulkUserStatusOperationServiceTest {
         return user;
     }
 
-    /**
-     * Construye la petición de cambio de estado
+        /**
+     * Builds the status change request
      *
-     * @param estado estado solicitado
-     * @param ids identificadores de los usuarios a modificar
-     * @return la petición de cambio de estado
+     * @param estado requested status
+     * @param ids identifiers of the users to modify
+     * @return the status change request
      */
     private ChangeStatusRequest request(String estado, UUID... ids) {
         ChangeStatusRequest request = new ChangeStatusRequest();
@@ -103,11 +103,11 @@ class BulkUserStatusOperationServiceTest {
         return request;
     }
 
-    /**
-     * Obtiene los eventos de auditoría publicados
+        /**
+     * Gets the published audit events
      *
-     * @param expected cantidad de eventos que se espera haber publicado
-     * @return los eventos de auditoría en el orden en que se publicaron
+     * @param expected number of events expected to have been published
+     * @return the audit events in the order in which they were published
      */
     private List<AuditEvent> auditEvents(int expected) {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -115,8 +115,8 @@ class BulkUserStatusOperationServiceTest {
         return captor.getAllValues();
     }
 
-    /**
-     * Una petición válida actualiza a cada usuario e informa su estado anterior y el nuevo
+        /**
+     * A valid request updates each user and reports their previous and new status
      */
     @Test
     void changeUserStatus_validRequest_updatesEveryUserAndReportsPreviousAndNewState() {
@@ -140,8 +140,8 @@ class BulkUserStatusOperationServiceTest {
         verify(userRepository).saveAllAndFlush(any());
     }
 
-    /**
-     * Cada usuario procesado recibe el corte de sesión con la hora del reloj truncada a segundos (RF-MS01-11)
+        /**
+     * Each processed user receives the session cut with the time of the clock truncated to seconds (RF-MS01-11)
      */
     @Test
     void changeUserStatus_setsTheSessionCutOnEveryTarget() {
@@ -156,8 +156,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals(Instant.parse("2026-03-01T10:00:00Z"), secondUser.getValidFrom());
     }
 
-    /**
-     * Si el usuario ya tenía el estado pedido el corte de sesión también se registra, el cambio es de cuenta
+        /**
+     * If the user already had the requested status the session cut is also recorded, the change is an account one
      */
     @Test
     void changeUserStatus_sameStateStillSetsTheSessionCut() {
@@ -169,8 +169,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals(Instant.parse("2026-03-01T10:00:00Z"), target.getValidFrom());
     }
 
-    /**
-     * Un cambio rechazado no registra ningún corte de sesión
+        /**
+     * A rejected change does not record any session cut
      */
     @Test
     void changeUserStatus_rejectedChange_setsNoSessionCut() {
@@ -183,8 +183,8 @@ class BulkUserStatusOperationServiceTest {
         assertNull(target.getValidFrom());
     }
 
-    /**
-     * Un cambio exitoso audita a cada usuario con su estado anterior y el nuevo
+        /**
+     * A successful change audits each user with their previous and new status
      */
     @Test
     void changeUserStatus_success_auditsEachUserWithPreviousAndNewState() {
@@ -203,8 +203,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals(CORRELATION_ID, event.correlationId());
     }
 
-    /**
-     * Sin permiso la operación se prohíbe, se audita y no toca la base de datos
+        /**
+     * Without permission the operation is forbidden, audited and does not touch the database
      */
     @Test
     void changeUserStatus_withoutPermission_isForbiddenAuditedAndDoesNotTouchTheDatabase() {
@@ -222,8 +222,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("SIN_PERMISO", event.detalle());
     }
 
-    /**
-     * Incluir el propio identificador se prohíbe y se audita
+        /**
+     * Including the own identifier is forbidden and audited
      */
     @Test
     void changeUserStatus_includingOwnId_isForbiddenAndAudited() {
@@ -239,8 +239,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("usuario:" + adminId, event.recursoAfectado());
     }
 
-    /**
-     * Un usuario inexistente produce un no encontrado, se audita y no cambia nada
+        /**
+     * A non-existent user produces a not found, is audited and changes nothing
      */
     @Test
     void changeUserStatus_unknownUser_isNotFoundAuditedAndChangesNothing() {
@@ -262,8 +262,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("usuario:" + missing, event.recursoAfectado());
     }
 
-    /**
-     * Un fallo de la base de datos audita a cada usuario y propaga el error
+        /**
+     * A database failure audits each user and propagates the error
      */
     @Test
     void changeUserStatus_databaseFailure_auditsEachUserAndPropagatesTheError() {
@@ -271,7 +271,7 @@ class BulkUserStatusOperationServiceTest {
         UUID second = UUID.randomUUID();
         when(userRepository.findAllByIdInOrderById(any()))
                 .thenReturn(List.of(user(first, UserState.ACTIVO), user(second, UserState.ACTIVO)));
-        when(userRepository.saveAllAndFlush(any())).thenThrow(new IllegalStateException("fallo simulado"));
+        when(userRepository.saveAllAndFlush(any())).thenThrow(new IllegalStateException("simulated failure"));
 
         assertThrows(IllegalStateException.class,
                 () -> userService.changeUserStatus(admin, request("INACTIVO", first, second), CORRELATION_ID));
@@ -281,8 +281,8 @@ class BulkUserStatusOperationServiceTest {
         assertTrue(events.stream().allMatch(event -> "ERROR_INTERNO".equals(event.detalle())));
     }
 
-    /**
-     * Un cuerpo inválido informa los mensajes del formulario y no consulta la base de datos
+        /**
+     * An invalid body reports the messages of the form and does not query the database
      */
     @Test
     void changeUserStatus_invalidBody_reportsTheFormMessagesAndDoesNotQuery() {
@@ -298,8 +298,8 @@ class BulkUserStatusOperationServiceTest {
         verify(userRepository, never()).findAllByIdInOrderById(any());
     }
 
-    /**
-     * Una lista de usuarios vacía se rechaza
+        /**
+     * An empty list of users is rejected
      */
     @Test
     void changeUserStatus_emptyUserList_isRejected() {
@@ -314,8 +314,8 @@ class BulkUserStatusOperationServiceTest {
         assertEquals("Seleccione al menos un usuario.", error.getErrors().get(0).mensaje());
     }
 
-    /**
-     * Los identificadores repetidos se procesan una sola vez
+        /**
+     * Repeated identifiers are processed only once
      */
     @Test
     void changeUserStatus_duplicatedIds_areProcessedOnce() {

@@ -9,13 +9,13 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
 /**
- * Respuesta de POST /api/v1/auth/register (esquema RegisterResponse del contrato), nunca incluye la
- * contraseña ni su hash (RF-MS01-01)
+ * Response of POST /api/v1/auth/register (RegisterResponse schema of the contract), it never includes the password or
+ * its hash (RF-MS01-01)
  *
- * @param id id del usuario creado
- * @param email correo institucional
- * @param roles roles del usuario, en orden alfabético
- * @param state estado de la cuenta
+ * @param id id of the created user
+ * @param email institutional email
+ * @param roles roles of the user, in alphabetical order
+ * @param state status of the account
  */
 public record UserResponse(
         UUID id,
@@ -23,11 +23,11 @@ public record UserResponse(
         List<String> roles,
         @JsonProperty("estado") UserState state) {
 
-    /**
-     * Construye la respuesta a partir del usuario guardado
+        /**
+     * Builds the response from the saved user
      *
-     * @param entity usuario guardado
-     * @return la respuesta con el id, el correo, los roles ordenados y el estado
+     * @param entity saved user
+     * @return the response with the id, the email, the sorted roles and the status
      */
     public static UserResponse fromEntity(UserEntity entity) {
         return new UserResponse(

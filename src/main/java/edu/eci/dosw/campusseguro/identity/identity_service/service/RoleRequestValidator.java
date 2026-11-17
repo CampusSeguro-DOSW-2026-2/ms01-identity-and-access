@@ -16,18 +16,18 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.Texts;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * Valida y normaliza los cuerpos y las rutas de la gestión de roles según los formularios F-10, F-11, F-12 y
- * F-13 (RF-MS01-10)
+ * Validates and normalizes the bodies and the paths of the role management according to forms F-10, F-11, F-12 and F-13
+ * (RF-MS01-10)
  *
- * rol: se recorta y se pasa a mayúsculas antes de validarlo (RG-08), de 2 a 30 caracteres: letras sin tilde,
- * dígitos y guion bajo, empezando con una letra, y no puede ser el nombre reservado DETAILS
+ * rol: it is trimmed and converted to uppercase before validating it (RG-08), from 2 to 30 characters: letters without
+ * accents, digits and underscore, starting with a letter, and it cannot be the reserved name DETAILS
  *
- * descripcion: de 3 a 200 caracteres y sin etiquetas HTML (RG-03)
+ * descripcion: from 3 to 200 characters and without HTML tags (RG-03)
  *
- * permisos: al menos uno, sin repetidos y todos del catálogo de la base de datos, no se normalizan (solo se
- * recortan los espacios)
+ * permisos: list that may be empty or absent, without repeated ones and all of them from the database catalog, they are
+ * not normalized (only the spaces are trimmed)
  *
- * cualquier campo no definido en el contrato: "Campo no permitido."
+ * any field not defined in the contract: "Campo no permitido."
  */
 public final class RoleRequestValidator {
 
@@ -40,7 +40,6 @@ public final class RoleRequestValidator {
     public static final String RESERVED_NAME_MESSAGE = "Ese nombre de rol está reservado.";
     public static final String INVALID_PATH_ROLE_MESSAGE = "Rol no válido.";
     public static final String INVALID_DESCRIPTION_MESSAGE = "La descripción debe tener entre 3 y 200 caracteres.";
-    public static final String NO_PERMISSIONS_MESSAGE = "Seleccione al menos un permiso.";
     public static final String INVALID_PERMISSION_MESSAGE = "Permiso no válido";
     public static final String REPEATED_PERMISSION_MESSAGE = "Permiso repetido";
 
@@ -49,20 +48,20 @@ public final class RoleRequestValidator {
 
     private static final Pattern SAFE_TO_ECHO = Pattern.compile("^[A-Za-z0-9_:.\\-]{1,60}$");
 
-    /**
-     * Clase de utilidad, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private RoleRequestValidator() {
     }
 
-    /**
-     * Valida y normaliza el cuerpo de POST /api/v1/roles
+        /**
+     * Validates and normalizes the body of POST /api/v1/roles
      *
-     * @param request cuerpo recibido
-     * @param catalog códigos de todos los permisos del catálogo
-     * @return el comando con el nombre normalizado, la descripción y los permisos ordenados
-     * @throws InvalidRequestException si algún dato incumple F-10 o llega un campo no permitido, con un
-     *         error por campo
+     * @param request body received
+     * @param catalog codes of all the permissions of the catalog
+     * @return the command with the normalized name, the description and the sorted permissions
+     * @throws InvalidRequestException if any data breaks F-10 or a field that is not allowed arrives, with one error
+     *         per field
      */
     public static CreateRoleCommand validateCreate(CreateRoleRequest request, Set<String> catalog) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(request.unknownFieldErrors());
@@ -75,13 +74,13 @@ public final class RoleRequestValidator {
         return new CreateRoleCommand(name, description, permissions);
     }
 
-    /**
-     * Valida y normaliza el cuerpo de PUT /api/v1/roles/{rol}
+        /**
+     * Validates and normalizes the body of PUT /api/v1/roles/{rol}
      *
-     * @param request cuerpo recibido
-     * @return el comando con el nombre normalizado y la descripción
-     * @throws InvalidRequestException si algún dato incumple F-11 o llega un campo no permitido, con un
-     *         error por campo
+     * @param request body received
+     * @return the command with the normalized name and the description
+     * @throws InvalidRequestException if any data breaks F-11 or a field that is not allowed arrives, with one error
+     *         per field
      */
     public static UpdateRoleCommand validateUpdate(UpdateRoleRequest request) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>(request.unknownFieldErrors());
@@ -93,14 +92,14 @@ public final class RoleRequestValidator {
         return new UpdateRoleCommand(name, description);
     }
 
-    /**
-     * Valida el cuerpo de PUT /api/v1/roles/{rol}/permissions
+        /**
+     * Validates the body of PUT /api/v1/roles/{rol}/permissions
      *
-     * @param request cuerpo recibido
-     * @param catalog códigos de todos los permisos del catálogo
-     * @return el comando con los permisos ordenados y sin repetidos
-     * @throws InvalidRequestException si algún dato incumple F-12 o llega un campo no permitido, con un
-     *         error por campo
+     * @param request body received
+     * @param catalog codes of all the permissions of the catalog
+     * @return the command with the sorted permissions without repeated ones
+     * @throws InvalidRequestException if any data breaks F-12 or a field that is not allowed arrives, with one error
+     *         per field
      */
     public static RolePermissionsCommand validatePermissions(UpdateRolePermissionsRequest request,
             Set<String> catalog) {
@@ -112,12 +111,12 @@ public final class RoleRequestValidator {
         return new RolePermissionsCommand(permissions);
     }
 
-    /**
-     * Normaliza el nombre de un rol recibido en una ruta (RG-08)
+        /**
+     * Normalizes the name of a role received in a path (RG-08)
      *
-     * @param rawRole valor de {rol} en la ruta
-     * @return el nombre en mayúsculas
-     * @throws InvalidRequestException si el nombre no tiene un formato válido
+     * @param rawRole value of {rol} in the path
+     * @return the name in uppercase
+     * @throws InvalidRequestException if the name does not have a valid format
      */
     public static String normalizePathRole(String rawRole) {
         String name = RoleNames.normalize(rawRole);
@@ -128,12 +127,12 @@ public final class RoleRequestValidator {
         return name;
     }
 
-    /**
-     * Normaliza el nombre de un rol recibido en un cuerpo (RG-08)
+        /**
+     * Normalizes the name of a role received in a body (RG-08)
      *
-     * @param rawName nombre recibido
-     * @param errors lista donde se agrega el error si el nombre no tiene un formato válido o está reservado
-     * @return el nombre en mayúsculas, o null si no es válido
+     * @param rawName name received
+     * @param errors list where the error is added if the name does not have a valid format or is reserved
+     * @return the name in uppercase, or null if it is not valid
      */
     private static String parseName(String rawName, List<ErrorResponse.ErrorDetail> errors) {
         String name = RoleNames.normalize(rawName);
@@ -148,12 +147,12 @@ public final class RoleRequestValidator {
         return name;
     }
 
-    /**
-     * Valida la descripción del rol
+        /**
+     * Validates the description of the role
      *
-     * @param rawDescription descripción recibida
-     * @param errors lista donde se agrega el error si la descripción no es válida
-     * @return la descripción recortada, o null si no es válida
+     * @param rawDescription description received
+     * @param errors list where the error is added if the description is not valid
+     * @return the trimmed description, or null if it is not valid
      */
     private static String parseDescription(String rawDescription, List<ErrorResponse.ErrorDetail> errors) {
         String description = Texts.trimToNull(rawDescription);
@@ -169,18 +168,18 @@ public final class RoleRequestValidator {
         return description;
     }
 
-    /**
-     * Valida la lista de permisos: al menos uno, del catálogo y sin repetidos, los códigos no se normalizan
+        /**
+     * Validates the list of permissions: from the catalog and without repeated ones, the codes are not normalized, an
+     * empty or absent list is valid because the mandatory permissions are added or required by the service
      *
-     * @param rawPermissions códigos recibidos
-     * @param catalog códigos de todos los permisos del catálogo
-     * @param errors lista donde se agrega el error del primer código inválido o repetido
-     * @return los códigos recortados, ordenados y sin repetidos
+     * @param rawPermissions codes received
+     * @param catalog codes of all the permissions of the catalog
+     * @param errors list where the error of the first invalid or repeated code is added
+     * @return the trimmed codes, sorted and without repeated ones
      */
     private static List<String> parsePermissions(List<String> rawPermissions, Set<String> catalog,
             List<ErrorResponse.ErrorDetail> errors) {
-        if (rawPermissions == null || rawPermissions.isEmpty()) {
-            errors.add(new ErrorResponse.ErrorDetail(FIELD_PERMISSIONS, NO_PERMISSIONS_MESSAGE));
+        if (rawPermissions == null) {
             return List.of();
         }
 
@@ -201,13 +200,13 @@ public final class RoleRequestValidator {
         return List.copyOf(codes);
     }
 
-    /**
-     * Arma el mensaje de un permiso rechazado, el código solo se repite en el mensaje si no tiene caracteres
-     * que sea inseguro devolver al cliente
+        /**
+     * Builds the message of a rejected permission, the code is only repeated in the message if it has no characters
+     * that are unsafe to return to the client
      *
-     * @param message mensaje base
-     * @param code código rechazado, puede ser null
-     * @return el mensaje con el código, o el mensaje solo con un punto final si el código no es seguro
+     * @param message base message
+     * @param code rejected code, may be null
+     * @return the message with the code, or the message alone with a final period if the code is not safe
      */
     private static String describe(String message, String code) {
         if (code != null && SAFE_TO_ECHO.matcher(code).matches()) {

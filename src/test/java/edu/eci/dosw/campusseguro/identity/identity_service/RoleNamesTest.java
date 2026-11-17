@@ -18,13 +18,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 
 /**
- * RG-08: formato de los nombres de rol guardados, normalización de los nombres recibidos y orden alfabético de
- * los roles de un usuario
+ * RG-08: format of the stored role names, normalization of the received names and alphabetical order of the roles of a
+ * user
  */
 class RoleNamesTest {
 
-    /**
-     * Los dos roles de sistema que el código necesita conocer
+        /**
+     * The two system roles that the code needs to know
      */
     @Test
     void systemRoleNames_areEstudianteAndAdmin() {
@@ -32,8 +32,8 @@ class RoleNamesTest {
         assertEquals("ADMIN", RoleNames.ADMIN);
     }
 
-    /**
-     * DETAILS está reservado: es el segmento literal de la ruta GET /roles/details
+        /**
+     * DETAILS is reserved: it is the literal segment of the route GET /roles/details
      */
     @Test
     void reservedName_isDetails() {
@@ -41,8 +41,8 @@ class RoleNamesTest {
         assertTrue(RoleNames.isReserved("DETAILS"));
     }
 
-    /**
-     * Solo el nombre guardado exacto está reservado: otros nombres, minúsculas, prefijos y null no lo están
+        /**
+     * Only the exact stored name is reserved: other names, lowercase, prefixes and null are not
      */
     @ParameterizedTest
     @NullSource
@@ -51,8 +51,8 @@ class RoleNamesTest {
         assertFalse(RoleNames.isReserved(name));
     }
 
-    /**
-     * Un nombre recibido en minúsculas se normaliza a DETAILS y entonces queda reservado
+        /**
+     * A name received in lowercase is normalized to DETAILS and then it is reserved
      */
     @Test
     void normalize_detailsInAnyCase_becomesTheReservedName() {
@@ -60,8 +60,8 @@ class RoleNamesTest {
         assertTrue(RoleNames.isReserved(RoleNames.normalize(" Details ")));
     }
 
-    /**
-     * Un nombre guardado son mayúsculas, dígitos y guion bajo, de 2 a 30 caracteres y empieza con una letra
+        /**
+     * A stored name is uppercase letters, digits and underscore, from 2 to 30 characters and starts with a letter
      */
     @ParameterizedTest
     @ValueSource(strings = {"AB", "ADMIN", "MONITOR_EVACUACION", "ROL_2", "A_1", "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234"})
@@ -69,8 +69,8 @@ class RoleNamesTest {
         assertTrue(RoleNames.hasStoredFormat(name));
     }
 
-    /**
-     * Minúsculas, espacios, símbolos, inicio no alfabético y longitudes fuera de rango no son un nombre guardado
+        /**
+     * Lowercase, spaces, symbols, a non-alphabetic start and lengths out of range are not a stored name
      */
     @ParameterizedTest
     @NullSource
@@ -80,8 +80,8 @@ class RoleNamesTest {
         assertFalse(RoleNames.hasStoredFormat(name));
     }
 
-    /**
-     * Un nombre recibido se recorta y se pasa a mayúsculas
+        /**
+     * A received name is trimmed and converted to uppercase
      */
     @Test
     void normalize_trimsAndUppercases() {
@@ -90,8 +90,8 @@ class RoleNamesTest {
         assertEquals("ROL_2", RoleNames.normalize("rol_2"));
     }
 
-    /**
-     * Un nombre recibido con formato inválido da null
+        /**
+     * A received name with an invalid format gives null
      */
     @ParameterizedTest
     @NullSource
@@ -101,8 +101,8 @@ class RoleNamesTest {
         assertNull(RoleNames.normalize(raw));
     }
 
-    /**
-     * Los roles se ordenan alfabéticamente sin importar el orden del conjunto recibido
+        /**
+     * The roles are sorted alphabetically regardless of the order of the received set
      */
     @Test
     void sorted_isAlphabetical() {
@@ -111,16 +111,16 @@ class RoleNamesTest {
         assertEquals(List.of("ADMIN", "BRIGADISTA", "ESTUDIANTE", "PROFESOR"), RoleNames.sorted(received));
     }
 
-    /**
-     * Un conjunto vacío da una lista vacía
+        /**
+     * An empty set gives an empty list
      */
     @Test
     void sorted_empty_returnsAnEmptyList() {
         assertTrue(RoleNames.sorted(Set.of()).isEmpty());
     }
 
-    /**
-     * No modifica el conjunto recibido
+        /**
+     * It does not modify the received set
      */
     @Test
     void sorted_doesNotModifyTheReceivedSet() {
@@ -131,8 +131,8 @@ class RoleNamesTest {
         assertEquals(Set.of("PROFESOR", "ADMIN"), received);
     }
 
-    /**
-     * La lista devuelta es de solo lectura
+        /**
+     * The returned list is read-only
      */
     @Test
     void sorted_resultIsReadOnly() {

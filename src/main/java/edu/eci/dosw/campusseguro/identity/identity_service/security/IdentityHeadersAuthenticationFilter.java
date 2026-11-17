@@ -19,22 +19,22 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Autentica la peticion con las cabeceras X-User-Id, X-User-Role y X-User-Permission que inyecta el API
- * Gateway (RN-MS01-23), si las cabeceras faltan o no son validas la peticion queda sin autenticar y las
- * rutas protegidas responden 401
+ * Authenticates the request with the headers X-User-Id, X-User-Role and X-User-Permission injected by the API Gateway
+ * (RN-MS01-23), if the headers are missing or not valid the request is left unauthenticated and the protected routes
+ * answer 401
  */
 public class IdentityHeadersAuthenticationFilter extends OncePerRequestFilter {
 
     public static final String ERROR_ATTRIBUTE = IdentityHeadersAuthenticationFilter.class.getName() + ".ERROR";
 
-    /**
-     * Construye la identidad desde las cabeceras y la deja en el contexto de seguridad
+        /**
+     * Builds the identity from the headers and leaves it in the security context
      *
-     * @param request peticion recibida
-     * @param response respuesta que se devuelve al cliente
-     * @param filterChain cadena de filtros que sigue
-     * @throws ServletException si falla algun filtro posterior
-     * @throws IOException si falla la escritura o lectura de la peticion
+     * @param request received request
+     * @param response response returned to the client
+     * @param filterChain filter chain that follows
+     * @throws ServletException if any later filter fails
+     * @throws IOException if writing or reading the request fails
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -53,11 +53,11 @@ public class IdentityHeadersAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Crea la autenticacion del solicitante con los permisos de sus roles como autoridades
+        /**
+     * Creates the authentication of the requester with the permissions of their roles as authorities
      *
-     * @param identity identidad del solicitante
-     * @return la autenticacion con la identidad como principal
+     * @param identity identity of the requester
+     * @return the authentication with the identity as principal
      */
     private Authentication buildAuthentication(RequesterIdentity identity) {
         List<GrantedAuthority> authorities = new ArrayList<>();

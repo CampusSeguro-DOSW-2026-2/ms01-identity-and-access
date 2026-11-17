@@ -3,11 +3,11 @@ package edu.eci.dosw.campusseguro.identity.identity_service.dto;
 import java.util.List;
 
 /**
- * Elemento de la respuesta de GET /api/v1/roles (esquema RolePermissions del contrato): un rol con los
- * codigos de sus permisos
+ * Element of the response of GET /api/v1/roles (RolePermissions schema of the contract): a role with the codes of its
+ * permissions
  *
- * @param rol nombre del rol
- * @param permisos codigos de permiso del rol con el formato ms:recurso:accion, ordenados y sin repetidos
+ * @param rol name of the role
+ * @param permisos permission codes of the role with the format ms:resource:action, sorted and without repeated ones
  */
 public record RolePermissionsResponse(String rol, List<String> permisos) {
 }

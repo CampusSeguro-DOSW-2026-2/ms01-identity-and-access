@@ -16,14 +16,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Identidad del solicitante reconstruida desde las cabeceras que inyecta el API Gateway
+ * Identity of the requester rebuilt from the headers injected by the API Gateway
  */
 class RequesterIdentityTest {
 
     private static final UUID USER_ID = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
 
-    /**
-     * El identificador, los roles y los permisos son obligatorios
+        /**
+     * The identifier, the roles and the permissions are required
      */
     @Test
     void constructor_rejectsNullValues() {
@@ -32,8 +32,8 @@ class RequesterIdentityTest {
         assertThrows(NullPointerException.class, () -> new RequesterIdentity(USER_ID, Set.of("ADMIN"), null));
     }
 
-    /**
-     * Los roles y los permisos se copian y no se pueden modificar desde fuera
+        /**
+     * The roles and the permissions are copied and cannot be modified from outside
      */
     @Test
     void rolesAndPermissions_areAnUnmodifiableCopy() {
@@ -50,8 +50,8 @@ class RequesterIdentityTest {
         assertThrows(UnsupportedOperationException.class, () -> requester.permissions().add("ms01:user:roles"));
     }
 
-    /**
-     * Los permisos son exactamente los que recibe la identidad, no se calculan a partir de los nombres de rol
+        /**
+     * The permissions are exactly the ones the identity receives, they are not computed from the role names
      */
     @Test
     void permissions_areTheOnesReceived() {
@@ -62,8 +62,8 @@ class RequesterIdentityTest {
         assertEquals(Set.of("ADMIN", "AUDITOR"), requester.roles());
     }
 
-    /**
-     * Una identidad armada con los permisos de varios roles sembrados trae la unión de ellos
+        /**
+     * An identity built with the permissions of several seeded roles carries the union of them
      */
     @Test
     void permissions_ofSeveralSeededRoles_areTheUnion() {
@@ -75,8 +75,8 @@ class RequesterIdentityTest {
         assertEquals(expected, requester.permissions());
     }
 
-    /**
-     * La verificación de un permiso se resuelve con los permisos recibidos y no con el nombre del rol
+        /**
+     * The verification of a permission is resolved with the received permissions and not with the name of the role
      */
     @Test
     void hasPermission_followsTheReceivedPermissions() {
@@ -88,8 +88,8 @@ class RequesterIdentityTest {
         assertFalse(adminName.hasPermission(Permission.MS01_USER_STATUS));
     }
 
-    /**
-     * La cabecera de roles va separada por comas y en orden alfabético
+        /**
+     * The roles header is comma-separated and in alphabetical order
      */
     @Test
     void rolesHeader_isCommaSeparatedAndAlphabetical() {

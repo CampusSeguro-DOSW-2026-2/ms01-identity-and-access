@@ -14,26 +14,25 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.PermissionCodes;
 
 /**
- * Formato de los códigos de permiso y cálculo de los permisos de un rol y de un usuario a partir de los
- * roles guardados
+ * Format of the permission codes and computation of the permissions of a role and of a user from the stored roles
  */
 class PermissionCodesTest {
 
-    /**
-     * Rol guardado con los permisos indicados
+        /**
+     * Stored role with the indicated permissions
      *
-     * @param name nombre del rol
-     * @param permissions permisos guardados
-     * @return la entidad
+     * @param name name of the role
+     * @param permissions stored permissions
+     * @return the entity
      */
     private RoleEntity role(String name, String... permissions) {
         return TestEntities.role(name, permissions);
     }
 
-    /**
-     * Códigos con el formato modulo:recurso:accion
+        /**
+     * Codes with the format module:resource:action
      *
-     * @param code código válido
+     * @param code valid code
      */
     @ParameterizedTest
     @ValueSource(strings = {"ms01:role:manage", "ms04:checkin:read_own", "ms99:a:b", "ms00:x1:y2"})
@@ -41,10 +40,10 @@ class PermissionCodesTest {
         assertTrue(PermissionCodes.hasFormat(code));
     }
 
-    /**
-     * Códigos que no tienen el formato
+        /**
+     * Codes that do not have the format
      *
-     * @param code código inválido
+     * @param code invalid code
      */
     @ParameterizedTest
     @ValueSource(strings = {"", "ms1:role:manage", "MS01:role:manage", "ms01:Role:manage", "ms01:role",
@@ -54,16 +53,16 @@ class PermissionCodesTest {
         assertFalse(PermissionCodes.hasFormat(code));
     }
 
-    /**
-     * Un código nulo no tiene el formato
+        /**
+     * A null code does not have the format
      */
     @Test
     void hasFormat_null_isRejected() {
         assertFalse(PermissionCodes.hasFormat(null));
     }
 
-    /**
-     * Los permisos de un rol salen ordenados y sin repetidos
+        /**
+     * The permissions of a role come out sorted and without repeated ones
      */
     @Test
     void ofRole_sortsAndDeduplicates() {
@@ -72,8 +71,8 @@ class PermissionCodesTest {
         assertEquals(List.of("ms01:profile:read", "ms04:checkin:write"), PermissionCodes.ofRole(role));
     }
 
-    /**
-     * Los permisos del rol se devuelven tal como están en la base, sin cambiar mayúsculas
+        /**
+     * The permissions of the role are returned as they are in the database, without changing case
      */
     @Test
     void ofRole_returnsTheStoredCodesAsTheyAre() {
@@ -82,16 +81,16 @@ class PermissionCodesTest {
         assertEquals(List.of("ms01:profile:read", "ms99:x:y"), PermissionCodes.ofRole(role));
     }
 
-    /**
-     * Un rol sin permisos devuelve una lista vacía
+        /**
+     * A role without permissions returns an empty list
      */
     @Test
     void ofRole_withoutPermissions_isEmpty() {
         assertTrue(PermissionCodes.ofRole(role("VACIO")).isEmpty());
     }
 
-    /**
-     * Los permisos efectivos son la unión de los de todos los roles, ordenada y sin repetidos
+        /**
+     * The effective permissions are the union of those of all the roles, sorted and without repeated ones
      */
     @Test
     void effective_isTheUnionOfTheRolesPermissions() {
@@ -102,16 +101,16 @@ class PermissionCodesTest {
         assertEquals(List.of("ms01:profile:read", "ms03:alert:receive", "ms04:checkin:write"), effective);
     }
 
-    /**
-     * Sin roles no hay permisos efectivos
+        /**
+     * Without roles there are no effective permissions
      */
     @Test
     void effective_withoutRoles_isEmpty() {
         assertTrue(PermissionCodes.effective(List.of()).isEmpty());
     }
 
-    /**
-     * Un rol repetido entre los roles del usuario no repite sus permisos
+        /**
+     * A role repeated among the roles of the user does not repeat its permissions
      */
     @Test
     void effective_sameRoleTwice_doesNotRepeatPermissions() {

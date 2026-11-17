@@ -21,29 +21,28 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import jakarta.persistence.LockModeType;
 
 /**
- * Acceso a los usuarios y a sus roles (tablas usuarios y usuario_rol del modelo de datos)
+ * Access to the users and their roles (tables users and user_roles of the data model)
  */
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
-    /**
-     * Indica si ya existe un usuario con el correo, el correo se guarda siempre en minúsculas por lo que
-     * quien llama debe normalizarlo antes de consultar
+        /**
+     * Tells whether a user with the email already exists, the email is always stored in lowercase so the caller must
+     * normalize it before querying
      *
-     * @param email correo normalizado
-     * @return true si el correo ya está registrado
+     * @param email normalized email
+     * @return true if the email is already registered
      */
     boolean existsByEmail(String email);
 
-    /**
-     * Búsqueda paginada de usuarios con filtros opcionales combinables (RF-MS01-07, formulario F-07), un
-     * filtro null no se aplica
+        /**
+     * Paginated search of users with optional combinable filters (RF-MS01-07, form F-07), a null filter is not applied
      *
-     * @param correo texto que debe contener el correo, sin distinguir mayúsculas, o null
-     * @param estado estado exacto, o null
-     * @param rol rol que el usuario debe tener entre los suyos, o null
-     * @param pageable página, tamaño y orden solicitados
-     * @return la página de usuarios que cumplen todos los filtros
+     * @param correo text that the email must contain, case insensitive, or null
+     * @param estado exact status, or null
+     * @param rol role that the user must have among its own, or null
+     * @param pageable requested page, size and order
+     * @return the page of users that meet all the filters
      */
     @Query("SELECT DISTINCT u FROM UserEntity u WHERE "
             + "(:correo IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', CAST(:correo AS string), '%'))) AND "
@@ -52,138 +51,137 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     Page<UserEntity> searchUsers(@Param("correo") String correo, @Param("estado") UserState estado,
             @Param("rol") String rol, Pageable pageable);
 
-    /**
-     * Consulta interna de los usuarios que tienen un rol (RF-MS01-09), sin importar su estado
+        /**
+     * Internal query of the users that have a role (RF-MS01-09), regardless of their status
      *
-     * @param rol rol que el usuario debe tener entre los suyos
-     * @param pageable página, tamaño y orden solicitados
-     * @return la página de usuarios con ese rol
+     * @param rol role that the user must have among its own
+     * @param pageable requested page, size and order
+     * @return the page of users with that role
      */
     @Query("SELECT u FROM UserEntity u WHERE EXISTS (SELECT r FROM u.roles r WHERE r.name = :rol)")
     Page<UserEntity> findByRole(@Param("rol") String rol, Pageable pageable);
 
-    /**
-     * Consulta interna de los usuarios que tienen un rol y se registraron hasta un instante (RF-MS01-09),
-     * el corte permite recorrer todas las páginas sobre el mismo conjunto aunque se registren usuarios nuevos
+        /**
+     * Internal query of the users that have a role and registered up to an instant (RF-MS01-09),
+     * the cut allows going through all the pages over the same set even if new users register
      *
-     * @param rol rol que el usuario debe tener entre los suyos
-     * @param creadoAntes instante de corte, incluido
-     * @param pageable página, tamaño y orden solicitados
-     * @return la página de usuarios con ese rol creados hasta el corte
+     * @param rol role that the user must have among its own
+     * @param creadoAntes cut instant, included
+     * @param pageable requested page, size and order
+     * @return the page of users with that role created up to the cut
      */
     @Query("SELECT u FROM UserEntity u WHERE EXISTS (SELECT r FROM u.roles r WHERE r.name = :rol) "
             + "AND u.createdAt <= :creadoAntes")
     Page<UserEntity> findByRoleCreatedUpTo(@Param("rol") String rol, @Param("creadoAntes") Instant creadoAntes,
             Pageable pageable);
 
-    /**
-     * Consulta de autenticación (RF-MS01-02), devuelve el usuario por correo junto con sus roles y los
-     * permisos de cada rol en una sola consulta, el correo se guarda siempre en minúsculas, por eso quien llama debe normalizarlo y la
-     * búsqueda por igualdad aprovecha el índice único del correo
+        /**
+     * Authentication query (RF-MS01-02), returns the user by email together with its roles and the permissions of each
+     * role in a single query, the email is always stored in lowercase, so the caller must normalize it and the search
+     * by equality takes advantage of the unique index of the email
      *
-     * @param email correo normalizado
-     * @return el usuario con sus roles y permisos, o vacío si no existe
+     * @param email normalized email
+     * @return the user with its roles and permissions, or empty if it does not exist
      */
     @EntityGraph(attributePaths = { "roles", "roles.permissions" })
     Optional<UserEntity> findByEmail(String email);
 
-    /**
-     * Devuelve a los usuarios con los ids especificados y bloquea sus filas hasta que termine la
-     * transacción, se usa en las operaciones masivas sobre usuarios para que se apliquen de forma atómica
+        /**
+     * Returns the users with the specified ids and locks their rows until the transaction ends, it is used in the bulk
+     * operations over users so that they are applied atomically
      *
-     * @param ids identificadores de los usuarios
-     * @return los usuarios ordenados por id
+     * @param ids identifiers of the users
+     * @return the users sorted by id
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<UserEntity> findAllByIdInOrderById(Collection<UUID> ids);
 
-    /**
-     * Cuenta los usuarios que tienen un rol
+        /**
+     * Counts the users that have a role
      *
-     * @param role nombre del rol que se busca
-     * @return cantidad de usuarios que tienen ese rol
+     * @param role name of the role being searched
+     * @return number of users that have that role
      */
     @Query("select count(u) from UserEntity u join u.roles r where r.name = :role")
     long countWithRole(@Param("role") String role);
 
-    /**
-     * Cuenta los usuarios cuyo único rol es el indicado
+        /**
+     * Counts the users whose only role is the indicated one
      *
-     * @param role nombre del rol
-     * @return cantidad de usuarios que tienen solo ese rol
+     * @param role name of the role
+     * @return number of users that have only that role
      */
-    @Query(value = "SELECT count(*) FROM usuario_rol ur "
-            + "WHERE ur.rol_id = (SELECT id FROM roles WHERE nombre = :role) AND NOT EXISTS ("
-            + "SELECT 1 FROM usuario_rol other WHERE other.usuario_id = ur.usuario_id "
-            + "AND other.rol_id <> ur.rol_id)", nativeQuery = true)
+    @Query(value = "SELECT count(*) FROM user_roles ur "
+            + "WHERE ur.role_id = (SELECT id FROM roles WHERE name = :role) AND NOT EXISTS ("
+            + "SELECT 1 FROM user_roles other WHERE other.user_id = ur.user_id "
+            + "AND other.role_id <> ur.role_id)", nativeQuery = true)
     long countWithOnlyRole(@Param("role") String role);
 
-    /**
-     * Escribe el corte de sesión de todos los usuarios que tienen un rol (RF-MS01-11)
+        /**
+     * Writes the session cut of all the users that have a role (RF-MS01-11)
      *
-     * @param role nombre del rol
-     * @param cut instante de corte, truncado a segundos
-     * @return cantidad de usuarios marcados
+     * @param role name of the role
+     * @param cut cut instant, truncated to seconds
+     * @return number of marked users
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(value = "UPDATE usuarios SET valido_desde = :cut WHERE id IN ("
-            + "SELECT usuario_id FROM usuario_rol WHERE rol_id = (SELECT id FROM roles WHERE nombre = :role))",
+    @Query(value = "UPDATE users SET valid_from = :cut WHERE id IN ("
+            + "SELECT user_id FROM user_roles WHERE role_id = (SELECT id FROM roles WHERE name = :role))",
             nativeQuery = true)
     int markSessionCutByRole(@Param("role") String role, @Param("cut") Instant cut);
 
-    /**
-     * Cambia el rol de quienes tienen únicamente el rol indicado por un rol de respaldo, se usa al borrar un
-     * rol
+        /**
+     * Changes the role of those who have only the indicated role to a fallback role, it is used when deleting a role
      *
-     * @param role nombre del rol que se borra
-     * @param fallback nombre del rol que reemplaza al borrado
-     * @return cantidad de asignaciones cambiadas
+     * @param role name of the role being deleted
+     * @param fallback name of the role that replaces the deleted one
+     * @return number of changed assignments
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(value = "UPDATE usuario_rol SET rol_id = (SELECT id FROM roles WHERE nombre = :fallback) "
-            + "WHERE rol_id = (SELECT id FROM roles WHERE nombre = :role) AND NOT EXISTS ("
-            + "SELECT 1 FROM usuario_rol other WHERE other.usuario_id = usuario_rol.usuario_id "
-            + "AND other.rol_id <> usuario_rol.rol_id)", nativeQuery = true)
+    @Query(value = "UPDATE user_roles SET role_id = (SELECT id FROM roles WHERE name = :fallback) "
+            + "WHERE role_id = (SELECT id FROM roles WHERE name = :role) AND NOT EXISTS ("
+            + "SELECT 1 FROM user_roles other WHERE other.user_id = user_roles.user_id "
+            + "AND other.role_id <> user_roles.role_id)", nativeQuery = true)
     int replaceOnlyRole(@Param("role") String role, @Param("fallback") String fallback);
 
-    /**
-     * Retira un rol a todos los usuarios que lo tienen, se usa al borrar un rol después de reasignar a quienes
-     * no tenían otro
+        /**
+     * Removes a role from all the users that have it, it is used when deleting a role after reassigning those who had
+     * no other
      *
-     * @param role nombre del rol que se retira
-     * @return cantidad de asignaciones borradas
+     * @param role name of the role being removed
+     * @return number of deleted assignments
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(value = "DELETE FROM usuario_rol WHERE rol_id = (SELECT id FROM roles WHERE nombre = :role)",
+    @Query(value = "DELETE FROM user_roles WHERE role_id = (SELECT id FROM roles WHERE name = :role)",
             nativeQuery = true)
     int removeRoleFromAll(@Param("role") String role);
 
-    /**
-     * Devuelve los usuarios con un corte de sesión dentro de la ventana de la consulta interna (RF-MS01-11)
+        /**
+     * Returns the users with a session cut within the window of the internal query (RF-MS01-11)
      *
-     * @param since instante desde el cual el corte se considera vigente, incluido
-     * @return id y corte de cada usuario, del corte más antiguo al más reciente y luego por id
+     * @param since instant from which the cut is considered in force, included
+     * @return id and cut of each user, from the oldest cut to the most recent and then by id
      */
     @Query("SELECT u.id AS id, u.validFrom AS validFrom FROM UserEntity u "
             + "WHERE u.validFrom IS NOT NULL AND u.validFrom >= :since ORDER BY u.validFrom, u.id")
     List<UserSessionCut> findWithSessionCutSince(@Param("since") Instant since);
 
-    /**
-     * Corte de sesión de un usuario
+        /**
+     * Session cut of a user
      */
     interface UserSessionCut {
 
-        /**
-         * Devuelve el id del usuario
+                /**
+         * Returns the id of the user
          *
-         * @return el id del usuario
+         * @return the id of the user
          */
         UUID getId();
 
-        /**
-         * Devuelve el instante del corte
+                /**
+         * Returns the instant of the cut
          *
-         * @return el instante desde el cual son válidas las credenciales del usuario
+         * @return the instant from which the credentials of the user are valid
          */
         Instant getValidFrom();
     }

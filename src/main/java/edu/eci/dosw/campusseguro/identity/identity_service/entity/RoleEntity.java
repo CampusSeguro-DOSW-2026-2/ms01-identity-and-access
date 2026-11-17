@@ -21,9 +21,9 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 /**
- * Rol de CampusSeguro (tabla roles del modelo de datos), el nombre identifica al rol hacia afuera y viaja en el
- * token y en las cabeceras, el id es interno y no sale de MS01, los permisos son filas del catálogo de permisos
- * y los administra el administrador
+ * Role of CampusSeguro (table roles of the data model), the name identifies the role to the outside and travels in the
+ * token and in the headers, the id is internal and does not leave MS01, the permissions are rows of the permission
+ * catalog and are managed by the administrator
  */
 @Entity
 @Table(name = "roles")
@@ -33,90 +33,90 @@ public class RoleEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "nombre", nullable = false, length = 30)
+    @Column(name = "name", nullable = false, length = 30)
     private String name;
 
-    @Column(name = "descripcion", nullable = false, length = 200)
+    @Column(name = "description", nullable = false, length = 200)
     private String description;
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "rol_permiso", joinColumns = @JoinColumn(name = "rol_id"),
-            inverseJoinColumns = @JoinColumn(name = "permiso_id"))
+    @JoinTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<PermissionEntity> permissions = new HashSet<>();
 
-    @Column(name = "es_sistema", nullable = false, updatable = false)
+    @Column(name = "is_system", nullable = false, updatable = false)
     private boolean system;
 
-    @Column(name = "valido_desde")
+    @Column(name = "valid_from")
     private Instant validFrom;
 
     @CreationTimestamp
-    @Column(name = "creado_en", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @Generated(event = { EventType.INSERT, EventType.UPDATE })
-    @Column(name = "actualizado_en", nullable = false, insertable = false, updatable = false)
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private Instant updatedAt;
 
-    /**
-     * Devuelve el identificador interno del rol
+        /**
+     * Returns the internal identifier of the role
      *
-     * @return el id del rol, null si todavía no se guardó
+     * @return the id of the role, null if it has not been saved yet
      */
     public UUID getId() {
         return this.id;
     }
 
-    /**
-     * Devuelve el nombre del rol
+        /**
+     * Returns the name of the role
      *
-     * @return el nombre del rol, en mayúsculas
+     * @return the name of the role, in uppercase
      */
     public String getName() {
         return this.name;
     }
 
-    /**
-     * Coloca el nombre del rol
+        /**
+     * Sets the name of the role
      *
-     * @param name nombre del rol, ya normalizado a mayúsculas
+     * @param name name of the role, already normalized to uppercase
      */
     public void setName(String name) {
         this.name = name;
     }
 
-    /**
-     * Devuelve la descripción del rol
+        /**
+     * Returns the description of the role
      *
-     * @return la descripción del rol
+     * @return the description of the role
      */
     public String getDescription() {
         return this.description;
     }
 
-    /**
-     * Coloca la descripción del rol
+        /**
+     * Sets the description of the role
      *
-     * @param description descripción del rol
+     * @param description description of the role
      */
     public void setDescription(String description) {
         this.description = description;
     }
 
-    /**
-     * Devuelve los permisos del rol
+        /**
+     * Returns the permissions of the role
      *
-     * @return conjunto de permisos del catálogo que tiene el rol, nunca es null
+     * @return set of permissions of the catalog that the role has, it is never null
      */
     public Set<PermissionEntity> getPermissions() {
         return this.permissions;
     }
 
-    /**
-     * Deja al rol con los permisos recibidos sincronizando la colección en sitio, así Hibernate solo borra de
-     * rol_permiso los permisos retirados e inserta los nuevos, sin tocar los que se conservan
+        /**
+     * Leaves the role with the received permissions by synchronizing the collection in place, so Hibernate only deletes
+     * from role_permissions the removed permissions and inserts the new ones, without touching the ones that are kept
      *
-     * @param permissions permisos finales del rol, null equivale a ninguno
+     * @param permissions final permissions of the role, null is equivalent to none
      */
     public void setPermissions(Set<PermissionEntity> permissions) {
         if (permissions == null) {
@@ -131,56 +131,55 @@ public class RoleEntity {
         this.permissions.addAll(finalPermissions);
     }
 
-    /**
-     * Indica si el rol es de sistema
+        /**
+     * Tells whether the role is a system role
      *
-     * @return true si el rol no se puede borrar ni renombrar
+     * @return true if the role cannot be deleted or renamed
      */
     public boolean isSystem() {
         return this.system;
     }
 
-    /**
-     * Marca el rol como de sistema o no, solo se escribe al crear el rol
+        /**
+     * Marks the role as a system role or not, it is only written when the role is created
      *
-     * @param system true si el rol es de sistema
+     * @param system true if the role is a system role
      */
     public void setSystem(boolean system) {
         this.system = system;
     }
 
-    /**
-     * Devuelve el corte de sesión del rol
+        /**
+     * Returns the session cut of the role
      *
-     * @return el instante desde el cual son válidas las credenciales de los usuarios con este rol, null si no
-     *         hay corte
+     * @return the instant from which the credentials of the users with this role are valid, null if there is no cut
      */
     public Instant getValidFrom() {
         return this.validFrom;
     }
 
-    /**
-     * Coloca el corte de sesión del rol
+        /**
+     * Sets the session cut of the role
      *
-     * @param validFrom instante de corte truncado a segundos, null para quitarlo
+     * @param validFrom cut instant truncated to seconds, null to remove it
      */
     public void setValidFrom(Instant validFrom) {
         this.validFrom = validFrom;
     }
 
-    /**
-     * Devuelve la fecha de creación
+        /**
+     * Returns the creation date
      *
-     * @return el instante en que se creó el rol, null si todavía no se guardó
+     * @return the instant at which the role was created, null if it has not been saved yet
      */
     public Instant getCreatedAt() {
         return this.createdAt;
     }
 
-    /**
-     * Devuelve la fecha de la última modificación
+        /**
+     * Returns the date of the last modification
      *
-     * @return el instante de la última modificación, null si todavía no se guardó
+     * @return the instant of the last modification, null if it has not been saved yet
      */
     public Instant getUpdatedAt() {
         return this.updatedAt;

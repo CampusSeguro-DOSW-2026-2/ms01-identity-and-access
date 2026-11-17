@@ -19,15 +19,15 @@ import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleReposi
 import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeService;
 
 /**
- * Sincroniza al arrancar los permisos de MS01 del enum Permission con la tabla permisos (RN-MS01-42)
+ * Synchronizes at startup the MS01 permissions of the Permission enum with the permissions table (RN-MS01-42)
  *
- * Solo toca las filas con prefijo ms01: y todo ocurre en una sola transacción: inserta los permisos del enum que
- * faltan, no modifica los que ya existen (la descripción del enum solo se usa al insertar) y borra los que ya no
- * están en el enum, de los que deja un aviso con los roles que lo tenían y registra el corte de sesión de esos
- * roles antes de borrarlos, la clave foránea de rol_permiso los quita de los roles. Si la base rechaza el
- * borrado porque dejaría a un rol sin permisos o sin los mínimos de ADMIN o ESTUDIANTE, la transacción se
- * revierte y MS01 no arranca. Los permisos de ms02 a ms08 no se tocan: los administra el responsable de la base
- * de datos
+ * It touches only the rows with the ms01: prefix and everything happens in a single transaction: it inserts the enum
+ * permissions that are missing, it does not modify the ones that already exist (the description of the enum is used
+ * only when inserting) and it deletes the ones that are no longer in the enum, leaving a warning with the roles that
+ * had each one and recording the session cut of those roles before deleting them, the foreign key of role_permissions
+ * removes them from the roles. If the database rejects the deletion because it would leave a role without permissions
+ * or without the minimums of ADMIN or ESTUDIANTE, the transaction is rolled back and MS01 does not start. The
+ * permissions from ms02 to ms08 are not touched: they are managed by whoever is responsible for the database
  */
 @Component
 @Order(1)
@@ -39,12 +39,12 @@ public class PermissionCatalogSynchronizer implements ApplicationRunner {
     private final RoleRepository roleRepository;
     private final DatabaseTimeService timeService;
 
-    /**
-     * Crea el sincronizador con sus dependencias
+        /**
+     * Creates the synchronizer with its dependencies
      *
-     * @param permissionRepository repositorio de acceso al catálogo de permisos
-     * @param roleRepository repositorio de acceso a los roles y sus permisos
-     * @param timeService reloj único de la base de datos con el que se fijan los cortes de sesión
+     * @param permissionRepository repository to access the permission catalog
+     * @param roleRepository repository to access the roles and their permissions
+     * @param timeService single database clock with which the session cuts are set
      */
     public PermissionCatalogSynchronizer(PermissionRepository permissionRepository, RoleRepository roleRepository,
             DatabaseTimeService timeService) {
@@ -53,10 +53,10 @@ public class PermissionCatalogSynchronizer implements ApplicationRunner {
         this.timeService = timeService;
     }
 
-    /**
-     * Ejecuta la sincronización una vez arrancada la aplicación
+        /**
+     * Runs the synchronization once the application has started
      *
-     * @param args argumentos de arranque de la aplicación
+     * @param args startup arguments of the application
      */
     @Override
     @Transactional
@@ -64,10 +64,10 @@ public class PermissionCatalogSynchronizer implements ApplicationRunner {
         synchronize();
     }
 
-    /**
-     * Inserta los permisos de MS01 que faltan en la tabla y borra los que ya no están en el enum
+        /**
+     * Inserts the MS01 permissions that are missing in the table and deletes the ones that are no longer in the enum
      *
-     * @return cantidad de permisos insertados más cantidad de permisos borrados
+     * @return number of inserted permissions plus number of deleted permissions
      */
     public int synchronize() {
         List<PermissionEntity> stored = permissionRepository.findAllByNameStartingWith(Permission.PREFIX);
@@ -86,7 +86,7 @@ public class PermissionCatalogSynchronizer implements ApplicationRunner {
                 entity.setDescription(permission.getDescription());
                 permissionRepository.save(entity);
                 inserted++;
-                log.info("Permiso {} agregado al catálogo", permission.getCode());
+                log.info("Permission {} added to the catalog", permission.getCode());
             }
         }
 

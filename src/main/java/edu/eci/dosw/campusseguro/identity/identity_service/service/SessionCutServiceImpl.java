@@ -13,11 +13,11 @@ import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserReposi
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 
 /**
- * Consulta de los cortes de sesión vigentes (RF-MS01-11)
+ * Query of the current session cuts (RF-MS01-11)
  *
- * Devuelve los cortes de usuarios y roles de los últimos 3700 segundos (vigencia del token, tolerancia de
- * reloj y margen), medidos con la hora de la base de datos, los cortes más antiguos ya no pueden afectar a ninguna
- * credencial vigente y no se incluyen, no se audita
+ * Returns the cuts of users and roles of the last 3700 seconds (token validity, clock tolerance and margin), measured
+ * with the database time, the older cuts can no longer affect any valid credential and are not included, it is not
+ * audited
  */
 @Service
 public class SessionCutServiceImpl implements SessionCutService {
@@ -26,12 +26,12 @@ public class SessionCutServiceImpl implements SessionCutService {
     private final RoleRepository roleRepository;
     private final DatabaseTimeService timeService;
 
-    /**
-     * Crea el servicio con sus dependencias
+        /**
+     * Creates the service with its dependencies
      *
-     * @param userRepository repositorio de acceso a los usuarios y sus cortes
-     * @param roleRepository repositorio de acceso a los roles y sus cortes
-     * @param timeService reloj único de la base de datos con el que se mide la ventana
+     * @param userRepository repository to access the users and their cuts
+     * @param roleRepository repository to access the roles and their cuts
+     * @param timeService single clock of the database with which the window is measured
      */
     public SessionCutServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
             DatabaseTimeService timeService) {
@@ -40,10 +40,10 @@ public class SessionCutServiceImpl implements SessionCutService {
         this.timeService = timeService;
     }
 
-    /**
-     * Arma la instantánea de los cortes de sesión de los usuarios y roles dentro de la ventana de vigencia
+        /**
+     * Builds the snapshot of the session cuts of the users and roles within the validity window
      *
-     * @return la instantánea con el instante en que se armó, la ventana y los cortes ordenados
+     * @return the snapshot with the instant at which it was built, the window and the cuts sorted
      */
     @Override
     @Transactional(readOnly = true)

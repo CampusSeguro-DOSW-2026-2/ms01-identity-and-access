@@ -12,49 +12,49 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * X-Correlation-ID (RNF-MS01-03, Estándares de Integración): el valor es un UUID v4, se conserva si es
- * válido y si falta o no es válido se genera uno nuevo
+ * X-Correlation-ID (RNF-MS01-03, Integration Standards): the value is a UUID v4, it is kept if it is valid and if it is
+ * missing or not valid a new one is generated
  */
 class CorrelationIdsTest {
 
     private static final String VALID = "c19b472d-7a2a-4d3b-a12b-abcdef123456";
 
-    /**
-     * Comprueba que un valor generado es un UUID v4
+        /**
+     * Checks that a generated value is a UUID v4
      *
-     * @param generated valor que se verifica
+     * @param generated value that is verified
      */
     private static void assertGeneratedUuidV4(String generated) {
         assertEquals(4, UUID.fromString(generated).version());
         assertEquals(36, generated.length());
     }
 
-    /**
-     * Un UUID v4 recibido se conserva tal cual
+        /**
+     * A received UUID v4 is kept as it is
      */
     @Test
     void resolve_uuidV4_isKept() {
         assertEquals(VALID, CorrelationIds.resolve(VALID));
     }
 
-    /**
-     * Un UUID v4 válido se conserva sin los espacios laterales
+        /**
+     * A valid UUID v4 is kept without the surrounding spaces
      */
     @Test
     void resolve_validValueWithSurroundingSpaces_isKeptTrimmed() {
         assertEquals(VALID, CorrelationIds.resolve("  " + VALID + "  "));
     }
 
-    /**
-     * Un UUID v4 en mayúsculas se acepta
+        /**
+     * An uppercase UUID v4 is accepted
      */
     @Test
     void resolve_uppercaseUuidV4_isAccepted() {
         assertEquals(VALID.toUpperCase(), CorrelationIds.resolve(VALID.toUpperCase()));
     }
 
-    /**
-     * Un UUID de otra versión no es un UUID v4 y se reemplaza
+        /**
+     * A UUID of another version is not a UUID v4 and is replaced
      */
     @Test
     void resolve_uuidOfAnotherVersion_isReplaced() {
@@ -66,8 +66,8 @@ class CorrelationIdsTest {
         assertGeneratedUuidV4(generated);
     }
 
-    /**
-     * Un texto que no es un UUID se reemplaza aunque sea corto y legible
+        /**
+     * A text that is not a UUID is replaced even if it is short and readable
      */
     @Test
     void resolve_textThatIsNotAUuid_isReplaced() {
@@ -75,24 +75,24 @@ class CorrelationIdsTest {
         assertGeneratedUuidV4(CorrelationIds.resolve("a".repeat(100)));
     }
 
-    /**
-     * Si la cabecera falta se genera un UUID v4
+        /**
+     * If the header is missing a UUID v4 is generated
      */
     @Test
     void resolve_null_generatesAUuidV4() {
         assertGeneratedUuidV4(CorrelationIds.resolve(null));
     }
 
-    /**
-     * Un valor en blanco se trata como si faltara
+        /**
+     * A blank value is treated as if it were missing
      */
     @Test
     void resolve_blank_generatesAUuidV4() {
         assertGeneratedUuidV4(CorrelationIds.resolve("   "));
     }
 
-    /**
-     * Un valor con saltos de línea no es válido y se reemplaza, así no se inyectan líneas en los logs
+        /**
+     * A value with line breaks is not valid and is replaced, so lines are not injected into the logs
      */
     @Test
     void resolve_valueWithLineBreak_isReplaced() {
@@ -102,16 +102,16 @@ class CorrelationIdsTest {
         assertTrue(!generated.contains("FORGED"));
     }
 
-    /**
-     * Dos peticiones sin cabecera reciben valores distintos
+        /**
+     * Two requests without a header receive different values
      */
     @Test
     void resolve_twoCallsWithoutValue_generateDifferentValues() {
         assertNotEquals(CorrelationIds.resolve(null), CorrelationIds.resolve(null));
     }
 
-    /**
-     * Si un filtro ya resolvió el valor, current devuelve ese mismo valor
+        /**
+     * If a filter already resolved the value, current returns that same value
      */
     @Test
     void current_withResolvedAttribute_returnsIt() {
@@ -122,8 +122,8 @@ class CorrelationIdsTest {
         assertEquals(VALID, CorrelationIds.current(request));
     }
 
-    /**
-     * Si ningún filtro resolvió el valor, current lo resuelve desde la cabecera
+        /**
+     * If no filter resolved the value, current resolves it from the header
      */
     @Test
     void current_withoutAttribute_resolvesTheHeader() {
@@ -133,8 +133,8 @@ class CorrelationIdsTest {
         assertEquals(VALID, CorrelationIds.current(request));
     }
 
-    /**
-     * Si no hay atributo ni cabecera, current genera un UUID v4
+        /**
+     * If there is neither attribute nor header, current generates a UUID v4
      */
     @Test
     void current_withoutAttributeNorHeader_generatesAUuidV4() {

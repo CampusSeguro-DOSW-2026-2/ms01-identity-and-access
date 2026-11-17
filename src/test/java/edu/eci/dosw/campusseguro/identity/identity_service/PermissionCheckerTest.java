@@ -16,15 +16,14 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.PermissionCh
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * La autorización se decide por permisos y nunca por nombres de rol (Estándares de Seguridad y Contratos de
- * Integración)
+ * The authorization is decided by permissions and never by role names (Security Standards and Integration Contracts)
  */
 class PermissionCheckerTest {
 
     private static final UUID USER_ID = UUID.fromString("5b1f0c2e-8d4a-4c1b-9a77-3f2e6d1a0b9c");
 
-    /**
-     * Un solicitante que tiene el permiso pasa la verificación
+        /**
+     * A requester that has the permission passes the verification
      */
     @Test
     void require_withThePermission_doesNothing() {
@@ -33,8 +32,8 @@ class PermissionCheckerTest {
         assertDoesNotThrow(() -> PermissionChecker.require(requester, Permission.MS01_USER_STATUS));
     }
 
-    /**
-     * Un solicitante sin el permiso recibe el mensaje del catálogo de errores
+        /**
+     * A requester without the permission receives the message of the error catalog
      */
     @Test
     void require_withoutThePermission_throwsForbiddenWithTheCatalogMessage() {
@@ -46,9 +45,9 @@ class PermissionCheckerTest {
         assertEquals(ErrorCode.FORBIDDEN.getMessage(), exception.getMessage());
     }
 
-    /**
-     * El permiso decide y no el nombre del rol: ADMIN sin el permiso es rechazado y un rol personalizado con el
-     * permiso pasa
+        /**
+     * The permission decides and not the name of the role: ADMIN without the permission is rejected and a custom role
+     * with the permission passes
      */
     @Test
     void require_dependsOnThePermissionAndNotOnTheRoleName() {
@@ -62,8 +61,8 @@ class PermissionCheckerTest {
         assertDoesNotThrow(() -> PermissionChecker.require(customWithPermission, Permission.MS01_ROLE_MANAGE));
     }
 
-    /**
-     * Con varios roles basta que uno de ellos otorgue el permiso
+        /**
+     * With several roles it is enough that one of them grants the permission
      */
     @Test
     void require_withSeveralRoles_acceptsThePermissionOfAnyOfThem() {
