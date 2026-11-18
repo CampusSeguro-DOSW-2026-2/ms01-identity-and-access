@@ -64,13 +64,13 @@ MS01 has its own PostgreSQL database. The application never creates or changes t
 
 | Script | When | What it does |
 |---|---|---|
-| `001_create_schema.sql` | New database. Postgres runs it by itself with an empty volume | Tables (`users`, `roles`, `permissions`, `role_permissions`, `user_roles`, `password_reset_codes`, `pending_registrations`), functions, triggers and the initial data: the 48-permission catalog, the eight initial roles and their permissions according to the Role-Permission Matrix. A single transaction |
+| `001_create_schema.sql` | New database. Locally Postgres runs it by itself with an empty volume; in the cloud it is applied by hand on RDS ([step 6](#6-database-amazon-rds)) | Tables (`users`, `roles`, `permissions`, `role_permissions`, `user_roles`, `password_reset_codes`, `pending_registrations`), functions, triggers and the initial data: the 48-permission catalog, the eight initial roles and their permissions according to the Role-Permission Matrix. A single transaction |
 | `002_index_schema.sql` | New database, after `001` | Indexes, including the `pg_trgm` index of the search by email |
 | `migrations/004_migration_roles_permissions.sql` | By hand, on a database deployed with the previous model (Spanish table names and fixed roles) | Takes it to the current schema in a single transaction, keeping its data |
 | `maintenance/005_maintenance_roles_permissions.sql` | By hand, every time the Role-Permission Matrix gains permissions or assignments | Leaves the catalog and the permissions of the eight initial roles exactly as the Matrix says. The roles created through the API keep only the mandatory permissions. It cuts the sessions of all roles, so every user logs in again with the new permissions |
 | `migrations/006_migration_pending_registrations.sql` | By hand, once, on a database deployed before the verification of the email, **before** deploying that version of MS01 | Creates the table `pending_registrations` and its index. Without it MS01 does not start, because it validates the schema |
 
-Postgres only runs the scripts that are directly in `database/`; the `migrations/` and `maintenance/` subfolders are applied by hand, after taking a backup:
+Locally, Postgres only runs the scripts that are directly in `database/`. The `migrations/` and `maintenance/` subfolders are always applied by hand, after taking a backup (in the cloud, with the commands of [step 6](#6-database-amazon-rds)):
 
 ```bash
 pg_dump -h <host> -U <user> -Fc -f backup.dump <database>
@@ -101,7 +101,8 @@ The workflows and jobs keep their Spanish names in GitHub Actions: `Desplegar` (
 MS01 runs on its own VM, behind the API Gateway (ADR-006 of the GW):
 * The firewall only accepts the IP of the GW.
 * An edge Caddy requires the client certificate of the GW (mTLS).
-* Test and production share the VM, each one with its own stack (MS01 + PostgreSQL), secrets and certificates:
+* Test and production share the VM, each one with its own stack, secrets and certificates.
+* MS01 is stateless: the data of each environment lives in its own database of Amazon RDS, which only accepts the VM.
 
 | VM port | Use |
 |---|---|
@@ -109,7 +110,7 @@ MS01 runs on its own VM, behind the API Gateway (ADR-006 of the GW):
 | `8443` | Test (`ms01-test`) |
 | `22` | SSH, only from the IP of whoever administers |
 
-Steps 1 to 6 are done only once. The commands marked *(VM)* run on the VM over SSH; the others, on your PC.
+Steps 1 to 7 are done only once. The commands marked *(VM)* run on the VM over SSH; the others, on your PC.
 
 ### 1. VM and firewall
 1. Create an **Ubuntu 24.04 LTS x86_64** VM with a **static** public IP (Azure: Standard static IP; AWS: Elastic IP).
@@ -183,7 +184,37 @@ openssl pkey -in jwt-prod.pem -pubout -out jwt-prod.pub.pem
 * `jwt-<environment>.pub.pem` goes to the owner of the GW, who puts it in their `JWT_PUBLIC_KEY`.
 * Keep the files outside the repository. `.gitignore` already ignores `*.pem`.
 
-### 6. GitHub Environments
+### 6. Database (Amazon RDS)
+One RDS instance serves both environments, each one with its own database and user.
+1. In **RDS › Create database**, choose:
+   * PostgreSQL 18, *Single-AZ*, `db.t3.micro` and gp3 storage of 20 GiB, with the automated backups enabled.
+   * **Public access: No**.
+   * In *Connectivity*, **Connect to an EC2 compute resource** with the VM of MS01. AWS creates the security groups, so only this VM reaches the port `5432`.
+2. Client of the database *(VM)*. It verifies the certificate and the name of RDS with the CA of AWS (the same that `infra/deploy.sh` downloads). Its image has the same major version as RDS, because `pg_dump` does not work against a newer server:
+   ```bash
+   mkdir -p ~/campusseguro && cd ~/campusseguro
+   curl -fsSLo rds-ca.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+   RDS="docker run --rm -it -v $HOME/campusseguro:/w -w /w -e PGSSLMODE=verify-full -e PGSSLROOTCERT=/w/rds-ca.pem postgres:18.3-alpine"
+   ```
+3. Database and user of each environment *(VM)*. `psql` asks for the password of the master user:
+   ```bash
+   $RDS psql -h <RDS endpoint> -U postgres -d postgres
+   ```
+   ```sql
+   CREATE USER campus_test_user WITH PASSWORD '<password of test>';
+   CREATE DATABASE campus_test OWNER campus_test_user;
+   CREATE USER campus_prod_user WITH PASSWORD '<password of production>';
+   CREATE DATABASE campus_prod OWNER campus_prod_user;
+   ```
+4. Initial schema of each empty database, with its own user *(VM)*:
+   ```bash
+   curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/ms01-identity-and-access/develop/database/001_create_schema.sql
+   curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/ms01-identity-and-access/develop/database/002_index_schema.sql
+   $RDS psql -h <RDS endpoint> -U campus_test_user -d campus_test -v ON_ERROR_STOP=1 -f 001_create_schema.sql -f 002_index_schema.sql
+   # Production: the same with campus_prod_user and campus_prod
+   ```
+
+### 7. GitHub Environments
 Create `ms01-test` and `ms01-prod` in **Settings › Environments**:
 * `ms01-test`: in **Deployment branches**, allow only `develop`.
 * `ms01-prod`: enable **Required reviewers** and, in **Deployment branches**, allow only `main`.
@@ -195,8 +226,10 @@ Create `ms01-test` and `ms01-prod` in **Settings › Environments**:
 | `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_FROM` | Variable (optional) | `587`, `proyectometx@gmail.com` and `CampusSeguro <proyectometx@gmail.com>` by default. With Gmail the sender must be the same account. |
 | `BOOTSTRAP_ADMIN_EMAIL` | Variable (optional) | Email of the first administrator. It is only created if no ADMIN exists. |
 | `MS01_EXTRA_ENV` | Variable (optional) | Extra `KEY=value` lines, e.g. `INTERNAL_ALLOWED_SERVICES=ms03,ms04,ms05`, `REGISTRATION_*` or `RECOVERY_*`. |
+| `DB_HOST` | Variable | *Endpoint* of the RDS instance (**RDS › Databases › Connectivity & security**). |
+| `DB_NAME`, `DB_USERNAME` | Variable | Test: `campus_test` and `campus_test_user`. Production: `campus_prod` and `campus_prod_user`. |
 | `DEPLOY_DIR` | Variable (optional) | `~/campusseguro/ms01` by default. |
-| `DB_PASSWORD` | Secret | `openssl rand -base64 24`. It only applies when the database is created (first deployment). |
+| `DB_PASSWORD` | Secret | Password of the RDS user of that environment (step 6). |
 | `JWT_PRIVATE_KEY` | Secret | Full content of `jwt-<environment>.pem` (step 5). |
 | `GATEWAY_SERVICE_KEY` | Secret | The one the owner of the GW gave for that environment. |
 | `MAIL_PASSWORD` | Secret | Google application password of `proyectometx@gmail.com` (Google Account > Security > App passwords; it requires 2-step verification). Without it the verification and recovery codes are not sent, so nobody can register or recover their password. |
@@ -204,17 +237,17 @@ Create `ms01-test` and `ms01-prod` in **Settings › Environments**:
 
 No value can contain single quotes (`'`).
 
-### 7. Deploy
+### 8. Deploy
 1. **Test:** every merge or push to `develop` publishes the image and deploys it to `ms01-test`. Follow the **desplegar-test** job in the *Actions* tab.
 2. **Production:** after merging into `main`, go to **Actions › Desplegar a producción › Run workflow**, branch `main`, with the tag of the image that already works in test. It is `sha-` plus the first 7 characters of the `develop` commit that was deployed, and it appears in the log of *desplegar-test*.
 
-**Schema changes.** The deployment only creates the schema of an empty database, it never migrates an existing one. When a version brings a script in `database/migrations/` (for example `006_migration_pending_registrations.sql`), apply it on the database of each environment **before** that version is deployed there: MS01 validates the schema when it starts and does not start without it. An extra table does not affect the previous version, so it can be applied in advance *(VM)*:
+**Schema changes.** The deployment never creates or migrates the schema. When a version brings a script in `database/migrations/` (for example `006_migration_pending_registrations.sql`), apply it on the database of each environment **before** that version is deployed there: MS01 validates the schema when it starts and does not start without it. An extra table does not affect the previous version, so it can be applied in advance. First take a snapshot (**RDS › Databases › Actions › Take snapshot**), then *(VM, with `$RDS` of step 6)*:
 ```bash
 cd ~/campusseguro
 curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/ms01-identity-and-access/develop/database/migrations/006_migration_pending_registrations.sql
-docker exec ms01-test-db-1 pg_dump -U campus_user -Fc campus_db > backup_before_006_test.dump
-docker exec -i ms01-test-db-1 psql -U campus_user -d campus_db -v ON_ERROR_STOP=1 < 006_migration_pending_registrations.sql
-# Production: the same with ms01-prod-db-1, before running "Desplegar a producción"
+$RDS pg_dump -h <RDS endpoint> -U campus_test_user -Fc -f backup_before_006_test.dump campus_test
+$RDS psql -h <RDS endpoint> -U campus_test_user -d campus_test -v ON_ERROR_STOP=1 -f 006_migration_pending_registrations.sql
+# Production: the same with campus_prod_user and campus_prod, before running "Desplegar a producción"
 ```
 
 `infra/deploy.sh` verifies each deployment inside the VM:
@@ -223,7 +256,7 @@ docker exec -i ms01-test-db-1 psql -U campus_user -d campus_db -v ON_ERROR_STOP=
 
 If something fails, the log of the job shows the last lines of MS01.
 
-### 8. Verification from outside
+### 9. Verification from outside
 ```bash
 # Direct access: timeout (the firewall only accepts the GW)
 curl -m 5 -k https://<IP of the VM>:443/
