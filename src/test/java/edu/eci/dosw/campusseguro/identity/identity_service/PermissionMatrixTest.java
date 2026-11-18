@@ -25,7 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 
 /**
- * RF-MS01-05 / RN-MS01-14: the database scripts seed the catalog of 48 permissions and the initial assignment of
+ * RF-MS01-05 / RN-MS01-14: the database scripts seed the catalog of 56 permissions and the initial assignment of
  * permissions to the eight roles as defined by the Role-Permission Matrix, without inheritance between roles (MR-01),
  * and the MS01 code only declares permissions that exist in that seeding
  */
@@ -140,7 +140,7 @@ class PermissionMatrixTest {
     }
 
         /**
-     * The permission seeding of each script has 48 codes with the format module:resource:action, without repeating,
+     * The permission seeding of each script has 56 codes with the format module:resource:action, without repeating,
      * with a description of up to 200 characters, and is exactly the union of the permissions of the matrix
      *
      * @param script path of the script
@@ -148,10 +148,10 @@ class PermissionMatrixTest {
      */
     @ParameterizedTest
     @ValueSource(strings = {SCRIPT_001, SCRIPT_004, SCRIPT_005})
-    void seedPermissions_are48WellFormedAndEqualToTheMatrixUnion(String script) throws IOException {
+    void seedPermissions_areWellFormedAndEqualToTheMatrixUnion(String script) throws IOException {
         Map<String, String> seeded = permissionsOf(script);
 
-        assertEquals(48, seeded.size());
+        assertEquals(56, seeded.size());
         for (Map.Entry<String, String> permission : seeded.entrySet()) {
             assertTrue(CODE_FORMAT.matcher(permission.getKey()).matches(),
                     "Código con formato inválido: " + permission.getKey());
@@ -203,23 +203,23 @@ class PermissionMatrixTest {
     }
 
         /**
-     * Number of permissions that each role seeds according to the Role-Permission Matrix, 172 assignments in total
+     * Number of permissions that each role seeds according to the Role-Permission Matrix, 191 assignments in total
      */
     @Test
     void seedRoles_haveTheExpectedNumberOfPermissions() {
-        assertEquals(16, SeedRoles.PERMISSIONS.get("ESTUDIANTE").size());
-        assertEquals(16, SeedRoles.PERMISSIONS.get("PROFESOR").size());
-        assertEquals(16, SeedRoles.PERMISSIONS.get("ADMINISTRATIVO").size());
-        assertEquals(23, SeedRoles.PERMISSIONS.get("BRIGADISTA").size());
+        assertEquals(18, SeedRoles.PERMISSIONS.get("ESTUDIANTE").size());
+        assertEquals(19, SeedRoles.PERMISSIONS.get("PROFESOR").size());
+        assertEquals(18, SeedRoles.PERMISSIONS.get("ADMINISTRATIVO").size());
+        assertEquals(25, SeedRoles.PERMISSIONS.get("BRIGADISTA").size());
         assertEquals(34, SeedRoles.PERMISSIONS.get("COORDINADOR").size());
-        assertEquals(28, SeedRoles.PERMISSIONS.get("ORGANIZADOR").size());
-        assertEquals(22, SeedRoles.PERMISSIONS.get("ADMIN").size());
-        assertEquals(17, SeedRoles.PERMISSIONS.get("AUDITOR").size());
+        assertEquals(33, SeedRoles.PERMISSIONS.get("ORGANIZADOR").size());
+        assertEquals(24, SeedRoles.PERMISSIONS.get("ADMIN").size());
+        assertEquals(20, SeedRoles.PERMISSIONS.get("AUDITOR").size());
         int total = 0;
         for (List<String> codes : SeedRoles.PERMISSIONS.values()) {
             total += codes.size();
         }
-        assertEquals(172, total);
+        assertEquals(191, total);
     }
 
         /**
@@ -250,10 +250,11 @@ class PermissionMatrixTest {
     }
 
         /**
-     * The permissions common to all the roles are those of profile, session, role query and public campus content
+     * The permissions common to all the roles are those of profile, session, role query, public campus content, the
+     * history of alerts and the own incidents
      */
     @Test
-    void grantedToEveryRole_areTheEightCommonPermissions() {
+    void grantedToEveryRole_areTheCommonPermissionsOfTheMatrix() {
         Set<String> common = new TreeSet<>();
         for (List<String> codes : SeedRoles.PERMISSIONS.values()) {
             for (String code : codes) {
@@ -265,7 +266,7 @@ class PermissionMatrixTest {
 
         assertEquals(Set.of("ms01:password:change", "ms01:profile:read", "ms01:profile:write",
                 "ms01:role:read_own", "ms01:session:logout", "ms02:campus:read", "ms02:preventive_info:read",
-                "ms02:route:read"), common);
+                "ms02:route:read", "ms03:alert:read_history", "ms05:incident:manage_own"), common);
     }
 
         /**
