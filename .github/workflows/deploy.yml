@@ -10,7 +10,7 @@ on:
         type: string
         required: true
       ref:
-        description: Commit from which the files of infra/ and database/ are taken
+        description: Commit from which the files of infra/ are taken
         type: string
         required: true
       tag:
@@ -50,6 +50,9 @@ jobs:
           MAIL_FROM: ${{ vars.MAIL_FROM }}
           BOOTSTRAP_ADMIN_EMAIL: ${{ vars.BOOTSTRAP_ADMIN_EMAIL }}
           MS01_EXTRA_ENV: ${{ vars.MS01_EXTRA_ENV }}
+          DB_HOST: ${{ vars.DB_HOST }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          DB_USERNAME: ${{ vars.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
           GATEWAY_SERVICE_KEY: ${{ secrets.GATEWAY_SERVICE_KEY }}

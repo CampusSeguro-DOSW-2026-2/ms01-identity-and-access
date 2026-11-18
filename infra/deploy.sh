@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Deploys MS01 on its VM: stack ms01-<environment> (MS01 + PostgreSQL) behind the edge Caddy, and verifies the deployment.
+# Deploys MS01 on its VM: stack ms01-<environment> behind the edge Caddy, with its database in Amazon RDS, and verifies
+# the deployment.
 # It is run by the self-hosted runner from .github/workflows/deploy.yml with the variables and secrets of the
 # GitHub ms01-<environment> Environment. It is idempotent: running it again with another TAG is the rollback.
 # The edge (Caddy with mTLS) is started only once by hand, with the "Conexión al API Gateway" guide of the wiki.
@@ -10,7 +11,7 @@ missing() { echo "::error::Missing variable $1 (Environment ms01-${ENTORNO:-?} i
 # the application password (MAIL_PASSWORD secret) Gmail rejects the sending, that is why it is required
 MAIL_HOST="${MAIL_HOST:-smtp.gmail.com}"
 MAIL_USERNAME="${MAIL_USERNAME:-proyectometx@gmail.com}"
-for VAR in ENTORNO DB_PASSWORD JWT_PRIVATE_KEY GATEWAY_URL GATEWAY_SERVICE_KEY MAIL_PASSWORD; do
+for VAR in ENTORNO DB_HOST DB_NAME DB_USERNAME DB_PASSWORD JWT_PRIVATE_KEY GATEWAY_URL GATEWAY_SERVICE_KEY MAIL_PASSWORD; do
     [ -n "${!VAR:-}" ] || missing "$VAR"
 done
 [[ "$ENTORNO" =~ ^(test|prod)$ ]] || { echo "::error::ENTORNO must be test or prod" >&2; exit 1; }
@@ -23,6 +24,8 @@ IMAGE="${IMAGE:-ghcr.io/campusseguro-dosw-2026-2/ms01-identity-and-access}"
 DEPLOY_DIR="${DEPLOY_DIR:-$HOME/campusseguro/ms01}"
 PORT=$([ "$ENTORNO" = prod ] && echo 443 || echo 8443)
 STACK_DIR="$DEPLOY_DIR/$ENTORNO"
+# CA bundle of Amazon RDS: MS01 verifies with it the certificate and the name of the database server (sslmode=verify-full).
+RDS_CA_URL="https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
 
 docker network inspect campus-edge >/dev/null 2>&1 || {
     echo "::error::The campus-edge network does not exist: start the edge Caddy of the VM first (README, Cloud deployment)" >&2
@@ -38,18 +41,27 @@ env_line() {
 }
 
 umask 077
-mkdir -p "$STACK_DIR/database"
+mkdir -p "$STACK_DIR"
 
 echo "== Deployment files ($ENTORNO, $TAG) in $STACK_DIR"
 cp "$REPO_DIR/infra/docker-compose.prod.yml" "$STACK_DIR/docker-compose.yml"
-cp "$REPO_DIR"/database/*.sql "$STACK_DIR/database/"
-# Postgres reads the scripts with its own user: the schema folder carries no secrets.
-chmod 755 "$STACK_DIR/database"
-chmod 644 "$STACK_DIR"/database/*.sql
+# The schema is applied on RDS by hand (README, Cloud deployment): the stack carries no SQL scripts.
+rm -rf "$STACK_DIR/database"
+curl -fsSL --retry 3 -o "$STACK_DIR/rds-ca.pem.new" "$RDS_CA_URL"
+grep -q "BEGIN CERTIFICATE" "$STACK_DIR/rds-ca.pem.new" || {
+    echo "::error::$RDS_CA_URL did not return certificates" >&2
+    exit 1
+}
+mv "$STACK_DIR/rds-ca.pem.new" "$STACK_DIR/rds-ca.pem"
+# MS01 reads the CA with its own non-root user: the file is public and carries no secrets.
+chmod 644 "$STACK_DIR/rds-ca.pem"
 {
     env_line ENTORNO "$ENTORNO"
     env_line IMAGE "$IMAGE"
     env_line TAG "$TAG"
+    env_line DB_HOST "$DB_HOST"
+    env_line DB_NAME "$DB_NAME"
+    env_line DB_USERNAME "$DB_USERNAME"
     env_line DB_PASSWORD "$DB_PASSWORD"
     env_line JWT_PRIVATE_KEY "$JWT_PRIVATE_KEY"
     env_line GATEWAY_URL "$GATEWAY_URL"
@@ -77,7 +89,7 @@ C=(docker compose --project-directory "$STACK_DIR")
 [ -z "${GHCR_TOKEN:-}" ] || docker logout ghcr.io >/dev/null
 
 # The firewall and the mTLS prevent testing from outside: it is tested inside the VM, through the campus-edge network.
-echo "== Verification of http://ms01-$ENTORNO:8081/actuator/health (waits up to 3 min: startup of MS01 and the DB)"
+echo "== Verification of http://ms01-$ENTORNO:8081/actuator/health (waits up to 3 min: startup of MS01)"
 CURL=(docker run --rm --network campus-edge curlimages/curl:8.11.1 -s -o /dev/null -w '%{http_code}')
 for _ in $(seq 1 36); do
     if [ "$("${CURL[@]}" "http://ms01-$ENTORNO:8081/actuator/health" || true)" = 200 ]; then
