@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.controller.RoleAdminController;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.AlertRecipientRoleResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.CreateRoleRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PermissionItemResponse;
@@ -60,6 +61,7 @@ class RoleAdminControllerTest {
     private static final String ROLES_URL = "/api/v1/roles";
     private static final String DETAILS_URL = "/api/v1/roles/details";
     private static final String PERMISSIONS_URL = "/api/v1/permissions";
+    private static final String ALERT_RECIPIENTS_URL = "/api/v1/roles/alert-recipients";
     private static final String ADMIN_ID = "a0000000-0000-4000-8000-000000000001";
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
@@ -256,6 +258,60 @@ class RoleAdminControllerTest {
     @Test
     void listPermissions_withoutIdentityHeaders_returns401() throws Exception {
         mockMvc.perform(get(PERMISSIONS_URL)).andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(roleAdminService);
+    }
+
+        /**
+     * GET /roles/alert-recipients: 200 with name and description of each role, without its permissions or the system
+     * flag, and the literal route is not taken by /roles/{rol}
+     *
+     * @throws Exception if the simulated request fails
+     */
+    @Test
+    void listAlertRecipientRoles_returns200WithoutPermissions() throws Exception {
+        when(roleAdminService.listAlertRecipientRoles(any())).thenReturn(List.of(
+                new AlertRecipientRoleResponse("BRIGADISTA", "Brigadista de emergencias del campus"),
+                new AlertRecipientRoleResponse("ESTUDIANTE", "Estudiante de la comunidad universitaria")));
+
+        mockMvc.perform(get(ALERT_RECIPIENTS_URL)
+                        .header("X-User-Id", ADMIN_ID)
+                        .header("X-User-Role", "COORDINADOR")
+                        .header("X-User-Permission", TestIdentities.permissionHeader("COORDINADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].rol").value("BRIGADISTA"))
+                .andExpect(jsonPath("$[0].descripcion").value("Brigadista de emergencias del campus"))
+                .andExpect(jsonPath("$[0].permisos").doesNotExist())
+                .andExpect(jsonPath("$[0].es_sistema").doesNotExist());
+
+        verify(roleAdminService, never()).getRole(any(), any());
+    }
+
+        /**
+     * GET /roles/alert-recipients without the alert permissions: 403 PROHIBIDO
+     *
+     * @throws Exception if the simulated request fails
+     */
+    @Test
+    void listAlertRecipientRoles_withoutPermission_returns403() throws Exception {
+        when(roleAdminService.listAlertRecipientRoles(any())).thenThrow(new ForbiddenOperationException(
+                "No cuenta con los permisos suficientes para realizar esta operación."));
+
+        mockMvc.perform(asAdmin(get(ALERT_RECIPIENTS_URL)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("PROHIBIDO"))
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+        /**
+     * GET /roles/alert-recipients without headers: 401
+     *
+     * @throws Exception if the simulated request fails
+     */
+    @Test
+    void listAlertRecipientRoles_withoutIdentityHeaders_returns401() throws Exception {
+        mockMvc.perform(get(ALERT_RECIPIENTS_URL)).andExpect(status().isUnauthorized());
 
         verifyNoInteractions(roleAdminService);
     }

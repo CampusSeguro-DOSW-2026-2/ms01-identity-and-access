@@ -41,6 +41,17 @@ public record RequesterIdentity(UUID userId, Set<String> roles, Set<String> perm
     }
 
         /**
+     * Tells whether the requester has a permission of another module, the ones from ms02 to ms08 that MS01 does not
+     * declare in its enum, with the same rule: only the X-User-Permission header decides
+     *
+     * @param code code of the permission, for example ms03:alert:manage
+     * @return true if its permissions contain the code, false otherwise
+     */
+    public boolean hasPermission(String code) {
+        return permissions.contains(code);
+    }
+
+        /**
      * Returns the roles of the requester with the same format as the X-User-Role header, separated by comma, without
      * spaces and in alphabetical order (Integration Standards, section 4)
      *

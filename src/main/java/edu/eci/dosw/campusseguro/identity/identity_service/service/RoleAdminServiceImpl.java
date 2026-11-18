@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditAction;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.AlertRecipientRoleResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.CreateRoleRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PermissionItemResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.RoleDetailResponse;
@@ -59,6 +60,11 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     /** Permissions that every role has and never loses: reading the own profile and logging out */
     private static final List<Permission> MANDATORY_PERMISSIONS = List.of(Permission.MS01_PROFILE_READ,
             Permission.MS01_SESSION_LOGOUT);
+
+    /** Permissions of MS03 that create or edit alerts, and the one that receives them (Role-Permission Matrix) */
+    static final String ALERT_MANAGE = "ms03:alert:manage";
+    static final String ALERT_MANAGE_DRILL = "ms03:alert:manage_drill";
+    static final String ALERT_RECEIVE = "ms03:alert:receive";
 
     static final String NAME_EXISTS_MESSAGE = "Ya existe un rol con ese nombre.";
     static final String SYSTEM_RENAME_MESSAGE = "Los roles de sistema no se pueden renombrar.";
@@ -151,6 +157,26 @@ public class RoleAdminServiceImpl implements RoleAdminService {
         return permissionRepository.findAll().stream()
                 .sorted(Comparator.comparing(PermissionEntity::getName))
                 .map(permission -> new PermissionItemResponse(permission.getName(), permission.getDescription()))
+                .toList();
+    }
+
+        /**
+     * Lists the roles of the database that have ms03:alert:receive sorted by name, with their description and without
+     * their permissions
+     *
+     * @param requester identity of whoever queries
+     * @return name and description of each role; empty if no role receives alerts
+     * @throws ForbiddenOperationException if the requester has neither ms03:alert:manage nor ms03:alert:manage_drill
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<AlertRecipientRoleResponse> listAlertRecipientRoles(RequesterIdentity requester) {
+        // PermissionChecker only takes the permissions of MS01, the ones of MS03 are checked by their code
+        if (!requester.hasPermission(ALERT_MANAGE) && !requester.hasPermission(ALERT_MANAGE_DRILL)) {
+            throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
+        }
+        return roleRepository.findWithPermission(ALERT_RECEIVE).stream()
+                .map(role -> new AlertRecipientRoleResponse(role.getName(), role.getDescription()))
                 .toList();
     }
 

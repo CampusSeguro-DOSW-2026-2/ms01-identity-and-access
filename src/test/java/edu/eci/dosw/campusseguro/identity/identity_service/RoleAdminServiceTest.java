@@ -42,6 +42,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEvent;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditEventPublisher;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditRecorder;
 import edu.eci.dosw.campusseguro.identity.identity_service.audit.AuditResult;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.AlertRecipientRoleResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.CreateRoleRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PermissionItemResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.RoleDetailResponse;
@@ -329,6 +330,59 @@ class RoleAdminServiceTest {
     @Test
     void listPermissions_withoutReadAll_isForbidden() {
         assertThrows(ForbiddenOperationException.class, () -> service.listPermissions(student()));
+    }
+
+    // ------------------------------------------------------------------ alert recipients
+
+        /**
+     * Whoever manages alerts (COORDINADOR, with ms03:alert:manage) receives the roles with ms03:alert:receive, in the
+     * order of the database, with their name and description, without touching other tables or the audit
+     */
+    @Test
+    void listAlertRecipientRoles_withAlertManage_returnsTheRolesThatReceiveAlerts() {
+        RoleEntity brigadista = TestEntities.role("BRIGADISTA", "ms03:alert:receive");
+        brigadista.setDescription("Brigadista de emergencias del campus");
+        when(roleRepository.findWithPermission("ms03:alert:receive"))
+                .thenReturn(List.of(brigadista, TestEntities.role("ESTUDIANTE", "ms03:alert:receive")));
+
+        List<AlertRecipientRoleResponse> roles = service.listAlertRecipientRoles(
+                TestIdentities.of(ADMIN_ID, "COORDINADOR"));
+
+        assertEquals(List.of(new AlertRecipientRoleResponse("BRIGADISTA", "Brigadista de emergencias del campus"),
+                new AlertRecipientRoleResponse("ESTUDIANTE", "Descripción de ESTUDIANTE")), roles);
+        verifyNoInteractions(permissionRepository, userRepository, auditPublisher);
+    }
+
+        /**
+     * ms03:alert:manage_drill alone also authorizes the query, because the drill alerts are edited with the same form
+     */
+    @Test
+    void listAlertRecipientRoles_withOnlyManageDrill_isAllowed() {
+        when(roleRepository.findWithPermission("ms03:alert:receive")).thenReturn(List.of());
+
+        assertEquals(List.of(), service.listAlertRecipientRoles(TestIdentities.withPermissions(ADMIN_ID,
+                Set.of("MONITOR"), "ms01:profile:read", "ms03:alert:manage_drill")));
+    }
+
+        /**
+     * When no role has ms03:alert:receive the answer is an empty list, not an error
+     */
+    @Test
+    void listAlertRecipientRoles_withoutRecipientRoles_returnsAnEmptyList() {
+        when(roleRepository.findWithPermission("ms03:alert:receive")).thenReturn(List.of());
+
+        assertTrue(service.listAlertRecipientRoles(TestIdentities.of(ADMIN_ID, "COORDINADOR")).isEmpty());
+    }
+
+        /**
+     * Without ms03:alert:manage or ms03:alert:manage_drill it is forbidden, even for ADMIN, which has
+     * ms01:role:read_all but does not manage alerts, and the database is not queried
+     */
+    @Test
+    void listAlertRecipientRoles_withoutAlertPermissions_isForbidden() {
+        assertThrows(ForbiddenOperationException.class, () -> service.listAlertRecipientRoles(student()));
+        assertThrows(ForbiddenOperationException.class, () -> service.listAlertRecipientRoles(admin()));
+        verifyNoInteractions(roleRepository);
     }
 
     // ------------------------------------------------------------------ creation
@@ -1268,6 +1322,8 @@ class RoleAdminServiceTest {
                 .getAnnotation(Transactional.class).readOnly());
         assertTrue(type.getMethod("listPermissions", RequesterIdentity.class).getAnnotation(Transactional.class)
                 .readOnly());
+        assertTrue(type.getMethod("listAlertRecipientRoles", RequesterIdentity.class)
+                .getAnnotation(Transactional.class).readOnly());
     }
 
         /**
