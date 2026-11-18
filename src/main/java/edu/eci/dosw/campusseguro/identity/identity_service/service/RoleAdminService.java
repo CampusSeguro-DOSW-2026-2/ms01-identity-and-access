@@ -2,6 +2,7 @@ package edu.eci.dosw.campusseguro.identity.identity_service.service;
 
 import java.util.List;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.AlertRecipientRoleResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.CreateRoleRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PermissionItemResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.RoleDetailResponse;
@@ -49,6 +50,17 @@ public interface RoleAdminService {
      * @throws ForbiddenOperationException if the requester does not have the role query permission
      */
     List<PermissionItemResponse> listPermissions(RequesterIdentity requester);
+
+        /**
+     * Lists the roles that can receive alerts (the ones with ms03:alert:receive), for the recipient picker of the
+     * alerts of MS03. Whoever creates or edits alerts does not have ms01:role:read_all, so it is authorized with the
+     * permissions of MS03 and it does not return the permissions of each role
+     *
+     * @param requester identity of whoever queries
+     * @return name and description of each role, sorted by name; empty if no role receives alerts
+     * @throws ForbiddenOperationException if the requester has neither ms03:alert:manage nor ms03:alert:manage_drill
+     */
+    List<AlertRecipientRoleResponse> listAlertRecipientRoles(RequesterIdentity requester);
 
         /**
      * Creates a role that is not a system role and without a session cut (form F-10), the attempt is audited in MS08

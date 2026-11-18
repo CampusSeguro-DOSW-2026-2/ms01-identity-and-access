@@ -75,6 +75,15 @@ public interface RoleRepository extends JpaRepository<RoleEntity, UUID> {
     List<String> findNamesByPermission(@Param("permission") String permission);
 
         /**
+     * Returns the roles that have a permission, only their own columns are used (name and description)
+     *
+     * @param permission code of the permission
+     * @return the roles in alphabetical order
+     */
+    @Query("SELECT r FROM RoleEntity r JOIN r.permissions p WHERE p.name = :permission ORDER BY r.name")
+    List<RoleEntity> findWithPermission(@Param("permission") String permission);
+
+        /**
      * Writes the session cut of all the roles that have a permission (RF-MS01-11), it is used before removing the
      * permission from the catalog
      *

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.AlertRecipientRoleResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.CreateRoleRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PermissionItemResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.RoleDetailResponse;
@@ -54,6 +55,21 @@ public class RoleAdminController {
     @GetMapping("/roles/details")
     public ResponseEntity<List<RoleDetailResponse>> listRoles(RequesterIdentity requester) {
         return ResponseEntity.ok(roleAdminService.listRoles(requester));
+    }
+
+        /**
+     * GET /api/v1/roles/alert-recipients: roles that can receive alerts, for the recipient picker of MS03 (RF-MS01-10),
+     * the literal route takes priority over /roles/{rol} and no role can be named like it (the hyphen is not allowed)
+     *
+     * 200 roles with ms03:alert:receive sorted by name, 401 missing identity, 403 without ms03:alert:manage or
+     * ms03:alert:manage_drill
+     *
+     * @param requester identity of the requester taken from the headers
+     * @return name and description of each role
+     */
+    @GetMapping("/roles/alert-recipients")
+    public ResponseEntity<List<AlertRecipientRoleResponse>> listAlertRecipientRoles(RequesterIdentity requester) {
+        return ResponseEntity.ok(roleAdminService.listAlertRecipientRoles(requester));
     }
 
         /**

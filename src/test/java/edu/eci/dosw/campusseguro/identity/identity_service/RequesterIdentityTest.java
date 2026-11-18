@@ -89,6 +89,21 @@ class RequesterIdentityTest {
     }
 
         /**
+     * The permissions of other modules are checked by their code with the same rule: only the received permissions
+     * count, never the name of the role
+     */
+    @Test
+    void hasPermissionByCode_followsTheReceivedPermissions() {
+        RequesterIdentity coordinator = TestIdentities.of(USER_ID, "COORDINADOR");
+        RequesterIdentity coordinatorName = TestIdentities.withPermissions(USER_ID, Set.of("COORDINADOR"),
+                "ms01:profile:read");
+
+        assertTrue(coordinator.hasPermission("ms03:alert:manage"));
+        assertFalse(coordinator.hasPermission("ms03:alert:manage_drill"));
+        assertFalse(coordinatorName.hasPermission("ms03:alert:manage"));
+    }
+
+        /**
      * The roles header is comma-separated and in alphabetical order
      */
     @Test
