@@ -368,8 +368,10 @@ INSERT INTO permissions (name, description) VALUES
     ('ms07:content:read', 'Consultar contenidos del centro de aprendizaje'),
     ('ms07:quiz:take', 'Realizar evaluaciones y consultar el propio progreso'),
     ('ms07:tutor:use', 'Usar el tutor CampusSeguro'),
-    ('ms08:audit:read', 'Consultar la auditoría'),
-    ('ms08:indicators:read', 'Consultar indicadores operativos e históricos');
+    ('ms08:audit_drill:read', 'Consultar auditoría de simulacros'),
+    ('ms08:audit_real_event:read', 'Consultar auditoría de eventos reales (con o sin evento_id)'),
+    ('ms08:indicators_drill:read', 'Ver indicadores y comparaciones de simulacros'),
+    ('ms08:indicators_real_event:read', 'Ver indicadores de eventos reales');
 
 -- Initial roles, only ESTUDIANTE and ADMIN are system roles
 INSERT INTO roles (name, description, is_system) VALUES
@@ -509,7 +511,8 @@ FROM (VALUES
             'ms07:content:read',
             'ms07:quiz:take',
             'ms07:tutor:use',
-            'ms08:indicators:read']),
+            'ms08:audit_real_event:read',
+            'ms08:indicators_real_event:read']),
     ('ORGANIZADOR',
      ARRAY[
             'ms01:password:change',
@@ -544,7 +547,8 @@ FROM (VALUES
             'ms07:content:read',
             'ms07:quiz:take',
             'ms07:tutor:use',
-            'ms08:indicators:read']),
+            'ms08:audit_drill:read',
+            'ms08:indicators_drill:read']),
     ('ADMIN',
      ARRAY[
             'ms01:password:change',
@@ -570,7 +574,10 @@ FROM (VALUES
             'ms05:incident:manage_own',
             'ms05:incident:report',
             'ms07:content:manage',
-            'ms08:audit:read']),
+            'ms08:audit_drill:read',
+            'ms08:audit_real_event:read',
+            'ms08:indicators_drill:read',
+            'ms08:indicators_real_event:read']),
     ('AUDITOR',
      ARRAY[
             'ms01:password:change',
@@ -591,8 +598,10 @@ FROM (VALUES
             'ms06:drill:read',
             'ms06:real_event:compare_report',
             'ms06:real_event:read',
-            'ms08:audit:read',
-            'ms08:indicators:read'])
+            'ms08:audit_drill:read',
+            'ms08:audit_real_event:read',
+            'ms08:indicators_drill:read',
+            'ms08:indicators_real_event:read'])
 ) AS assignment (role_name, permission_names)
 JOIN roles r ON r.name = assignment.role_name
 JOIN permissions p ON p.name = ANY (assignment.permission_names);

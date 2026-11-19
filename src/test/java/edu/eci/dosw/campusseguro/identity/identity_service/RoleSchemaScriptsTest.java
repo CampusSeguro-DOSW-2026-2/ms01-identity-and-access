@@ -25,7 +25,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 class RoleSchemaScriptsTest {
 
     private static final String SCRIPT_001 = "database/001_create_schema.sql";
-    private static final String SCRIPT_004 = "database/migrations/004_migration_roles_permissions.sql";
 
     private static final Pattern RESERVED_CHECK = Pattern.compile(
             "CONSTRAINT\\s+chh_role_name_reserved\\s+CHECK\\s*\\(\\s*name\\s*<>\\s*'([A-Z_]+)'\\s*\\)",
@@ -49,7 +48,7 @@ class RoleSchemaScriptsTest {
      * @throws IOException if the script cannot be read
      */
     @ParameterizedTest
-    @ValueSource(strings = {SCRIPT_001, SCRIPT_004})
+    @ValueSource(strings = {SCRIPT_001})
     void rolesTable_rejectsTheReservedNameInTheDatabase(String script) throws IOException {
         Matcher check = RESERVED_CHECK.matcher(read(script));
 
@@ -64,7 +63,7 @@ class RoleSchemaScriptsTest {
      * @throws IOException if the script cannot be read
      */
     @ParameterizedTest
-    @ValueSource(strings = {SCRIPT_001, SCRIPT_004})
+    @ValueSource(strings = {SCRIPT_001})
     void rolesTable_declaresTheReservedNameCheckOnlyOnce(String script) throws IOException {
         Matcher check = RESERVED_CHECK.matcher(read(script));
         int count = 0;
@@ -83,7 +82,7 @@ class RoleSchemaScriptsTest {
      * @throws IOException if the script cannot be read
      */
     @ParameterizedTest
-    @ValueSource(strings = {SCRIPT_001, SCRIPT_004})
+    @ValueSource(strings = {SCRIPT_001})
     void checkRolePermissions_enforcesTheMandatoryPermissions(String script) throws IOException {
         String sql = read(script);
 
@@ -101,26 +100,28 @@ class RoleSchemaScriptsTest {
      * @throws IOException if the script cannot be read
      */
     @ParameterizedTest
-    @ValueSource(strings = {SCRIPT_001, SCRIPT_004})
+    @ValueSource(strings = {SCRIPT_001})
     void checkRolePermissions_doesNotRequireAtLeastOnePermissionAnymore(String script) throws IOException {
         assertFalse(read(script).contains("at least one permission"));
     }
 
     /**
-     * The database folder keeps the creation and index scripts at its root, which Postgres runs when it creates a
-     * database, and the migration and the maintenance script in subfolders, which it does not run
+     * The database folder keeps only what is in use: the creation and index scripts at its root, which Postgres runs
+     * when it creates a database, and in maintenance/ the single pending change of permissions for the databases
+     * that already exist, which it does not run
      *
      * @throws IOException if the folder cannot be read
      */
     @Test
-    void databaseFolder_keepsOnlyTheCreationScriptsAtTheRoot() throws IOException {
+    void databaseFolder_keepsOnlyTheScriptsInUse() throws IOException {
         try (var scripts = Files.list(Path.of("database"))) {
             var names = scripts.map(path -> path.getFileName().toString()).sorted().toList();
 
-            assertEquals(java.util.List.of("001_create_schema.sql", "002_index_schema.sql", "maintenance",
-                    "migrations"), names);
+            assertEquals(java.util.List.of("001_create_schema.sql", "002_index_schema.sql", "maintenance"), names);
         }
-        assertTrue(Files.exists(Path.of(SCRIPT_004)));
-        assertTrue(Files.exists(Path.of("database/maintenance/005_maintenance_roles_permissions.sql")));
+        try (var maintenance = Files.list(Path.of("database/maintenance"))) {
+            assertEquals(java.util.List.of("cambio_permisos.sql"),
+                    maintenance.map(path -> path.getFileName().toString()).toList());
+        }
     }
 }

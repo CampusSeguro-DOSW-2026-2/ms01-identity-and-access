@@ -130,7 +130,8 @@ public final class SeedRoles {
                     "ms07:content:read",
                     "ms07:quiz:take",
                     "ms07:tutor:use",
-                    "ms08:indicators:read"),
+                    "ms08:audit_real_event:read",
+                    "ms08:indicators_real_event:read"),
             "ORGANIZADOR", List.of(
                     "ms01:password:change",
                     "ms01:profile:read",
@@ -164,7 +165,8 @@ public final class SeedRoles {
                     "ms07:content:read",
                     "ms07:quiz:take",
                     "ms07:tutor:use",
-                    "ms08:indicators:read"),
+                    "ms08:audit_drill:read",
+                    "ms08:indicators_drill:read"),
             "ADMIN", List.of(
                     "ms01:password:change",
                     "ms01:profile:read",
@@ -189,7 +191,10 @@ public final class SeedRoles {
                     "ms05:incident:manage_own",
                     "ms05:incident:report",
                     "ms07:content:manage",
-                    "ms08:audit:read"),
+                    "ms08:audit_drill:read",
+                    "ms08:audit_real_event:read",
+                    "ms08:indicators_drill:read",
+                    "ms08:indicators_real_event:read"),
             "AUDITOR", List.of(
                     "ms01:password:change",
                     "ms01:profile:read",
@@ -209,8 +214,10 @@ public final class SeedRoles {
                     "ms06:drill:read",
                     "ms06:real_event:compare_report",
                     "ms06:real_event:read",
-                    "ms08:audit:read",
-                    "ms08:indicators:read"));
+                    "ms08:audit_drill:read",
+                    "ms08:audit_real_event:read",
+                    "ms08:indicators_drill:read",
+                    "ms08:indicators_real_event:read"));
 
 
         /**

@@ -25,7 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
 
 /**
- * RF-MS01-05 / RN-MS01-14: the database scripts seed the catalog of 56 permissions and the initial assignment of
+ * RF-MS01-05 / RN-MS01-14: the database scripts seed the catalog of 58 permissions and the initial assignment of
  * permissions to the eight roles as defined by the Role-Permission Matrix, without inheritance between roles (MR-01),
  * and the MS01 code only declares permissions that exist in that seeding
  */
@@ -53,10 +53,18 @@ class PermissionMatrixTest {
             "BRIGADISTA", "COORDINADOR", "ORGANIZADOR", "ADMIN", "AUDITOR");
 
     private static final String SCRIPT_001 = "database/001_create_schema.sql";
-    private static final String SCRIPT_004 = "database/migrations/004_migration_roles_permissions.sql";
-    private static final String SCRIPT_005 = "database/maintenance/005_maintenance_roles_permissions.sql";
+    private static final String CHANGE_SCRIPT = "database/maintenance/cambio_permisos.sql";
 
-    private static final List<String> SEED_SCRIPTS = List.of(SCRIPT_001, SCRIPT_004);
+    private static final Pattern DELETED_PERMISSIONS = Pattern.compile(
+            "DELETE FROM permissions WHERE name IN \\((.*?)\\);", Pattern.DOTALL);
+
+    private static final Pattern GIVEN_ASSIGNMENTS = Pattern.compile(
+            "INSERT INTO role_permissions.*?FROM \\(VALUES(.*?)\\) AS cambio", Pattern.DOTALL);
+
+    private static final Pattern TAKEN_ASSIGNMENTS = Pattern.compile(
+            "DELETE FROM role_permissions.*?\\(VALUES(.*?)\\) AS cambio", Pattern.DOTALL);
+
+    private static final Pattern PAIR = Pattern.compile("\\('([A-Z_]+)',\\s*'([^']+)'\\)");
 
         /**
      * Computes the seeded roles that have a permission
@@ -140,18 +148,16 @@ class PermissionMatrixTest {
     }
 
         /**
-     * The permission seeding of each script has 56 codes with the format module:resource:action, without repeating,
+     * The permission seeding of the creation script has 58 codes with the format module:resource:action, without repeating,
      * with a description of up to 200 characters, and is exactly the union of the permissions of the matrix
      *
-     * @param script path of the script
      * @throws IOException if the script cannot be read
      */
-    @ParameterizedTest
-    @ValueSource(strings = {SCRIPT_001, SCRIPT_004, SCRIPT_005})
-    void seedPermissions_areWellFormedAndEqualToTheMatrixUnion(String script) throws IOException {
-        Map<String, String> seeded = permissionsOf(script);
+    @Test
+    void seedPermissions_areWellFormedAndEqualToTheMatrixUnion() throws IOException {
+        Map<String, String> seeded = permissionsOf(SCRIPT_001);
 
-        assertEquals(56, seeded.size());
+        assertEquals(58, seeded.size());
         for (Map.Entry<String, String> permission : seeded.entrySet()) {
             assertTrue(CODE_FORMAT.matcher(permission.getKey()).matches(),
                     "Código con formato inválido: " + permission.getKey());
@@ -203,7 +209,7 @@ class PermissionMatrixTest {
     }
 
         /**
-     * Number of permissions that each role seeds according to the Role-Permission Matrix, 191 assignments in total
+     * Number of permissions that each role seeds according to the Role-Permission Matrix, 198 assignments in total
      */
     @Test
     void seedRoles_haveTheExpectedNumberOfPermissions() {
@@ -211,15 +217,15 @@ class PermissionMatrixTest {
         assertEquals(19, SeedRoles.PERMISSIONS.get("PROFESOR").size());
         assertEquals(18, SeedRoles.PERMISSIONS.get("ADMINISTRATIVO").size());
         assertEquals(25, SeedRoles.PERMISSIONS.get("BRIGADISTA").size());
-        assertEquals(34, SeedRoles.PERMISSIONS.get("COORDINADOR").size());
-        assertEquals(33, SeedRoles.PERMISSIONS.get("ORGANIZADOR").size());
-        assertEquals(24, SeedRoles.PERMISSIONS.get("ADMIN").size());
-        assertEquals(20, SeedRoles.PERMISSIONS.get("AUDITOR").size());
+        assertEquals(35, SeedRoles.PERMISSIONS.get("COORDINADOR").size());
+        assertEquals(34, SeedRoles.PERMISSIONS.get("ORGANIZADOR").size());
+        assertEquals(27, SeedRoles.PERMISSIONS.get("ADMIN").size());
+        assertEquals(22, SeedRoles.PERMISSIONS.get("AUDITOR").size());
         int total = 0;
         for (List<String> codes : SeedRoles.PERMISSIONS.values()) {
             total += codes.size();
         }
-        assertEquals(191, total);
+        assertEquals(198, total);
     }
 
         /**
@@ -292,7 +298,7 @@ class PermissionMatrixTest {
         expected.addAll(SeedRoles.PERMISSIONS.get("AUDITOR"));
         assertEquals(expected, union);
         assertTrue(union.contains("ms05:incident:report"));
-        assertTrue(union.contains("ms08:audit:read"));
+        assertTrue(union.contains("ms08:audit_drill:read"));
     }
 
         /**
@@ -304,17 +310,15 @@ class PermissionMatrixTest {
     }
 
         /**
-     * Each script seeds the eight roles with the same permissions of the matrix and marks as system roles only
-     * ESTUDIANTE and ADMIN
+     * The creation script seeds the eight roles with the same permissions of the matrix and marks as system roles
+     * only ESTUDIANTE and ADMIN
      *
-     * @param script path of the script
      * @throws IOException if the script cannot be read
      */
-    @ParameterizedTest
-    @ValueSource(strings = {SCRIPT_001, SCRIPT_004})
-    void seedScripts_seedTheMatrixAndMarkOnlyTwoSystemRoles(String script) throws IOException {
-        Map<String, String> roles = rolesOf(script);
-        Map<String, List<String>> assignments = assignmentsOf(script);
+    @Test
+    void seedScript_seedsTheMatrixAndMarksOnlyTwoSystemRoles() throws IOException {
+        Map<String, String> roles = rolesOf(SCRIPT_001);
+        Map<String, List<String>> assignments = assignmentsOf(SCRIPT_001);
 
         assertEquals(SEEDED_ROLES, roles.keySet());
         assertEquals(SEEDED_ROLES, assignments.keySet());
@@ -327,27 +331,48 @@ class PermissionMatrixTest {
     }
 
     /**
-     * The creation script and the migration seed exactly the same data
+     * The change script only moves an existing database towards the creation script, in a single transaction:
+     * every permission it inserts is in the catalog of 001 with the same description, every one it deletes is not,
+     * every assignment it gives is in the seed of 001 and every one it takes away is not
      *
      * @throws IOException if a script cannot be read
      */
     @Test
-    void script001AndMigration004_seedTheSameData() throws IOException {
-        assertEquals(permissionsOf(SEED_SCRIPTS.get(0)), permissionsOf(SEED_SCRIPTS.get(1)));
-        assertEquals(rolesOf(SEED_SCRIPTS.get(0)), rolesOf(SEED_SCRIPTS.get(1)));
-        assertEquals(assignmentsOf(SEED_SCRIPTS.get(0)), assignmentsOf(SEED_SCRIPTS.get(1)));
-    }
+    void changeScript_movesAnExistingDatabaseTowardsScript001() throws IOException {
+        String sql = Files.readString(Path.of(CHANGE_SCRIPT), StandardCharsets.UTF_8);
+        Map<String, String> catalog = permissionsOf(SCRIPT_001);
+        Map<String, List<String>> seed = assignmentsOf(SCRIPT_001);
 
-    /**
-     * The maintenance script loads the same catalog and the same assignments as the creation script, so running
-     * it leaves the database as the Matrix says
-     *
-     * @throws IOException if a script cannot be read
-     */
-    @Test
-    void maintenanceScript005_loadsTheSameCatalogAndAssignmentsAsScript001() throws IOException {
-        assertEquals(permissionsOf(SCRIPT_001), permissionsOf(SCRIPT_005));
-        assertEquals(assignmentsOf(SCRIPT_001), assignmentsOf(SCRIPT_005));
+        assertTrue(sql.contains("\nBEGIN;\n"), "Falta BEGIN");
+        assertTrue(sql.strip().endsWith("COMMIT;"), "Falta COMMIT");
+        Matcher inserted = PERMISSIONS_BLOCK.matcher(sql);
+        if (inserted.find()) {
+            Matcher row = PERMISSION_ROW.matcher(inserted.group(1));
+            while (row.find()) {
+                assertEquals(catalog.get(row.group(1)), row.group(2).replace("''", "'"), row.group(1));
+            }
+        }
+        Matcher deleted = DELETED_PERMISSIONS.matcher(sql);
+        if (deleted.find()) {
+            Matcher code = QUOTED.matcher(deleted.group(1));
+            while (code.find()) {
+                assertFalse(catalog.containsKey(code.group(1)), code.group(1));
+            }
+        }
+        Matcher given = GIVEN_ASSIGNMENTS.matcher(sql);
+        if (given.find()) {
+            Matcher pair = PAIR.matcher(given.group(1));
+            while (pair.find()) {
+                assertTrue(seed.get(pair.group(1)).contains(pair.group(2)), pair.group(1) + " " + pair.group(2));
+            }
+        }
+        Matcher taken = TAKEN_ASSIGNMENTS.matcher(sql);
+        if (taken.find()) {
+            Matcher pair = PAIR.matcher(taken.group(1));
+            while (pair.find()) {
+                assertFalse(seed.get(pair.group(1)).contains(pair.group(2)), pair.group(1) + " " + pair.group(2));
+            }
+        }
     }
 
     /**
