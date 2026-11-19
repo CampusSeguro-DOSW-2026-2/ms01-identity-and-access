@@ -66,23 +66,23 @@ MS01 has its own PostgreSQL database. The application never creates or changes t
 |---|---|---|
 | `001_create_schema.sql` | New database. Locally Postgres runs it by itself with an empty volume; in the cloud it is applied by hand on RDS ([step 6](#6-database-amazon-rds)) | Tables (`users`, `roles`, `permissions`, `role_permissions`, `user_roles`, `password_reset_codes`, `pending_registrations`), functions, triggers and the initial data: the permission catalog, the eight initial roles and their permissions according to the Role-Permission Matrix. A single transaction |
 | `002_index_schema.sql` | New database, after `001` | Indexes, including the `pg_trgm` index of the search by email |
-| `migrations/004_migration_roles_permissions.sql` | By hand, on a database deployed with the previous model (Spanish table names and fixed roles) | Takes it to the current schema in a single transaction, keeping its data |
-| `maintenance/005_maintenance_roles_permissions.sql` | By hand, every time the Role-Permission Matrix gains permissions or assignments | Leaves the catalog and the permissions of the eight initial roles exactly as the Matrix says. The roles created through the API keep only the mandatory permissions. It cuts the sessions of all roles, so every user logs in again with the new permissions |
-| `migrations/006_migration_pending_registrations.sql` | By hand, once, on a database deployed before the verification of the email, **before** deploying that version of MS01 | Creates the table `pending_registrations` and its index. Without it MS01 does not start, because it validates the schema |
+| `maintenance/cambio_permisos.sql` | By hand, on the databases that already exist (test and production), every time the Role-Permission Matrix changes | Only the last change of the Matrix: the permissions that enter or leave the catalog and the permissions that the eight initial roles gain or lose. It does not touch the roles created through the API nor the other changes of the administrator, and it only cuts the sessions of the affected roles. It can be applied more than once without effect. Each change replaces the previous one (kept in the history of git) |
 
-Locally, Postgres only runs the scripts that are directly in `database/`. The `migrations/` and `maintenance/` subfolders are always applied by hand, after taking a backup (in the cloud, with the commands of [step 6](#6-database-amazon-rds)):
+Locally, Postgres only runs the scripts that are directly in `database/`. The `maintenance/` subfolder is applied by hand, after taking a backup (in the cloud, with the commands of [step 6](#6-database-amazon-rds)):
 
 ```bash
 pg_dump -h <host> -U <user> -Fc -f backup.dump <database>
-psql -h <host> -U <user> -d <database> -v ON_ERROR_STOP=1 -f database/maintenance/005_maintenance_roles_permissions.sql
+psql -h <host> -U <user> -d <database> -v ON_ERROR_STOP=1 -f database/maintenance/cambio_permisos.sql
 ```
+
+The folder only keeps what is in use. A schema change is written as a script that is applied to every existing database, and then it is folded into `001` and `002` and deleted; the permission changes are generated from the Matrix (`001` and `cambio_permisos.sql`) by the tool of the person responsible for the database.
 
 Tables, columns, constraints, indexes, functions and triggers have English names. The values that are stored (`ACTIVO` and `INACTIVO`, the role names and the descriptions of roles and permissions) are in Spanish, like the API. The data model is described in [`4_modelo-datos.md`](https://github.com/CampusSeguro-DOSW-2026-2/documentation/blob/main/ms01-identity-and-access/4_modelo-datos.md).
 
 ## Roles and permissions
 
 * The database is the source of truth. The roles, the permission catalog and the permissions of each role are rows, so an administrator can create, rename, describe and delete roles and change their permissions through the API without changing the code or the schema.
-* A permission is a code `ms<NN>:<resource>:<action>` (for example `ms04:checkin:write`). MS01 defines in its code only its own permissions (`ms01:*`, enum `Permission`) and synchronizes them with the database when it starts. The permissions of `ms02` to `ms08` are loaded from the Role-Permission Matrix of the wiki by the database scripts. No route creates, edits or deletes permissions.
+* A permission is a code `ms<NN>:<resource>:<action>` (for example `ms04:checkin:write`). MS01 defines in its code only its own permissions (`ms01:*`, enum `Permission`) and synchronizes them with the database when it starts. The permissions of `ms02` to `ms08` are loaded from the Role-Permission Matrix of the wiki by the database scripts (`001` for a new database, `maintenance/cambio_permisos.sql` for the existing ones). No route creates, edits or deletes permissions.
 * Mandatory permissions: every role, including the ones created by an administrator, always has `ms01:profile:read` and `ms01:session:logout`. `ESTUDIANTE` and `ADMIN` also keep `ms01:profile:write`, and `ms01:role:manage` belongs only to `ADMIN`. The database enforces these rules with a deferred constraint trigger, and the API checks them first. `POST /api/v1/roles` adds the two mandatory permissions by itself; `PUT /api/v1/roles/{rol}/permissions` answers 422 if the new list does not include them.
 * Internal routes (`/api/v1/users/batch` and `/api/v1/users/by-role`) are authorized by the calling service, not by permissions: `INTERNAL_ALLOWED_SERVICES` (`ms03,ms04,ms05` by default).
 
@@ -241,12 +241,12 @@ No value can contain single quotes (`'`).
 1. **Test:** every merge or push to `develop` publishes the image and deploys it to `ms01-test`. Follow the **desplegar-test** job in the *Actions* tab.
 2. **Production:** after merging into `main`, go to **Actions › Desplegar a producción › Run workflow**, branch `main`, with the tag of the image that already works in test. It is `sha-` plus the first 7 characters of the `develop` commit that was deployed, and it appears in the log of *desplegar-test*.
 
-**Schema changes.** The deployment never creates or migrates the schema. When a version brings a script in `database/migrations/` (for example `006_migration_pending_registrations.sql`), apply it on the database of each environment **before** that version is deployed there: MS01 validates the schema when it starts and does not start without it. An extra table does not affect the previous version, so it can be applied in advance. First take a snapshot (**RDS › Databases › Actions › Take snapshot**), then *(VM, with `$RDS` of step 6)*:
+**Database changes.** The deployment never creates or migrates the schema. When a version brings a script for the existing databases (a schema change, or `database/maintenance/cambio_permisos.sql` when the Matrix changes), apply it on the database of each environment **before** that version is deployed there: MS01 validates the schema when it starts and does not start without it. An extra table or permission does not affect the previous version, so it can be applied in advance. First take a snapshot (**RDS › Databases › Actions › Take snapshot**), then *(VM, with `$RDS` of step 6)*:
 ```bash
 cd ~/campusseguro
-curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/ms01-identity-and-access/develop/database/migrations/006_migration_pending_registrations.sql
-$RDS pg_dump -h <RDS endpoint> -U campus_test_user -Fc -f backup_before_006_test.dump campus_test
-$RDS psql -h <RDS endpoint> -U campus_test_user -d campus_test -v ON_ERROR_STOP=1 -f 006_migration_pending_registrations.sql
+curl -fsSLO https://raw.githubusercontent.com/CampusSeguro-DOSW-2026-2/ms01-identity-and-access/develop/database/maintenance/cambio_permisos.sql
+$RDS pg_dump -h <RDS endpoint> -U campus_test_user -Fc -f backup_test.dump campus_test
+$RDS psql -h <RDS endpoint> -U campus_test_user -d campus_test -v ON_ERROR_STOP=1 -f cambio_permisos.sql
 # Production: the same with campus_prod_user and campus_prod, before running "Desplegar a producción"
 ```
 

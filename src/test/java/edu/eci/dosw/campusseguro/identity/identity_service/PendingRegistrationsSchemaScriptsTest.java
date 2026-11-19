@@ -1,6 +1,5 @@
 package edu.eci.dosw.campusseguro.identity.identity_service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -14,14 +13,13 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.PendingRegistr
 import jakarta.persistence.Column;
 
 /**
- * Coherence of the table pending_registrations (RF-MS01-01) between the schema of a new database (001 and 002), the
- * migration of a deployed database (006) and the entity that Hibernate validates when MS01 starts
+ * Coherence of the table pending_registrations (RF-MS01-01) between the schema of a new database (001 and 002) and
+ * the entity that Hibernate validates when MS01 starts
  */
 class PendingRegistrationsSchemaScriptsTest {
 
     private static final String SCRIPT_001 = "database/001_create_schema.sql";
     private static final String SCRIPT_002 = "database/002_index_schema.sql";
-    private static final String SCRIPT_006 = "database/migrations/006_migration_pending_registrations.sql";
     private static final String TABLE_START = "CREATE TABLE pending_registrations (";
 
         /**
@@ -47,16 +45,6 @@ class PendingRegistrationsSchemaScriptsTest {
         int start = sql.indexOf(TABLE_START);
         assertTrue(start >= 0, "pending_registrations is missing in " + script);
         return sql.substring(start, sql.indexOf(");", start) + 2);
-    }
-
-        /**
-     * The migration creates exactly the same table as the schema of a new database
-     *
-     * @throws IOException if a script cannot be read
-     */
-    @Test
-    void migration006_createsTheSameTableAsTheSchema001() throws IOException {
-        assertEquals(table(SCRIPT_001), table(SCRIPT_006));
     }
 
         /**
@@ -86,13 +74,12 @@ class PendingRegistrationsSchemaScriptsTest {
     }
 
         /**
-     * The index of the scheduled deletion exists both on a new database and in the migration
+     * The index of the scheduled deletion exists on a new database
      *
      * @throws IOException if a script cannot be read
      */
     @Test
-    void expirationIndex_existsInTheSchemaAndInTheMigration() throws IOException {
+    void expirationIndex_existsInTheSchema() throws IOException {
         assertTrue(read(SCRIPT_002).contains("idx_pending_registrations_expires ON pending_registrations (expires_at)"));
-        assertTrue(read(SCRIPT_006).contains("idx_pending_registrations_expires ON pending_registrations (expires_at)"));
     }
 }
