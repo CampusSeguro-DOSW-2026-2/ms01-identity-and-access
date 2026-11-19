@@ -62,6 +62,7 @@ class RoleAdminControllerTest {
     private static final String DETAILS_URL = "/api/v1/roles/details";
     private static final String PERMISSIONS_URL = "/api/v1/permissions";
     private static final String ALERT_RECIPIENTS_URL = "/api/v1/roles/alert-recipients";
+    private static final String EVENT_PARTICIPANTS_URL = "/api/v1/roles/event-participants";
     private static final String ADMIN_ID = "a0000000-0000-4000-8000-000000000001";
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
@@ -312,6 +313,60 @@ class RoleAdminControllerTest {
     @Test
     void listAlertRecipientRoles_withoutIdentityHeaders_returns401() throws Exception {
         mockMvc.perform(get(ALERT_RECIPIENTS_URL)).andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(roleAdminService);
+    }
+
+        /**
+     * GET /roles/event-participants: 200 with name and description of each role, without its permissions or the
+     * system flag, and the literal route is not taken by /roles/{rol}
+     *
+     * @throws Exception if the simulated request fails
+     */
+    @Test
+    void listEventParticipantRoles_returns200WithoutPermissions() throws Exception {
+        when(roleAdminService.listEventParticipantRoles(any())).thenReturn(List.of(
+                new AlertRecipientRoleResponse("BRIGADISTA", "Brigadista de emergencias del campus"),
+                new AlertRecipientRoleResponse("ESTUDIANTE", "Estudiante de la comunidad universitaria")));
+
+        mockMvc.perform(get(EVENT_PARTICIPANTS_URL)
+                        .header("X-User-Id", ADMIN_ID)
+                        .header("X-User-Role", "ORGANIZADOR")
+                        .header("X-User-Permission", "ms06:drill:manage"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].rol").value("BRIGADISTA"))
+                .andExpect(jsonPath("$[0].descripcion").value("Brigadista de emergencias del campus"))
+                .andExpect(jsonPath("$[0].permisos").doesNotExist())
+                .andExpect(jsonPath("$[0].es_sistema").doesNotExist());
+
+        verify(roleAdminService, never()).getRole(any(), any());
+    }
+
+        /**
+     * GET /roles/event-participants without the MS06 permissions: 403 PROHIBIDO
+     *
+     * @throws Exception if the simulated request fails
+     */
+    @Test
+    void listEventParticipantRoles_withoutPermission_returns403() throws Exception {
+        when(roleAdminService.listEventParticipantRoles(any())).thenThrow(new ForbiddenOperationException(
+                "No cuenta con los permisos suficientes para realizar esta operaci��n."));
+
+        mockMvc.perform(asAdmin(get(EVENT_PARTICIPANTS_URL)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("PROHIBIDO"))
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+        /**
+     * GET /roles/event-participants without headers: 401
+     *
+     * @throws Exception if the simulated request fails
+     */
+    @Test
+    void listEventParticipantRoles_withoutIdentityHeaders_returns401() throws Exception {
+        mockMvc.perform(get(EVENT_PARTICIPANTS_URL)).andExpect(status().isUnauthorized());
 
         verifyNoInteractions(roleAdminService);
     }

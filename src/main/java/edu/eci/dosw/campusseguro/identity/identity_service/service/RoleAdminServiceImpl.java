@@ -66,6 +66,10 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     static final String ALERT_MANAGE_DRILL = "ms03:alert:manage_drill";
     static final String ALERT_RECEIVE = "ms03:alert:receive";
 
+    /** Permissions of MS06 that create or edit drills and real events (Role-Permission Matrix) */
+    static final String EVENT_DRILL_MANAGE = "ms06:drill:manage";
+    static final String EVENT_REAL_MANAGE = "ms06:real_event:manage";
+
     static final String NAME_EXISTS_MESSAGE = "Ya existe un rol con ese nombre.";
     static final String SYSTEM_RENAME_MESSAGE = "Los roles de sistema no se pueden renombrar.";
     static final String SYSTEM_DELETE_MESSAGE = "Los roles de sistema no se pueden eliminar.";
@@ -173,6 +177,27 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     public List<AlertRecipientRoleResponse> listAlertRecipientRoles(RequesterIdentity requester) {
         // PermissionChecker only takes the permissions of MS01, the ones of MS03 are checked by their code
         if (!requester.hasPermission(ALERT_MANAGE) && !requester.hasPermission(ALERT_MANAGE_DRILL)) {
+            throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
+        }
+        return roleRepository.findWithPermission(ALERT_RECEIVE).stream()
+                .map(role -> new AlertRecipientRoleResponse(role.getName(), role.getDescription()))
+                .toList();
+    }
+
+    /**
+     * Lists the roles that can be invited to an event: the ones that receive alerts, because the participants get the
+     * alerts that MS06 asks MS03 for. Whoever creates or edits events does not have ms01:role:read_all, so it is
+     * authorized with the permissions of MS06 and it does not return the permissions of each role
+     *
+     * @param requester identity of whoever queries
+     * @return name and description of each role, sorted by name; empty if no role receives alerts
+     * @throws ForbiddenOperationException if the requester has neither ms06:drill:manage nor ms06:real_event:manage
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<AlertRecipientRoleResponse> listEventParticipantRoles(RequesterIdentity requester) {
+        // PermissionChecker only takes the permissions of MS01, the ones of MS06 are checked by their code
+        if (!requester.hasPermission(EVENT_DRILL_MANAGE) && !requester.hasPermission(EVENT_REAL_MANAGE)) {
             throw new ForbiddenOperationException(ErrorCode.FORBIDDEN.getMessage());
         }
         return roleRepository.findWithPermission(ALERT_RECEIVE).stream()

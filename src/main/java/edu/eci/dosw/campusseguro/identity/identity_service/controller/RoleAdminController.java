@@ -73,6 +73,22 @@ public class RoleAdminController {
     }
 
         /**
+     * GET /api/v1/roles/event-participants: roles that can be invited to an event, for the participant picker of MS06
+     * (RF-EVE-01), the literal route takes priority over /roles/{rol} and no role can be named like it (the hyphen is
+     * not allowed)
+     *
+     * 200 roles with ms03:alert:receive sorted by name, 401 missing identity, 403 without ms06:drill:manage or
+     * ms06:real_event:manage
+     *
+     * @param requester identity of the requester taken from the headers
+     * @return name and description of each role
+     */
+    @GetMapping("/roles/event-participants")
+    public ResponseEntity<List<AlertRecipientRoleResponse>> listEventParticipantRoles(RequesterIdentity requester) {
+        return ResponseEntity.ok(roleAdminService.listEventParticipantRoles(requester));
+    }
+
+        /**
      * GET /api/v1/roles/{rol}: queries a role (RF-MS01-10)
      *
      * 200 the role, 400 name with an invalid format, 401 missing identity, 403 no permission, 404 non-existent role

@@ -62,6 +62,18 @@ public interface RoleAdminService {
      */
     List<AlertRecipientRoleResponse> listAlertRecipientRoles(RequesterIdentity requester);
 
+    /**
+     * Lists the roles that can be invited to an event (the ones with ms03:alert:receive, because the participants
+     * receive the alerts that MS06 asks MS03 for), for the participant picker of the events of MS06. Whoever creates or
+     * edits events does not have ms01:role:read_all, so it is authorized with the permissions of MS06 and it does not
+     * return the permissions of each role
+     *
+     * @param requester identity of whoever queries
+     * @return name and description of each role, sorted by name; empty if no role receives alerts
+     * @throws ForbiddenOperationException if the requester has neither ms06:drill:manage nor ms06:real_event:manage
+     */
+    List<AlertRecipientRoleResponse> listEventParticipantRoles(RequesterIdentity requester);
+
         /**
      * Creates a role that is not a system role and without a session cut (form F-10), the attempt is audited in MS08
      *
