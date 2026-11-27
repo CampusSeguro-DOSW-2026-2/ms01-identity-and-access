@@ -10,4 +10,16 @@ import java.util.List;
  * @param permissions permission codes from the catalog, sorted and without repeated ones
  */
 public record CreateRoleCommand(String name, String description, List<String> permissions) {
+
+    /**
+     * Keeps an immutable copy of the permissions of the new role
+     *
+     * @param name name of the role
+     * @param description description of the role
+     * @param permissions permission codes of the role
+     * @throws NullPointerException if the list or one of its elements is null
+     */
+    public CreateRoleCommand {
+        permissions = List.copyOf(permissions);
+    }
 }

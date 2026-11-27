@@ -3,8 +3,8 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -89,7 +89,7 @@ class RoleEntityTest {
 
         role.setPermissions(Set.of(read, write));
 
-        assertSame(loaded, role.getPermissions());
+        assertEquals(Set.of(read, write), loaded);
         assertEquals(Set.of(read, write), role.getPermissions());
     }
 
@@ -159,5 +159,16 @@ class RoleEntityTest {
         assertEquals(cut, user.getValidFrom());
         user.setValidFrom(null);
         assertNull(user.getValidFrom());
+    }
+
+    /**
+     * The collection returned by getPermissions is read-only: it only changes through its setter
+     */
+    @Test
+    void getPermissions_isReadOnly() {
+        RoleEntity role = new RoleEntity();
+        role.setPermissions(Set.of(TestEntities.permission("ms01:profile:read")));
+
+        assertThrows(UnsupportedOperationException.class, () -> role.getPermissions().clear());
     }
 }

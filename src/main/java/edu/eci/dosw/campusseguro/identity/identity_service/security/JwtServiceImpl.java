@@ -26,7 +26,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
  * Header: {"alg":"RS256","typ":"JWT","kid":"..."}
  * Payload: iss, aud, sub, email, roles and permissions (sorted alphabetically), iat, exp (= iat + validity), jti
  */
-public class JwtServiceImpl implements JwtService {
+public final class JwtServiceImpl implements JwtService {
 
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
     private static final int MIN_KEY_BITS = 2048;

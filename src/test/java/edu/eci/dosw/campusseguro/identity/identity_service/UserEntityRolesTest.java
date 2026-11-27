@@ -2,7 +2,7 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
@@ -49,7 +49,7 @@ class UserEntityRolesTest {
 
         user.setRoles(Set.of(student, brigadier));
 
-        assertSame(loaded, user.getRoles());
+        assertEquals(Set.of(student, brigadier), loaded);
         assertEquals(Set.of(student, brigadier), user.getRoles());
     }
 
@@ -90,7 +90,7 @@ class UserEntityRolesTest {
 
         user.setRoles(null);
 
-        assertSame(loaded, user.getRoles());
+        assertTrue(loaded.isEmpty());
         assertTrue(user.getRoles().isEmpty());
     }
 
@@ -152,5 +152,16 @@ class UserEntityRolesTest {
     @Test
     void getRoleNames_withoutRoles_isEmpty() {
         assertTrue(new UserEntity().getRoleNames().isEmpty());
+    }
+
+    /**
+     * The collection returned by getRoles is read-only: it only changes through its setter
+     */
+    @Test
+    void getRoles_isReadOnly() {
+        UserEntity user = new UserEntity();
+        user.setRoles(Set.of(student));
+
+        assertThrows(UnsupportedOperationException.class, () -> user.getRoles().add(professor));
     }
 }
