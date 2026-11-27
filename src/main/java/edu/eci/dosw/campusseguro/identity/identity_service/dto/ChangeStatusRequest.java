@@ -15,8 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 /**
- * Cuerpo de PATCH /api/v1/users/status (RF-MS01-07, formulario F-08), cualquier campo fuera del
- * contrato se rechaza (RG-04)
+ * Body of PATCH /api/v1/users/status (RF-MS01-07, form F-08), any field outside the contract is rejected (RG-04)
  */
 public class ChangeStatusRequest extends StrictRequest {
 
@@ -37,19 +36,19 @@ public class ChangeStatusRequest extends StrictRequest {
     @Pattern(regexp = "^(ACTIVO|INACTIVO)$", message = INVALID_STATE_MESSAGE)
     private String estado;
 
-    /**
-     * Devuelve los ids de los usuarios cuyo estado se cambia
+        /**
+     * Returns the ids of the users whose status is changed
      *
-     * @return los ids recibidos como texto, null si no se enviaron
+     * @return the ids received as text, null if they were not sent
      */
     public List<String> getIds() {
         return ids;
     }
 
-    /**
-     * Coloca los ids de los usuarios cuyo estado se cambia, cada uno recortado según RG-01
+        /**
+     * Sets the ids of the users whose status is changed, each one trimmed according to RG-01
      *
-     * @param ids ids de los usuarios como texto
+     * @param ids ids of the users as text
      */
     public void setIds(List<String> ids) {
         if (ids == null) {
@@ -63,29 +62,29 @@ public class ChangeStatusRequest extends StrictRequest {
         this.ids = trimmed;
     }
 
-    /**
-     * Devuelve el nuevo estado solicitado
+        /**
+     * Returns the new requested status
      *
-     * @return el nombre del estado recibido, null si no se envió
+     * @return the name of the status received, null if it was not sent
      */
     public String getEstado() {
         return estado;
     }
 
-    /**
-     * Coloca el nuevo estado solicitado, recortado según RG-01
+        /**
+     * Sets the new requested status, trimmed according to RG-01
      *
-     * @param estado nombre del estado recibido
+     * @param estado name of the status received
      */
     public void setEstado(String estado) {
         this.estado = Texts.trimToNull(estado);
     }
 
-    /**
-     * Convierte los ids recibidos en UUID, sin repetidos y en el orden en que llegaron, solo se debe
-     * llamar después de validar la petición
+        /**
+     * Converts the received ids to UUID, without repeated ones and in the order they arrived, it must be called only
+     * after validating the request
      *
-     * @return conjunto ordenado de identificadores de usuario
+     * @return ordered set of user identifiers
      */
     public Set<UUID> toUserIds() {
         Set<UUID> parsed = new LinkedHashSet<>();
@@ -95,11 +94,10 @@ public class ChangeStatusRequest extends StrictRequest {
         return parsed;
     }
 
-    /**
-     * Convierte el estado recibido en su valor del catálogo, solo se debe llamar después de validar la
-     * petición
+        /**
+     * Converts the received status to its catalog value, it must be called only after validating the request
      *
-     * @return el estado solicitado
+     * @return the requested status
      */
     public UserState toState() {
         return UserState.valueOf(estado);

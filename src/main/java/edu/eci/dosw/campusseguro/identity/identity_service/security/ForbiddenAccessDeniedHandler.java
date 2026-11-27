@@ -10,20 +10,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Responde 403 con el cuerpo de error normalizado (RNF-MS01-04) cuando la capa de seguridad niega el
- * acceso a un solicitante autenticado
+ * Answers 403 with the normalized error body (RNF-MS01-04) when the security layer denies access to an authenticated
+ * requester
  */
 public class ForbiddenAccessDeniedHandler implements AccessDeniedHandler {
 
     public static final String MESSAGE = ErrorCode.FORBIDDEN.getMessage();
 
-    /**
-     * Escribe la respuesta 403 con codigo PROHIBIDO y el correlation id de la peticion
+        /**
+     * Writes the 403 response with code PROHIBIDO and the correlation id of the request
      *
-     * @param request peticion rechazada
-     * @param response respuesta donde se escribe el error
-     * @param accessDeniedException motivo de seguridad del rechazo
-     * @throws IOException si falla la escritura de la respuesta
+     * @param request rejected request
+     * @param response response where the error is written
+     * @param accessDeniedException security reason for the rejection
+     * @throws IOException if writing the response fails
      */
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,

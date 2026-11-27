@@ -1,15 +1,15 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
 /**
- * El solicitante no puede realizar la operacion: no tiene el permiso necesario o intenta cambiar su
- * propia cuenta
+ * The requester cannot perform the operation: it does not have the necessary permission or it tries to change its own
+ * account
  */
 public class ForbiddenOperationException extends RuntimeException {
 
-    /**
-     * Crea la excepcion con el motivo por el que se prohibe la operacion
+        /**
+     * Creates the exception with the reason why the operation is forbidden
      *
-     * @param message motivo por el que se prohibe la operacion
+     * @param message reason why the operation is forbidden
      */
     public ForbiddenOperationException(String message) {
         super(message);

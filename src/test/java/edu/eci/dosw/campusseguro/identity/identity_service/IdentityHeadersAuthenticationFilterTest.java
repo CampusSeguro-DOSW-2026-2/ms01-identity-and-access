@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,15 +19,14 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeadersAuthenticationFilter;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import jakarta.servlet.FilterChain;
 
 /**
- * RN-MS01-23 y estandares de integracion 2.3: la identidad llega solo por las cabeceras X-User-Id y
- * X-User-Role, si faltan o no son validas la peticion queda sin autenticar
+ * RN-MS01-23 and integration standards 2.3: the identity arrives only through the headers X-User-Id, X-User-Role and
+ * X-User-Permission, if they are missing or not valid the request is left unauthenticated
  */
 class IdentityHeadersAuthenticationFilterTest {
 
@@ -39,8 +37,8 @@ class IdentityHeadersAuthenticationFilterTest {
     private MockHttpServletResponse response;
     private AtomicBoolean chainCalled;
 
-    /**
-     * Prepara el filtro, una peticion y una cadena que registra si fue invocada
+        /**
+     * Prepares the filter, a request and a chain that records whether it was invoked
      */
     @BeforeEach
     void setUp() {
@@ -51,33 +49,34 @@ class IdentityHeadersAuthenticationFilterTest {
         chainCalled = new AtomicBoolean(false);
     }
 
-    /**
-     * Limpia el contexto de seguridad para no afectar a otros tests
+        /**
+     * Clears the security context so as not to affect other tests
      */
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
     }
 
-    /**
-     * Ejecuta el filtro con una cadena que solo registra que fue invocada
+        /**
+     * Runs the filter with a chain that only records that it was invoked
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     private void runFilter() throws Exception {
         FilterChain chain = (req, res) -> chainCalled.set(true);
         filter.doFilter(request, response, chain);
     }
 
-    /**
-     * Con cabeceras validas la peticion queda autenticada con la identidad como principal
+        /**
+     * With valid headers the request is authenticated with the identity as principal
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_validHeaders_authenticatesWithTheIdentity() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE,BRIGADISTA");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:profile:read,ms05:panel:read_own");
 
         runFilter();
 
@@ -85,19 +84,22 @@ class IdentityHeadersAuthenticationFilterTest {
         assertTrue(authentication.isAuthenticated());
         RequesterIdentity identity = assertInstanceOf(RequesterIdentity.class, authentication.getPrincipal());
         assertEquals(UUID.fromString(USER_ID), identity.userId());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE, UserRole.BRIGADISTA), identity.roles());
+        assertEquals(Set.of("ESTUDIANTE", "BRIGADISTA"), identity.roles());
+        assertEquals(Set.of("ms01:profile:read", "ms05:panel:read_own"), identity.permissions());
         assertTrue(chainCalled.get());
     }
 
-    /**
-     * Las autoridades son los codigos de los permisos que la matriz concede a sus roles
+        /**
+     * The authorities are the codes of X-User-Permission, regardless of the name of the roles
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
-    void doFilter_validHeaders_grantsThePermissionsOfTheRoles() throws Exception {
+    void doFilter_validHeaders_grantsTheReceivedPermissions() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER,
+                String.join(",", TestIdentities.permissionsOf("ADMIN")));
 
         runFilter();
 
@@ -110,10 +112,10 @@ class IdentityHeadersAuthenticationFilterTest {
         assertFalse(authorities.contains("ms03:alert:manage"));
     }
 
-    /**
-     * Sin cabeceras no se autentica, se guarda el motivo y la cadena continua
+        /**
+     * Without headers it is not authenticated, the reason is stored and the chain continues
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_missingHeaders_leavesTheRequestUnauthenticated() throws Exception {
@@ -125,15 +127,34 @@ class IdentityHeadersAuthenticationFilterTest {
         assertTrue(chainCalled.get());
     }
 
-    /**
-     * Un X-User-Id que no es un UUID no autentica
+        /**
+     * Without X-User-Permission it is not authenticated even if the other two headers are present
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
+     */
+    @Test
+    void doFilter_missingPermissionHeader_leavesTheRequestUnauthenticated() throws Exception {
+        request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
+        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+
+        runFilter();
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(IdentityHeaderParser.MISSING_MESSAGE,
+                request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
+        assertTrue(chainCalled.get());
+    }
+
+        /**
+     * An X-User-Id that is not a UUID does not authenticate
+     *
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_invalidUserId_leavesTheRequestUnauthenticated() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, "USR-1034");
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:user:roles");
 
         runFilter();
 
@@ -142,15 +163,16 @@ class IdentityHeadersAuthenticationFilterTest {
                 request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 
-    /**
-     * Un rol fuera del catalogo no autentica
+        /**
+     * A role name with an invalid format does not authenticate
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
-    void doFilter_unknownRole_leavesTheRequestUnauthenticated() throws Exception {
+    void doFilter_invalidRoleFormat_leavesTheRequestUnauthenticated() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
-        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "SUPERUSUARIO");
+        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "SUPER-USUARIO");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:user:roles");
 
         runFilter();
 
@@ -159,18 +181,37 @@ class IdentityHeadersAuthenticationFilterTest {
                 request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 
-    /**
-     * Un rol en minusculas no autentica, los identificadores de rol son estrictos en mayusculas
+        /**
+     * A lowercase role does not authenticate, the stored role names are uppercase
      *
-     * @throws Exception si falla el filtro
+     * @throws Exception if the filter fails
      */
     @Test
     void doFilter_lowercaseRole_leavesTheRequestUnauthenticated() throws Exception {
         request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
         request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "admin");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:user:roles");
 
         runFilter();
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+        /**
+     * A permission code with an invalid format does not authenticate
+     *
+     * @throws Exception if the filter fails
+     */
+    @Test
+    void doFilter_invalidPermissionFormat_leavesTheRequestUnauthenticated() throws Exception {
+        request.addHeader(IdentityHeaderParser.USER_ID_HEADER, USER_ID);
+        request.addHeader(IdentityHeaderParser.USER_ROLE_HEADER, "ADMIN");
+        request.addHeader(IdentityHeaderParser.USER_PERMISSION_HEADER, "MS01:USER:ROLES");
+
+        runFilter();
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(IdentityHeaderParser.INVALID_PERMISSION_MESSAGE,
+                request.getAttribute(IdentityHeadersAuthenticationFilter.ERROR_ATTRIBUTE));
     }
 }

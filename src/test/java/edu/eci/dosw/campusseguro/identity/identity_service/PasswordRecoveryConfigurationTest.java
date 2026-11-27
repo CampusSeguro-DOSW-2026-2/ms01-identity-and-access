@@ -17,15 +17,15 @@ import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.core.io.ClassPathResource;
 
 /**
- * Configuración de la recuperación de contraseña (RF-MS01-08, RNF-MS01-06): los secretos del correo salen del
- * entorno, los valores por defecto sirven para desarrollo local y el script de la tabla existe
+ * Configuration of the password recovery (RF-MS01-08, RNF-MS01-06): the mail secrets come from the environment, the
+ * default values are for local development and the table script exists
  */
 class PasswordRecoveryConfigurationTest {
 
     private static Properties properties;
 
-    /**
-     * Carga el application.yaml que usa el servicio
+        /**
+     * Loads the application.yaml used by the service
      */
     @BeforeAll
     static void load() {
@@ -35,9 +35,9 @@ class PasswordRecoveryConfigurationTest {
         assertNotNull(properties);
     }
 
-    /**
-     * La vigencia, los intentos y la espera se pueden sobrescribir con variables de entorno y por defecto son
-     * 15 minutos, 5 intentos y 60 segundos
+        /**
+     * The validity, the attempts and the wait can be overridden with environment variables and by default are 15
+     * minutes, 5 attempts and 60 seconds
      */
     @Test
     void recovery_policy_defaultsAreOverridableWithEnvironmentVariables() {
@@ -47,32 +47,46 @@ class PasswordRecoveryConfigurationTest {
                 properties.getProperty("recovery.resend-cooldown-seconds"));
     }
 
-    /**
-     * El servidor de correo y sus credenciales salen de variables de entorno y nunca están escritos en el
-     * archivo, la contraseña no tiene valor por defecto
+        /**
+     * The email goes out through Gmail with the account of the project: server, port, user and sender have those
+     * default values and can be overridden with environment variables; the application password only arrives through
+     * the environment and has no default value
      */
     @Test
-    void mail_serverAndCredentials_comeFromEnvironmentVariables() {
-        assertEquals("${MAIL_HOST:localhost}", properties.getProperty("spring.mail.host"));
-        assertEquals("${MAIL_PORT:1025}", properties.getProperty("spring.mail.port"));
-        assertEquals("${MAIL_USERNAME:}", properties.getProperty("spring.mail.username"));
+    void mail_serverAndCredentials_defaultToGmailAndComeFromEnvironmentVariables() {
+        assertEquals("${MAIL_HOST:smtp.gmail.com}", properties.getProperty("spring.mail.host"));
+        assertEquals("${MAIL_PORT:587}", properties.getProperty("spring.mail.port"));
+        assertEquals("${MAIL_USERNAME:proyectometx@gmail.com}", properties.getProperty("spring.mail.username"));
         assertEquals("${MAIL_PASSWORD:}", properties.getProperty("spring.mail.password"));
-        assertEquals("${MAIL_FROM:no-reply@campusseguro.local}", properties.getProperty("recovery.mail-from"));
+        assertEquals("${MAIL_FROM:CampusSeguro <proyectometx@gmail.com>}",
+                properties.getProperty("recovery.mail-from"));
     }
 
-    /**
-     * La autenticación y el cifrado SMTP se activan con variables de entorno y están apagados por defecto, que
-     * es lo que necesita el servidor de correo de desarrollo
+        /**
+     * Gmail requires authentication and STARTTLS: they are active by default, the encryption is mandatory (it is not
+     * sent in clear text if the server does not offer it) and both can be turned off through the environment for a test
+     * server such as Mailpit
      */
     @Test
-    void mail_authenticationAndStartTls_areOffByDefaultAndConfigurable() {
-        assertEquals("${MAIL_SMTP_AUTH:false}", properties.getProperty("spring.mail.properties.mail.smtp.auth"));
-        assertEquals("${MAIL_SMTP_STARTTLS:false}",
+    void mail_authenticationAndStartTls_areOnByDefaultAndConfigurable() {
+        assertEquals("${MAIL_SMTP_AUTH:true}", properties.getProperty("spring.mail.properties.mail.smtp.auth"));
+        assertEquals("${MAIL_SMTP_STARTTLS:true}",
                 properties.getProperty("spring.mail.properties.mail.smtp.starttls.enable"));
+        assertEquals("${MAIL_SMTP_STARTTLS:true}",
+                properties.getProperty("spring.mail.properties.mail.smtp.starttls.required"));
     }
 
-    /**
-     * El servidor de correo tiene tiempos máximos para que un servidor caído no deje hilos bloqueados
+        /**
+     * The health of MS01 does not depend on the external mail server: if Gmail does not respond only the password
+     * recovery is affected
+     */
+    @Test
+    void mail_healthIndicator_isOffByDefault() {
+        assertEquals("${MANAGEMENT_HEALTH_MAIL_ENABLED:false}", properties.getProperty("management.health.mail.enabled"));
+    }
+
+        /**
+     * The mail server has maximum times so that a down server does not leave blocked threads
      */
     @Test
     void mail_smtpTimeouts_areBounded() {
@@ -82,40 +96,40 @@ class PasswordRecoveryConfigurationTest {
     }
 
     /**
-     * El script de la tabla de códigos sigue el modelo de datos: columnas, clave foránea, índice y comprobación
+     * The creation script and the index script define the recovery codes table of the data model: columns, foreign
+     * key, check and index
      *
-     * @throws IOException si no se puede leer el script
+     * @throws IOException if a script cannot be read
      */
     @Test
-    void databaseScript_createsTheRecoveryCodesTableOfTheDataModel() throws IOException {
-        String script = Files.readString(Path.of("database", "003_codigos_recuperacion.sql"),
-                StandardCharsets.UTF_8);
+    void databaseScripts_createTheRecoveryCodesTableOfTheDataModel() throws IOException {
+        String schema = Files.readString(Path.of("database", "001_create_schema.sql"), StandardCharsets.UTF_8);
+        String indexes = Files.readString(Path.of("database", "002_index_schema.sql"), StandardCharsets.UTF_8);
 
-        assertTrue(script.contains("codigos_recuperacion"));
-        assertTrue(script.contains("usuario_id UUID NOT NULL"));
-        assertTrue(script.contains("codigo_hash VARCHAR(100) NOT NULL"));
-        assertTrue(script.contains("expira_en TIMESTAMPTZ NOT NULL"));
-        assertTrue(script.contains("usado_en TIMESTAMPTZ DEFAULT NULL"));
-        assertTrue(script.contains("creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"));
-        assertTrue(script.contains("REFERENCES usuarios(id)"));
-        assertTrue(script.contains("idx_codigos_usuario ON codigos_recuperacion (usuario_id, expira_en)"));
-        assertFalse(script.toLowerCase().contains("codigo VARCHAR"));
+        assertTrue(schema.contains("CREATE TABLE password_reset_codes"));
+        assertTrue(schema.contains("user_id UUID NOT NULL"));
+        assertTrue(schema.contains("code_hash VARCHAR(100) NOT NULL"));
+        assertTrue(schema.contains("expires_at TIMESTAMPTZ NOT NULL"));
+        assertTrue(schema.contains("used_at TIMESTAMPTZ DEFAULT NULL"));
+        assertTrue(schema.contains("created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"));
+        assertTrue(schema.contains("REFERENCES users(id)"));
+        assertTrue(schema.indexOf("CREATE TABLE password_reset_codes") > schema.indexOf("CREATE TABLE users"));
+        assertTrue(indexes.contains("idx_password_reset_codes_user ON password_reset_codes (user_id, expires_at)"));
     }
 
     /**
-     * Los scripts de la base de datos se ejecutan en orden numérico y el de los códigos va después del esquema
-     * de usuarios y de sus índices
+     * There is no separate script for the recovery codes table: it is part of the creation script
      *
-     * @throws IOException si no se puede leer la carpeta de scripts
+     * @throws IOException if the folder cannot be read
      */
     @Test
-    void databaseScripts_areNumberedSoTheRecoveryTableIsCreatedAfterTheUsers() throws IOException {
+    void databaseFolder_hasNoSeparateScriptForTheRecoveryCodesTable() throws IOException {
         try (var scripts = Files.list(Path.of("database"))) {
             var names = scripts.map(path -> path.getFileName().toString()).sorted().toList();
 
             assertEquals("001_create_schema.sql", names.get(0));
             assertEquals("002_index_schema.sql", names.get(1));
-            assertEquals("003_codigos_recuperacion.sql", names.get(2));
+            assertFalse(names.stream().anyMatch(name -> name.startsWith("003")));
         }
     }
 }

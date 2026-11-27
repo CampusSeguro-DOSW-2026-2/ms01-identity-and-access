@@ -12,59 +12,58 @@ import org.springframework.context.annotation.Configuration;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtService;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.JwtServiceImpl;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RsaKeyUtils;
+import edu.eci.dosw.campusseguro.identity.identity_service.service.DatabaseTimeService;
 
 /**
- * Configuracion del emisor de JWT (RF-MS01-03, 3_jwt-spec.md). Los secretos llegan por variables de
- * entorno y nunca se guardan en el repositorio (RNF-MS01-06). No requiere cambios en application.yaml:
- * Spring resuelve jwt.private-key desde JWT_PRIVATE_KEY y jwt.key-id desde JWT_KEY_ID
+ * Configuration of the JWT issuer (RF-MS01-03, 3_jwt-spec.md). The secrets arrive through environment variables and are
+ * never stored in the repository (RNF-MS01-06). It requires no changes in application.yaml: Spring resolves
+ * jwt.private-key from JWT_PRIVATE_KEY and jwt.key-id from JWT_KEY_ID
  *
- * JWT_PRIVATE_KEY llave privada RSA en PEM PKCS#8
- * JWT_KEY_ID identificador de la llave
+ * JWT_PRIVATE_KEY RSA private key in PEM PKCS#8 JWT_KEY_ID identifier of the key
  *
- * El emisor, la audiencia y la vigencia del token son valores globales de los Estándares de Integración
- * (sección 1) y se definen en el código, no se configuran
+ * The issuer, the audience and the validity of the token are global values of the Integration Standards (section 1) and
+ * they are defined in the code, they are not configured
  */
 @Configuration
 public class JwtConfig {
 
     private static final Logger log = LoggerFactory.getLogger(JwtConfig.class);
 
-    /**
-     * Provee un bean de tipo Clock configurado en tiempo universal coordinado (UTC)
-     * para el manejo estandarizado de fechas y horas en la emisión y validación de tokens
+        /**
+     * Provides a Clock bean configured in coordinated universal time (UTC)
+     * for the standardized handling of dates and times in the issuance and validation of tokens
      *
-     * @return una instancia de Clock que usa el formato UTC
+     * @return a Clock instance that uses UTC
      */
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }
 
-    /**
-     * Crea y registra un bean de tipo JwtService encargado de la generación y firma digital de los JWT,
-     * configurando la llave privada o generando un par RSA para desarrollo y los metadatos de emisión
-     * correspondientes
+        /**
+     * Creates and registers a JwtService bean in charge of generating and digitally signing the JWTs, configuring the
+     * private key or generating an RSA pair for development and the corresponding issuance metadata
      *
-     * @param privateKeyPem la cadena de texto con la llave privada en formato PEM PKCS#8
-     * @param keyId el identificador único de la llave criptográfica (Key ID)
-     * @param clock el reloj UTC inyectado para el control temporal de expiración
-     * @return una instancia configurada de JwtServiceImpl como un bean gestionado por Spring
+     * @param privateKeyPem the text string with the private key in PEM PKCS#8 format
+     * @param keyId the unique identifier of the cryptographic key (Key ID)
+     * @param timeService the single database clock with which the iat and the expiration are calculated
+     * @return a configured instance of JwtServiceImpl as a bean managed by Spring
      */
     @Bean
     public JwtService jwtService(
             @Value("${jwt.private-key:}") String privateKeyPem,
             @Value("${jwt.key-id:ms01-2026-01}") String keyId,
-            Clock clock) {
+            DatabaseTimeService timeService) {
 
         PrivateKey privateKey;
         if (privateKeyPem == null || privateKeyPem.isBlank()) {
-            log.warn("JWT_PRIVATE_KEY no está configurada: se usa un par de llaves RSA efímero generado al arrancar. "
-                    + "Los tokens dejarán de ser válidos al reiniciar y el API Gateway no podrá verificarlos. "
-                    + "Úselo solo en desarrollo.");
+            log.warn("JWT_PRIVATE_KEY is not configured: an ephemeral RSA key pair generated at startup is used. "
+                    + "The tokens will stop being valid on restart and the API Gateway will not be able to "
+                    + "verify them. Use it only in development.");
             privateKey = RsaKeyUtils.generateKeyPair().getPrivate();
         } else {
             privateKey = RsaKeyUtils.parsePrivateKey(privateKeyPem);
         }
-        return new JwtServiceImpl(privateKey, keyId, clock);
+        return new JwtServiceImpl(privateKey, keyId, timeService);
     }
 }

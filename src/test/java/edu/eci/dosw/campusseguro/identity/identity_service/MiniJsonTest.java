@@ -10,16 +10,15 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.MiniJson;
 
 /**
- * Serializador usado para el JWT y para los eventos de auditoria
+ * Serializer used for the JWT and for the audit events
  */
 class MiniJsonTest {
 
-    /**
-     * Un objeto conserva el orden de inserción de sus claves
+        /**
+     * An object keeps the insertion order of its keys
      */
     @Test
     void write_objectKeepsInsertionOrder() {
@@ -30,8 +29,8 @@ class MiniJsonTest {
         assertEquals("{\"z\":\"1\",\"a\":\"2\"}", MiniJson.write(map));
     }
 
-    /**
-     * Se soportan valores anidados
+        /**
+     * Nested values are supported
      */
     @Test
     void write_supportsNestedValues() {
@@ -47,8 +46,8 @@ class MiniJsonTest {
                 MiniJson.write(map));
     }
 
-    /**
-     * Los contenedores vacíos se serializan como objeto o arreglo vacío
+        /**
+     * Empty containers are serialized as an empty object or array
      */
     @Test
     void write_emptyContainers() {
@@ -56,24 +55,24 @@ class MiniJsonTest {
         assertEquals("[]", MiniJson.write(List.of()));
     }
 
-    /**
-     * Los enumerados se serializan con su nombre
+        /**
+     * Enumerations are serialized with their name
      */
     @Test
     void write_enumsUseTheirName() {
-        assertEquals("[\"ADMIN\",\"AUDITOR\"]", MiniJson.write(List.of(UserRole.ADMIN, UserRole.AUDITOR)));
+        assertEquals("[\"ADMIN\",\"AUDITOR\"]", MiniJson.write(List.of("ADMIN", "AUDITOR")));
     }
 
-    /**
-     * Los números se serializan sin comillas
+        /**
+     * Numbers are serialized without quotes
      */
     @Test
     void write_numbers() {
         assertEquals("[1,2,3,1.5,10]", MiniJson.write(List.of((byte) 1, (short) 2, 3L, 1.5d, new BigDecimal("10"))));
     }
 
-    /**
-     * Se escapan las comillas, las barras invertidas y los caracteres de control
+        /**
+     * Quotes, backslashes and control characters are escaped
      */
     @Test
     void write_escapesQuotesBackslashesAndControlCharacters() {
@@ -81,32 +80,32 @@ class MiniJsonTest {
         assertEquals("\"\\u0001\\u001f\"", MiniJson.write("\u0001\u001f"));
     }
 
-    /**
-     * Se escapan los separadores de línea Unicode
+        /**
+     * The Unicode line separators are escaped
      */
     @Test
     void write_escapesUnicodeLineSeparators() {
         assertEquals("\"\\u2028\\u2029\"", MiniJson.write("  "));
     }
 
-    /**
-     * El texto que no es ASCII se conserva tal cual
+        /**
+     * Non-ASCII text is kept as it is
      */
     @Test
     void write_keepsNonAsciiTextAsIs() {
         assertEquals("\"María Pérez ñ\"", MiniJson.write("María Pérez ñ"));
     }
 
-    /**
-     * El valor nulo se serializa como null
+        /**
+     * The null value is serialized as null
      */
     @Test
     void write_nullIsJsonNull() {
         assertEquals("null", MiniJson.write(null));
     }
 
-    /**
-     * Se rechazan los tipos no soportados y los números no finitos
+        /**
+     * Unsupported types and non-finite numbers are rejected
      */
     @Test
     void write_rejectsUnsupportedTypesAndNonFiniteNumbers() {

@@ -3,289 +3,393 @@ package edu.eci.dosw.campusseguro.identity.identity_service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.Permission;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 
 /**
- * RF-MS01-05 / RN-MS01-14: la matriz Rol-Permiso definida en el codigo (enums UserRole y Permission)
- * coincide fila por fila con 3_matriz-roles-permisos.md, y los permisos de un usuario con varios roles
- * son la union de los de cada rol, sin herencia (MR-01)
+ * RF-MS01-05 / RN-MS01-14: the database scripts seed the catalog of 58 permissions and the initial assignment of
+ * permissions to the eight roles as defined by the Role-Permission Matrix, without inheritance between roles (MR-01),
+ * and the MS01 code only declares permissions that exist in that seeding
  */
 class PermissionMatrixTest {
 
-    private static final String EVERY_ROLE =
-            "ESTUDIANTE,PROFESOR,ADMINISTRATIVO,BRIGADISTA,COORDINADOR,ORGANIZADOR,ADMIN,AUDITOR";
-
-    private static final String COMMUNITY =
-            "ESTUDIANTE,PROFESOR,ADMINISTRATIVO,BRIGADISTA,COORDINADOR,ORGANIZADOR";
-
     private static final Pattern CODE_FORMAT = Pattern.compile("^ms0[1-8]:[a-z_]+:[a-z_]+$");
 
-    /**
-     * Matriz esperada, transcrita de 3_matriz-roles-permisos.md: codigo del permiso y roles que lo tienen
-     */
-    private static final String[][] EXPECTED_MATRIX = {
-            {"ms01:profile:read", EVERY_ROLE},
-            {"ms01:profile:write", EVERY_ROLE},
-            {"ms01:password:change", EVERY_ROLE},
-            {"ms01:session:logout", EVERY_ROLE},
-            {"ms01:role:read_own", EVERY_ROLE},
-            {"ms01:role:read_all", "ADMIN"},
-            {"ms01:user:read", "ADMIN,AUDITOR"},
-            {"ms01:user:status", "ADMIN"},
-            {"ms01:user:roles", "ADMIN"},
-            {"ms02:campus:read", EVERY_ROLE},
-            {"ms02:route:read", EVERY_ROLE},
-            {"ms02:preventive_info:read", EVERY_ROLE},
-            {"ms02:building:write", "ADMIN"},
-            {"ms02:space:write", "ADMIN"},
-            {"ms02:safe_zone:write", "ADMIN"},
-            {"ms02:route:write", "ADMIN"},
-            {"ms02:route_status:write", "COORDINADOR,ADMIN"},
-            {"ms02:qr:manage", "ADMIN"},
-            {"ms03:alert:receive", COMMUNITY},
-            {"ms03:alert:manage", "COORDINADOR"},
-            {"ms03:alert:manage_drill", "ORGANIZADOR"},
-            {"ms03:alert:read_history", "COORDINADOR,ORGANIZADOR,AUDITOR"},
-            {"ms04:checkin:write", COMMUNITY},
-            {"ms04:checkin:read_own", COMMUNITY},
-            {"ms04:assistance:request", COMMUNITY},
-            {"ms04:dashboard:read", "BRIGADISTA,COORDINADOR,ORGANIZADOR,AUDITOR"},
-            {"ms04:history:read", "COORDINADOR,ORGANIZADOR,AUDITOR"},
-            {"ms05:brigadier:assign", "COORDINADOR"},
-            {"ms05:panel:read_own", "BRIGADISTA"},
-            {"ms05:assistance:read", "BRIGADISTA,COORDINADOR"},
-            {"ms05:assistance:register", "BRIGADISTA,COORDINADOR"},
-            {"ms05:assistance:assign", "COORDINADOR"},
-            {"ms05:assistance:update_status", "BRIGADISTA,COORDINADOR"},
-            {"ms05:incident:report", "PROFESOR,BRIGADISTA,COORDINADOR"},
-            {"ms05:incident:read", "BRIGADISTA,COORDINADOR,AUDITOR"},
-            {"ms05:incident:update", "BRIGADISTA,COORDINADOR"},
-            {"ms06:drill:manage", "ORGANIZADOR"},
-            {"ms06:drill:execute", "ORGANIZADOR"},
-            {"ms06:drill:evaluate", "ORGANIZADOR"},
-            {"ms06:drill:read", "COORDINADOR,ORGANIZADOR,AUDITOR"},
-            {"ms06:drill:compare_report", "COORDINADOR,ORGANIZADOR,AUDITOR"},
-            {"ms07:content:read", COMMUNITY},
-            {"ms07:quiz:take", COMMUNITY},
-            {"ms07:tutor:use", COMMUNITY},
-            {"ms07:content:manage", "ADMIN"},
-            {"ms08:indicators:read", "COORDINADOR,ORGANIZADOR,AUDITOR"},
-            {"ms08:audit:read", "ADMIN,AUDITOR"},
-    };
+    private static final Pattern PERMISSIONS_BLOCK = Pattern.compile(
+            "INSERT INTO permissions \\(name, description\\) VALUES(.*?);", Pattern.DOTALL);
 
-    /**
-     * Convierte una lista de nombres de rol separados por coma en un conjunto de roles
-     *
-     * @param names nombres de rol separados por coma
-     * @return conjunto de roles con esos nombres
-     */
-    private static Set<UserRole> rolesOf(String names) {
-        Set<UserRole> roles = EnumSet.noneOf(UserRole.class);
-        for (String name : names.split(",")) {
-            roles.add(UserRole.valueOf(name));
-        }
-        return roles;
-    }
+    private static final Pattern PERMISSION_ROW = Pattern.compile("\\('([^']+)',\\s*'((?:[^']|'')*)'\\)");
 
-    /**
-     * Calcula los roles que tienen un permiso segun el codigo
+    private static final Pattern ROLES_BLOCK = Pattern.compile(
+            "INSERT INTO roles \\(name, description, is_system\\) VALUES(.*?);", Pattern.DOTALL);
+
+    private static final Pattern ROLE_ROW = Pattern.compile(
+            "\\('([A-Z_]+)',\\s*'(?:[^']|'')*',\\s*(TRUE|FALSE)\\)");
+
+    private static final Pattern ASSIGNMENT_ROW = Pattern.compile("\\('([A-Z_]+)',\\s*ARRAY\\[(.*?)\\]\\)",
+            Pattern.DOTALL);
+
+    private static final Pattern QUOTED = Pattern.compile("'([^']+)'");
+
+    private static final Set<String> SEEDED_ROLES = Set.of("ESTUDIANTE", "PROFESOR", "ADMINISTRATIVO",
+            "BRIGADISTA", "COORDINADOR", "ORGANIZADOR", "ADMIN", "AUDITOR");
+
+    private static final String SCRIPT_001 = "database/001_create_schema.sql";
+    private static final String CHANGE_SCRIPT = "database/maintenance/cambio_permisos.sql";
+
+    private static final Pattern DELETED_PERMISSIONS = Pattern.compile(
+            "DELETE FROM permissions WHERE name IN \\((.*?)\\);", Pattern.DOTALL);
+
+    private static final Pattern GIVEN_ASSIGNMENTS = Pattern.compile(
+            "INSERT INTO role_permissions.*?FROM \\(VALUES(.*?)\\) AS cambio", Pattern.DOTALL);
+
+    private static final Pattern TAKEN_ASSIGNMENTS = Pattern.compile(
+            "DELETE FROM role_permissions.*?\\(VALUES(.*?)\\) AS cambio", Pattern.DOTALL);
+
+    private static final Pattern PAIR = Pattern.compile("\\('([A-Z_]+)',\\s*'([^']+)'\\)");
+
+        /**
+     * Computes the seeded roles that have a permission
      *
-     * @param permission permiso consultado
-     * @return conjunto de roles cuyo conjunto de permisos incluye el permiso
+     * @param code code of the queried permission
+     * @return names of the seeded roles whose set includes the permission
      */
-    private static Set<UserRole> holdersOf(Permission permission) {
-        Set<UserRole> holders = EnumSet.noneOf(UserRole.class);
-        for (UserRole role : UserRole.values()) {
-            if (role.hasPermission(permission)) {
-                holders.add(role);
+    private static Set<String> holdersOf(String code) {
+        Set<String> holders = new TreeSet<>();
+        for (Map.Entry<String, List<String>> role : SeedRoles.PERMISSIONS.entrySet()) {
+            if (role.getValue().contains(code)) {
+                holders.add(role.getKey());
             }
         }
         return holders;
     }
 
-    /**
-     * Busca el permiso del enum que tiene un codigo
+        /**
+     * Reads from an SQL script the block that seeds the permissions table
      *
-     * @param code codigo con el formato ms:recurso:accion
-     * @return el permiso, o null si ninguno tiene ese codigo
+     * @param script path of the script, relative to the project root
+     * @return code of each permission and its description, sorted by code
+     * @throws IOException if the script cannot be read
      */
-    private static Permission permissionWithCode(String code) {
-        for (Permission permission : Permission.values()) {
-            if (permission.getCode().equals(code)) {
-                return permission;
+    private static Map<String, String> permissionsOf(String script) throws IOException {
+        String sql = Files.readString(Path.of(script), StandardCharsets.UTF_8);
+        Matcher block = PERMISSIONS_BLOCK.matcher(sql);
+        assertTrue(block.find(), "Falta la siembra de permisos en " + script);
+        Map<String, String> seed = new TreeMap<>();
+        Matcher row = PERMISSION_ROW.matcher(block.group(1));
+        while (row.find()) {
+            seed.put(row.group(1), row.group(2).replace("''", "'"));
+        }
+        return seed;
+    }
+
+        /**
+     * Reads from an SQL script the system flag of each seeded role
+     *
+     * @param script path of the script, relative to the project root
+     * @return name of the role and its is_system flag (TRUE or FALSE)
+     * @throws IOException if the script cannot be read
+     */
+    private static Map<String, String> rolesOf(String script) throws IOException {
+        String sql = Files.readString(Path.of(script), StandardCharsets.UTF_8);
+        Matcher block = ROLES_BLOCK.matcher(sql);
+        assertTrue(block.find(), "Falta la siembra de roles en " + script);
+        Map<String, String> seed = new TreeMap<>();
+        Matcher row = ROLE_ROW.matcher(block.group(1));
+        while (row.find()) {
+            seed.put(row.group(1), row.group(2));
+        }
+        return seed;
+    }
+
+        /**
+     * Reads from an SQL script the initial assignment of permissions to each role
+     *
+     * @param script path of the script, relative to the project root
+     * @return name of the role and the codes of its permissions in the order of the script
+     * @throws IOException if the script cannot be read
+     */
+    private static Map<String, List<String>> assignmentsOf(String script) throws IOException {
+        String sql = Files.readString(Path.of(script), StandardCharsets.UTF_8);
+        int start = sql.indexOf("INSERT INTO matrix_assignments");
+        if (start < 0) {
+            start = sql.indexOf("INSERT INTO role_permissions");
+        }
+        assertTrue(start >= 0, "Falta la asignación de permisos en " + script);
+        Map<String, List<String>> seed = new TreeMap<>();
+        Matcher row = ASSIGNMENT_ROW.matcher(sql.substring(start));
+        while (row.find()) {
+            List<String> codes = new ArrayList<>();
+            Matcher code = QUOTED.matcher(row.group(2));
+            while (code.find()) {
+                codes.add(code.group(1));
+            }
+            seed.put(row.group(1), codes);
+        }
+        return seed;
+    }
+
+        /**
+     * The permission seeding of the creation script has 58 codes with the format module:resource:action, without repeating,
+     * with a description of up to 200 characters, and is exactly the union of the permissions of the matrix
+     *
+     * @throws IOException if the script cannot be read
+     */
+    @Test
+    void seedPermissions_areWellFormedAndEqualToTheMatrixUnion() throws IOException {
+        Map<String, String> seeded = permissionsOf(SCRIPT_001);
+
+        assertEquals(58, seeded.size());
+        for (Map.Entry<String, String> permission : seeded.entrySet()) {
+            assertTrue(CODE_FORMAT.matcher(permission.getKey()).matches(),
+                    "Código con formato inválido: " + permission.getKey());
+            assertFalse(permission.getValue().isBlank(), permission.getKey());
+            assertTrue(permission.getValue().length() <= 200, permission.getKey());
+        }
+        Set<String> union = new TreeSet<>();
+        for (List<String> codes : SeedRoles.PERMISSIONS.values()) {
+            union.addAll(codes);
+        }
+        assertEquals(union, seeded.keySet());
+    }
+
+        /**
+     * The permissions declared by the MS01 enum exist in the seeding with the same description, and the enum does not
+     * declare permissions of other modules
+     *
+     * @throws IOException if the script cannot be read
+     */
+    @Test
+    void enum_declaresOnlyMs01PermissionsPresentInTheSeedWithTheSameDescription() throws IOException {
+        Map<String, String> seeded = permissionsOf(SCRIPT_001);
+        Set<String> ms01InSeed = new TreeSet<>();
+        for (String code : seeded.keySet()) {
+            if (code.startsWith(Permission.PREFIX)) {
+                ms01InSeed.add(code);
             }
         }
-        return null;
-    }
-
-    /**
-     * El catalogo de roles tiene exactamente los ocho roles de RN-MS01-14
-     */
-    @Test
-    void catalog_hasTheEightRolesOfRnMs0114() {
-        Set<String> names = new HashSet<>();
-        for (UserRole role : UserRole.values()) {
-            names.add(role.name());
-        }
-
-        assertEquals(Set.of("ESTUDIANTE", "PROFESOR", "ADMINISTRATIVO", "BRIGADISTA", "COORDINADOR",
-                "ORGANIZADOR", "ADMIN", "AUDITOR"), names);
-    }
-
-    /**
-     * El enum Permission tiene tantos permisos como filas la matriz y cada fila esperada existe
-     */
-    @Test
-    void permissions_matchTheRowsOfTheMatrix() {
-        assertEquals(EXPECTED_MATRIX.length, Permission.values().length);
-        for (String[] row : EXPECTED_MATRIX) {
-            assertNotNull(permissionWithCode(row[0]), "Falta el permiso " + row[0]);
-        }
-    }
-
-    /**
-     * Los codigos de permiso son unicos y respetan el formato ms:recurso:accion
-     */
-    @Test
-    void permissionCodes_areUniqueAndWellFormed() {
-        Set<String> codes = new HashSet<>();
+        Set<String> declared = new TreeSet<>();
         for (Permission permission : Permission.values()) {
-            assertTrue(CODE_FORMAT.matcher(permission.getCode()).matches(),
-                    "Codigo con formato invalido: " + permission.getCode());
-            assertTrue(codes.add(permission.getCode()), "Codigo repetido: " + permission.getCode());
+            declared.add(permission.getCode());
             assertNotNull(permission.getDescription());
-            assertFalse(permission.getDescription().isBlank());
+            assertEquals(seeded.get(permission.getCode()), permission.getDescription(), permission.getCode());
+        }
+
+        assertEquals(ms01InSeed, declared);
+    }
+
+        /**
+     * There are eight seeded roles, each one with permissions without repeating and sorted by code
+     */
+    @Test
+    void seedRoles_areEightWithSortedUniquePermissions() {
+        assertEquals(SEEDED_ROLES, SeedRoles.PERMISSIONS.keySet());
+        for (Map.Entry<String, List<String>> role : SeedRoles.PERMISSIONS.entrySet()) {
+            List<String> sorted = new ArrayList<>(new TreeSet<>(role.getValue()));
+            assertEquals(sorted, role.getValue(), "Permisos de " + role.getKey());
         }
     }
 
-    /**
-     * Cada fila de la matriz la tienen exactamente los roles indicados, ni uno mas ni uno menos
+        /**
+     * Number of permissions that each role seeds according to the Role-Permission Matrix, 198 assignments in total
      */
     @Test
-    void everyRowOfTheMatrix_isGrantedToExactlyTheExpectedRoles() {
-        for (String[] row : EXPECTED_MATRIX) {
-            Permission permission = permissionWithCode(row[0]);
-
-            assertEquals(rolesOf(row[1]), holdersOf(permission), "Roles del permiso " + row[0]);
+    void seedRoles_haveTheExpectedNumberOfPermissions() {
+        assertEquals(18, SeedRoles.PERMISSIONS.get("ESTUDIANTE").size());
+        assertEquals(19, SeedRoles.PERMISSIONS.get("PROFESOR").size());
+        assertEquals(18, SeedRoles.PERMISSIONS.get("ADMINISTRATIVO").size());
+        assertEquals(25, SeedRoles.PERMISSIONS.get("BRIGADISTA").size());
+        assertEquals(35, SeedRoles.PERMISSIONS.get("COORDINADOR").size());
+        assertEquals(34, SeedRoles.PERMISSIONS.get("ORGANIZADOR").size());
+        assertEquals(27, SeedRoles.PERMISSIONS.get("ADMIN").size());
+        assertEquals(22, SeedRoles.PERMISSIONS.get("AUDITOR").size());
+        int total = 0;
+        for (List<String> codes : SeedRoles.PERMISSIONS.values()) {
+            total += codes.size();
         }
+        assertEquals(198, total);
     }
 
-    /**
-     * Solo el ADMIN gestiona roles, estados y el catalogo completo de roles
+        /**
+     * Only ADMIN manages roles, statuses and the complete catalog of roles, and only it can have ms01:role:manage
      */
-    @Test
-    void roleAdministrationPermissions_belongOnlyToAdmin() {
-        assertEquals(EnumSet.of(UserRole.ADMIN), holdersOf(Permission.MS01_USER_ROLES));
-        assertEquals(EnumSet.of(UserRole.ADMIN), holdersOf(Permission.MS01_USER_STATUS));
-        assertEquals(EnumSet.of(UserRole.ADMIN), holdersOf(Permission.MS01_ROLE_READ_ALL));
+    @ParameterizedTest
+    @ValueSource(strings = {"ms01:role:manage", "ms01:role:read_all", "ms01:user:roles", "ms01:user:status"})
+    void roleAdministrationPermissions_belongOnlyToAdmin(String code) {
+        assertEquals(Set.of("ADMIN"), holdersOf(code));
     }
 
-    /**
-     * El AUDITOR consulta usuarios pero no cambia roles ni ve el catalogo completo de roles
+        /**
+     * The AUDITOR queries users but does not change roles or see the complete catalog of roles
      */
     @Test
     void auditor_readsUsersButCannotManageRoles() {
-        assertTrue(UserRole.AUDITOR.hasPermission(Permission.MS01_USER_READ));
-        assertFalse(UserRole.AUDITOR.hasPermission(Permission.MS01_USER_ROLES));
-        assertFalse(UserRole.AUDITOR.hasPermission(Permission.MS01_ROLE_READ_ALL));
+        assertEquals(Set.of("ADMIN", "AUDITOR"), holdersOf(Permission.MS01_USER_READ.getCode()));
+        assertFalse(SeedRoles.PERMISSIONS.get("AUDITOR").contains(Permission.MS01_USER_ROLES.getCode()));
+        assertFalse(SeedRoles.PERMISSIONS.get("AUDITOR").contains(Permission.MS01_ROLE_READ_ALL.getCode()));
     }
 
-    /**
-     * Todos los roles pueden consultar sus propios roles y permisos (ms01:role:read_own)
+        /**
+     * All the roles can query their own roles and permissions (ms01:role:read_own)
      */
     @Test
     void everyRole_canReadItsOwnRoles() {
-        for (UserRole role : UserRole.values()) {
-            assertTrue(role.hasPermission(Permission.MS01_ROLE_READ_OWN), role.name());
-        }
+        assertEquals(SEEDED_ROLES, holdersOf(Permission.MS01_ROLE_READ_OWN.getCode()));
     }
 
-    /**
-     * El conjunto de permisos de un rol no se puede modificar desde fuera (RN-MS01-14: no se edita en
-     * tiempo de ejecucion)
+        /**
+     * The permissions common to all the roles are those of profile, session, role query, public campus content, the
+     * history of alerts and the own incidents
      */
     @Test
-    void rolePermissions_areImmutable() {
-        Set<Permission> permissions = UserRole.ESTUDIANTE.getPermissions();
-
-        assertThrows(UnsupportedOperationException.class,
-                () -> permissions.add(Permission.MS01_USER_ROLES));
-        assertFalse(UserRole.ESTUDIANTE.hasPermission(Permission.MS01_USER_ROLES));
-    }
-
-    /**
-     * getPermissionCodes entrega un codigo por permiso, en el mismo orden del conjunto de permisos
-     */
-    @Test
-    void permissionCodes_listsOneCodePerPermission() {
-        List<String> expected = new ArrayList<>();
-        for (Permission permission : UserRole.BRIGADISTA.getPermissions()) {
-            expected.add(permission.getCode());
+    void grantedToEveryRole_areTheCommonPermissionsOfTheMatrix() {
+        Set<String> common = new TreeSet<>();
+        for (List<String> codes : SeedRoles.PERMISSIONS.values()) {
+            for (String code : codes) {
+                if (holdersOf(code).equals(SEEDED_ROLES)) {
+                    common.add(code);
+                }
+            }
         }
 
-        assertEquals(expected, UserRole.BRIGADISTA.getPermissionCodes());
-        assertTrue(UserRole.BRIGADISTA.getPermissionCodes().contains("ms05:panel:read_own"));
+        assertEquals(Set.of("ms01:password:change", "ms01:profile:read", "ms01:profile:write",
+                "ms01:role:read_own", "ms01:session:logout", "ms02:campus:read", "ms02:preventive_info:read",
+                "ms02:route:read", "ms03:alert:read_history", "ms05:incident:manage_own"), common);
     }
 
-    /**
-     * MR-01: un usuario con varios roles tiene la union de los permisos de cada uno
+        /**
+     * MR-01: no role inherits from another, ADMIN does not receive the operational permissions of drills or check-in
      */
     @Test
-    void permissionsOf_severalRoles_isTheUnion() {
-        Set<Permission> union = UserRole.permissionsOf(List.of(UserRole.PROFESOR, UserRole.AUDITOR));
+    void adminDoesNotInheritOperationalPermissions() {
+        List<String> admin = SeedRoles.PERMISSIONS.get("ADMIN");
 
-        Set<Permission> expected = EnumSet.noneOf(Permission.class);
-        expected.addAll(UserRole.PROFESOR.getPermissions());
-        expected.addAll(UserRole.AUDITOR.getPermissions());
+        assertFalse(admin.contains("ms06:drill:manage"));
+        assertFalse(admin.contains("ms04:checkin:write"));
+        assertFalse(admin.contains("ms03:alert:manage"));
+    }
+
+        /**
+     * MR-01: a user with several roles has the union of the permissions of each one
+     */
+    @Test
+    void permissionsOfSeveralRoles_isTheUnion() {
+        Set<String> union = TestIdentities.permissionsOf("PROFESOR", "AUDITOR");
+
+        Set<String> expected = new TreeSet<>(SeedRoles.PERMISSIONS.get("PROFESOR"));
+        expected.addAll(SeedRoles.PERMISSIONS.get("AUDITOR"));
         assertEquals(expected, union);
-        assertTrue(union.contains(Permission.MS05_INCIDENT_REPORT));
-        assertTrue(union.contains(Permission.MS08_AUDIT_READ));
+        assertTrue(union.contains("ms05:incident:report"));
+        assertTrue(union.contains("ms08:audit_drill:read"));
+    }
+
+        /**
+     * Without roles there are no permissions (denied by default)
+     */
+    @Test
+    void permissionsOfNoRoles_isEmpty() {
+        assertTrue(TestIdentities.permissionsOf().isEmpty());
+    }
+
+        /**
+     * The creation script seeds the eight roles with the same permissions of the matrix and marks as system roles
+     * only ESTUDIANTE and ADMIN
+     *
+     * @throws IOException if the script cannot be read
+     */
+    @Test
+    void seedScript_seedsTheMatrixAndMarksOnlyTwoSystemRoles() throws IOException {
+        Map<String, String> roles = rolesOf(SCRIPT_001);
+        Map<String, List<String>> assignments = assignmentsOf(SCRIPT_001);
+
+        assertEquals(SEEDED_ROLES, roles.keySet());
+        assertEquals(SEEDED_ROLES, assignments.keySet());
+        for (String role : SEEDED_ROLES) {
+            assertEquals(SeedRoles.PERMISSIONS.get(role), assignments.get(role), "Permisos de " + role);
+            boolean expectedSystem = role.equals("ESTUDIANTE") || role.equals("ADMIN");
+            assertEquals(String.valueOf(expectedSystem).toUpperCase(), roles.get(role),
+                    "is_system of " + role);
+        }
     }
 
     /**
-     * MR-01: ningun rol hereda de otro; ADMIN no recibe los permisos operativos de los demas roles
+     * The change script only moves an existing database towards the creation script, in a single transaction:
+     * every permission it inserts is in the catalog of 001 with the same description, every one it deletes is not,
+     * every assignment it gives is in the seed of 001 and every one it takes away is not
+     *
+     * @throws IOException if a script cannot be read
      */
     @Test
-    void permissionsOf_adminDoesNotInheritOperationalPermissions() {
-        Set<Permission> adminPermissions = UserRole.permissionsOf(List.of(UserRole.ADMIN));
+    void changeScript_movesAnExistingDatabaseTowardsScript001() throws IOException {
+        String sql = Files.readString(Path.of(CHANGE_SCRIPT), StandardCharsets.UTF_8);
+        Map<String, String> catalog = permissionsOf(SCRIPT_001);
+        Map<String, List<String>> seed = assignmentsOf(SCRIPT_001);
 
-        assertFalse(adminPermissions.contains(Permission.MS05_INCIDENT_REPORT));
-        assertFalse(adminPermissions.contains(Permission.MS06_DRILL_MANAGE));
-        assertFalse(adminPermissions.contains(Permission.MS04_CHECKIN_WRITE));
+        assertTrue(sql.contains("\nBEGIN;\n"), "Falta BEGIN");
+        assertTrue(sql.strip().endsWith("COMMIT;"), "Falta COMMIT");
+        Matcher inserted = PERMISSIONS_BLOCK.matcher(sql);
+        if (inserted.find()) {
+            Matcher row = PERMISSION_ROW.matcher(inserted.group(1));
+            while (row.find()) {
+                assertEquals(catalog.get(row.group(1)), row.group(2).replace("''", "'"), row.group(1));
+            }
+        }
+        Matcher deleted = DELETED_PERMISSIONS.matcher(sql);
+        if (deleted.find()) {
+            Matcher code = QUOTED.matcher(deleted.group(1));
+            while (code.find()) {
+                assertFalse(catalog.containsKey(code.group(1)), code.group(1));
+            }
+        }
+        Matcher given = GIVEN_ASSIGNMENTS.matcher(sql);
+        if (given.find()) {
+            Matcher pair = PAIR.matcher(given.group(1));
+            while (pair.find()) {
+                assertTrue(seed.get(pair.group(1)).contains(pair.group(2)), pair.group(1) + " " + pair.group(2));
+            }
+        }
+        Matcher taken = TAKEN_ASSIGNMENTS.matcher(sql);
+        if (taken.find()) {
+            Matcher pair = PAIR.matcher(taken.group(1));
+            while (pair.find()) {
+                assertFalse(seed.get(pair.group(1)).contains(pair.group(2)), pair.group(1) + " " + pair.group(2));
+            }
+        }
     }
 
     /**
-     * Sin roles no hay permisos (denegado por defecto)
+     * Every seeded role has the two permissions that all roles must keep, ESTUDIANTE and ADMIN also have
+     * ms01:profile:write and ms01:role:manage belongs only to ADMIN
      */
     @Test
-    void permissionsOf_noRoles_isEmpty() {
-        assertTrue(UserRole.permissionsOf(List.of()).isEmpty());
-    }
-
-    /**
-     * Los permisos comunes a todos los roles son los de perfil, sesion, consulta de roles y contenido
-     * publico del campus
-     */
-    @Test
-    void grantedToEveryRole_hasTheEightCommonPermissions() {
-        Set<Permission> common = Permission.grantedToEveryRole();
-
-        assertEquals(8, common.size());
-        assertTrue(common.contains(Permission.MS01_PROFILE_READ));
-        assertTrue(common.contains(Permission.MS01_SESSION_LOGOUT));
-        assertTrue(common.contains(Permission.MS02_CAMPUS_READ));
+    void seedRoles_satisfyTheMandatoryPermissionRules() {
+        for (Map.Entry<String, List<String>> role : SeedRoles.PERMISSIONS.entrySet()) {
+            assertTrue(role.getValue().contains("ms01:profile:read"), "profile:read of " + role.getKey());
+            assertTrue(role.getValue().contains("ms01:session:logout"), "session:logout of " + role.getKey());
+            boolean mustWrite = role.getKey().equals("ESTUDIANTE") || role.getKey().equals("ADMIN");
+            if (mustWrite) {
+                assertTrue(role.getValue().contains("ms01:profile:write"), "profile:write of " + role.getKey());
+            }
+            assertEquals(role.getKey().equals("ADMIN"), role.getValue().contains("ms01:role:manage"),
+                    "role:manage of " + role.getKey());
+        }
     }
 }

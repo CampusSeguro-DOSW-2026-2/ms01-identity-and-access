@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -24,15 +24,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.config.SecurityConfig;
 import edu.eci.dosw.campusseguro.identity.identity_service.controller.SessionController;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.SessionService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Seguridad HTTP del cierre de sesión con la cadena de filtros real (RF-MS01-04, RN-MS01-23), la ruta no es
- * pública: exige las cabeceras de identidad que inyecta el Gateway y el token por sí solo no autentica
+ * HTTP security of the logout with the real filter chain (RF-MS01-04, RN-MS01-23), the route is not public: it requires
+ * the identity headers injected by the Gateway and the token alone does not authenticate
  */
 @WebMvcTest(SessionController.class)
 @Import(SecurityConfig.class)
@@ -47,10 +46,10 @@ class SessionSecurityTest {
     @MockitoBean
     private SessionService sessionService;
 
-    /**
-     * Sin cabeceras de identidad la ruta responde 401 con el ErrorResponse y el servicio no se ejecuta
+        /**
+     * Without identity headers the route answers 401 with the ErrorResponse and the service is not run
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void logout_withoutIdentityHeaders_returns401WithErrorResponse() throws Exception {
@@ -65,10 +64,11 @@ class SessionSecurityTest {
         verifyNoInteractions(sessionService);
     }
 
-    /**
-     * Un token en Authorization sin las cabeceras del Gateway no autentica: MS01 no lo recibe ni lo valida
+        /**
+     * A token in Authorization without the Gateway headers does not authenticate: MS01 neither receives nor validates
+     * it
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void logout_withOnlyABearerToken_returns401AndDoesNotReachTheService() throws Exception {
@@ -79,27 +79,28 @@ class SessionSecurityTest {
         verifyNoInteractions(sessionService);
     }
 
-    /**
-     * Un rol fuera del catálogo responde 401 con el motivo y el servicio no se ejecuta
+        /**
+     * A role name with an invalid format answers 401 with the reason and the service is not run
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
-    void logout_withUnknownRole_returns401WithTheReason() throws Exception {
+    void logout_withInvalidRoleFormat_returns401WithTheReason() throws Exception {
         mockMvc.perform(post(URL)
                 .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPERUSUARIO"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPER-USUARIO")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:role:read_own"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value(IdentityHeaderParser.INVALID_ROLE_MESSAGE));
 
         verifyNoInteractions(sessionService);
     }
 
-    /**
-     * Con cabeceras válidas la petición llega al servicio con la identidad y el correlation id recibidos, y
-     * la respuesta devuelve el mismo correlation id
+        /**
+     * With valid headers the request reaches the service with the received identity and correlation id, and the
+     * response returns the same correlation id
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void logout_withIdentityHeaders_reachesTheServiceAndEchoesTheCorrelationId() throws Exception {
@@ -108,6 +109,7 @@ class SessionSecurityTest {
         mockMvc.perform(post(URL)
                 .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"))
                 .header(CorrelationIds.HEADER, correlationId))
                 .andExpect(status().isOk())
                 .andExpect(header().string(CorrelationIds.HEADER, correlationId))
@@ -116,24 +118,25 @@ class SessionSecurityTest {
         ArgumentCaptor<RequesterIdentity> captor = ArgumentCaptor.forClass(RequesterIdentity.class);
         verify(sessionService).logout(captor.capture(), eq(correlationId));
         assertEquals(UUID.fromString(USER_ID), captor.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE), captor.getValue().roles());
+        assertEquals(Set.of("ESTUDIANTE"), captor.getValue().roles());
     }
 
-    /**
-     * Todos los roles del catálogo pueden cerrar sesión: la ruta no restringe por rol
+        /**
+     * All the roles of the catalog can log out: the route does not restrict by role
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void logout_everyRoleInTheCatalog_isAccepted() throws Exception {
-        for (UserRole role : UserRole.values()) {
+        for (String role : SeedRoles.PERMISSIONS.keySet()) {
             mockMvc.perform(post(URL)
                     .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
-                    .header(IdentityHeaderParser.USER_ROLE_HEADER, role.name()))
+                    .header(IdentityHeaderParser.USER_ROLE_HEADER, role)
+                    .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader(role)))
                     .andExpect(status().isOk());
         }
 
-        verify(sessionService, times(UserRole.values().length))
+        verify(sessionService, times(SeedRoles.PERMISSIONS.size()))
                 .logout(any(RequesterIdentity.class), any(String.class));
     }
 }

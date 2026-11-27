@@ -7,22 +7,23 @@ import java.util.List;
 import java.util.Locale;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.util.RoleNames;
 import edu.eci.dosw.campusseguro.identity.identity_service.validation.ValidationErrors;
 
 /**
- * Valida los parámetros de GET /api/v1/users según el formulario F-07 y los convierte en un
- * UserSearchCriteria
+ * Validates the parameters of GET /api/v1/users according to form F-07 and converts them into a UserSearchCriteria
  *
- * correo: 1 a 100 caracteres, sin etiquetas HTML
+ * correo: 1 to 100 characters, without HTML tags
  *
- * estado y rol: solo valores del catálogo, omitir equivale a Todos
+ * estado: only values from the catalog, omitting it is equivalent to Todos
  *
- * page: entero no negativo, 0 por defecto
+ * rol: name with a valid format, omitting it is equivalent to Todos, whether the role exists is checked by the service
  *
- * size: entero de 1 a 100, 20 por defecto
+ * page: non-negative integer, 0 by default
+ *
+ * size: integer from 1 to 100, 20 by default
  */
 public final class UserSearchValidator {
 
@@ -47,29 +48,29 @@ public final class UserSearchValidator {
 
     private static final String ALL_VALUE = "TODOS";
 
-    /**
-     * No se instancia
+        /**
+     * It is not instantiated
      */
     private UserSearchValidator() {
     }
 
-    /**
-     * Valida los parámetros recibidos y los convierte en criterios de búsqueda
+        /**
+     * Validates the received parameters and converts them into search criteria
      *
-     * @param email texto de búsqueda parcial por correo, puede ser null o vacío
-     * @param state estado por el que se filtra, puede ser null, vacío o Todos
-     * @param role rol por el que se filtra, puede ser null, vacío o Todos
-     * @param page número de página recibido como texto, null equivale a 0
-     * @param size tamaño de página recibido como texto, null equivale a 20
-     * @return los criterios de búsqueda validados
-     * @throws InvalidRequestException si algún parámetro incumple F-07, con un error por parámetro
+     * @param email partial search text by email, may be null or empty
+     * @param state status by which it is filtered, may be null, empty or Todos
+     * @param role role by which it is filtered, may be null, empty or Todos
+     * @param page page number received as text, null is equivalent to 0
+     * @param size page size received as text, null is equivalent to 20
+     * @return the validated search criteria
+     * @throws InvalidRequestException if any parameter breaks F-07, with one error per parameter
      */
     public static UserSearchCriteria validate(String email, String state, String role, String page,
             String size) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
         String text = parseEmail(email, errors);
         UserState stateFilter = parseFilter(state, UserState.class, FIELD_STATE, INVALID_STATE_MESSAGE, errors);
-        UserRole roleFilter = parseFilter(role, UserRole.class, FIELD_ROLE, INVALID_ROLE_MESSAGE, errors);
+        String roleFilter = parseOptionalRole(role, errors);
         int pageNumber = parseNumber(page, DEFAULT_PAGE, 0, Integer.MAX_VALUE, FIELD_PAGE, INVALID_PAGE_MESSAGE,
                 errors);
         int pageSize = parseNumber(size, DEFAULT_SIZE, 1, MAX_SIZE, FIELD_SIZE, INVALID_SIZE_MESSAGE, errors);
@@ -80,20 +81,20 @@ public final class UserSearchValidator {
         return new UserSearchCriteria(text, stateFilter, roleFilter, pageNumber, pageSize);
     }
 
-    /**
-     * Valida los parámetros de la consulta interna por rol (RF-MS01-09) y los convierte en criterios, la
-     * paginación sigue las mismas reglas del formulario F-07
+        /**
+     * Validates the parameters of the internal query by role (RF-MS01-09) and converts them into criteria, the
+     * pagination follows the same rules as form F-07
      *
-     * @param role rol obligatorio, solo valores del catálogo
-     * @param createdBefore instante de corte en ISO 8601, puede ser null o vacío
-     * @param page número de página recibido como texto, null equivale a 0
-     * @param size tamaño de página recibido como texto, null equivale a 20
-     * @return los criterios validados
-     * @throws InvalidRequestException si algún parámetro no es válido, con un error por parámetro
+     * @param role required role, only values from the catalog
+     * @param createdBefore cut-off instant in ISO 8601, may be null or empty
+     * @param page page number received as text, null is equivalent to 0
+     * @param size page size received as text, null is equivalent to 20
+     * @return the validated criteria
+     * @throws InvalidRequestException if any parameter is not valid, with one error per parameter
      */
     public static RoleSearchCriteria validateByRole(String role, String createdBefore, String page, String size) {
         List<ErrorResponse.ErrorDetail> errors = new ArrayList<>();
-        UserRole roleValue = parseRequiredRole(role, errors);
+        String roleValue = parseRequiredRole(role, errors);
         Instant cutoff = parseInstant(createdBefore, errors);
         int pageNumber = parseNumber(page, DEFAULT_PAGE, 0, Integer.MAX_VALUE, FIELD_PAGE, INVALID_PAGE_MESSAGE,
                 errors);
@@ -105,31 +106,49 @@ public final class UserSearchValidator {
         return new RoleSearchCriteria(roleValue, cutoff, pageNumber, pageSize);
     }
 
-    /**
-     * Valida un rol obligatorio, a diferencia del filtro del listado no admite Todos
+        /**
+     * Validates a required role, unlike the list filter it does not accept Todos
      *
-     * @param role valor recibido
-     * @param errors lista donde se agrega el error si el rol falta o no es del catálogo
-     * @return el rol del catálogo, o null si no es válido
+     * @param role value received
+     * @param errors list where the error is added if the role is missing or does not have a role format
+     * @return the trimmed role name, or null if it is not valid
      */
-    private static UserRole parseRequiredRole(String role, List<ErrorResponse.ErrorDetail> errors) {
-        if (role != null && !role.isBlank()) {
-            try {
-                return UserRole.valueOf(role.trim());
-            } catch (IllegalArgumentException e) {
-                // se reporta abajo
-            }
+    private static String parseRequiredRole(String role, List<ErrorResponse.ErrorDetail> errors) {
+        if (role != null && RoleNames.hasStoredFormat(role.trim())) {
+            return role.trim();
         }
         errors.add(new ErrorResponse.ErrorDetail(FIELD_ROLE, INVALID_ROLE_MESSAGE));
         return null;
     }
 
-    /**
-     * Valida el instante de corte opcional
+        /**
+     * Validates the optional filter by role, the name must arrive exactly as it is stored
      *
-     * @param value valor recibido en ISO 8601, por ejemplo 2026-11-07T15:04:05Z
-     * @param errors lista donde se agrega el error si el valor no es un instante válido
-     * @return el instante, o null si se omitió o no es válido
+     * @param role value received
+     * @param errors list where the error is added if the value does not have a role format
+     * @return the trimmed role name, or null if all are requested or the value is not valid
+     */
+    private static String parseOptionalRole(String role, List<ErrorResponse.ErrorDetail> errors) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+        String trimmed = role.trim();
+        if (ALL_VALUE.equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        if (!RoleNames.hasStoredFormat(trimmed)) {
+            errors.add(new ErrorResponse.ErrorDetail(FIELD_ROLE, INVALID_ROLE_MESSAGE));
+            return null;
+        }
+        return trimmed;
+    }
+
+        /**
+     * Validates the optional cut-off instant
+     *
+     * @param value value received in ISO 8601, for example 2026-11-07T15:04:05Z
+     * @param errors list where the error is added if the value is not a valid instant
+     * @return the instant, or null if it was omitted or is not valid
      */
     private static Instant parseInstant(String value, List<ErrorResponse.ErrorDetail> errors) {
         if (value == null || value.isBlank()) {
@@ -143,12 +162,12 @@ public final class UserSearchValidator {
         }
     }
 
-    /**
-     * Valida el texto de búsqueda por correo
+        /**
+     * Validates the search text by email
      *
-     * @param email texto recibido
-     * @param errors lista donde se agrega el error si el texto no es válido
-     * @return el texto recortado y en minúsculas, o null si no se filtra por correo
+     * @param email text received
+     * @param errors list where the error is added if the text is not valid
+     * @return the trimmed text in lowercase, or null if it is not filtered by email
      */
     private static String parseEmail(String email, List<ErrorResponse.ErrorDetail> errors) {
         if (email == null || email.isBlank()) {
@@ -162,16 +181,16 @@ public final class UserSearchValidator {
         return trimmed.toLowerCase(Locale.ROOT);
     }
 
-    /**
-     * Valida un filtro que solo admite valores de un catálogo
+        /**
+     * Validates a filter that only accepts values from a catalog
      *
-     * @param value valor recibido
-     * @param type enumeración con los valores del catálogo
-     * @param field nombre del parámetro, para reportar el error
-     * @param message mensaje de error del parámetro
-     * @param errors lista donde se agrega el error si el valor no es del catálogo
-     * @param <E> tipo de la enumeración
-     * @return el valor del catálogo, o null si se piden todos o el valor no es válido
+     * @param value value received
+     * @param type enumeration with the values of the catalog
+     * @param field name of the parameter, to report the error
+     * @param message error message of the parameter
+     * @param errors list where the error is added if the value is not from the catalog
+     * @param <E> type of the enumeration
+     * @return the value from the catalog, or null if all are requested or the value is not valid
      */
     private static <E extends Enum<E>> E parseFilter(String value, Class<E> type, String field, String message,
             List<ErrorResponse.ErrorDetail> errors) {
@@ -190,17 +209,17 @@ public final class UserSearchValidator {
         }
     }
 
-    /**
-     * Valida un parámetro numérico entero dentro de un rango
+        /**
+     * Validates an integer numeric parameter within a range
      *
-     * @param value valor recibido como texto
-     * @param defaultValue valor que se usa si el parámetro se omite
-     * @param min valor mínimo permitido
-     * @param max valor máximo permitido
-     * @param field nombre del parámetro, para reportar el error
-     * @param message mensaje de error del parámetro
-     * @param errors lista donde se agrega el error si el valor no es válido
-     * @return el número recibido, el valor por defecto si se omitió, o el valor por defecto si no es válido
+     * @param value value received as text
+     * @param defaultValue value used if the parameter is omitted
+     * @param min minimum allowed value
+     * @param max maximum allowed value
+     * @param field name of the parameter, to report the error
+     * @param message error message of the parameter
+     * @param errors list where the error is added if the value is not valid
+     * @return the number received, the default value if it was omitted, or the default value if it is not valid
      */
     private static int parseNumber(String value, int defaultValue, int min, int max, String field, String message,
             List<ErrorResponse.ErrorDetail> errors) {

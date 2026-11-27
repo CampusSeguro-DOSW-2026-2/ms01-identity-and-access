@@ -10,10 +10,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Cuerpo JSON del evento de auditoría (RNF-MS01-10, Estándares de Integración): modulo MS01, recurso
- * afectado con el formato tipo:id, fecha en ISO UTC y sin datos personales
+ * JSON body of the audit event (RNF-MS01-10, Integration Standards): modulo MS01, affected resource with the format
+ * type:id, date in ISO UTC and without personal data
  *
- * Esta prueba está en el mismo paquete que AuditEventPublisherImpl porque toJson es privado del paquete
+ * This test is in the same package as AuditEventPublisherImpl because toJson is package-private
  */
 class AuditEventJsonTest {
 
@@ -22,8 +22,8 @@ class AuditEventJsonTest {
     private static final Instant NOW = Instant.parse("2026-10-23T15:00:00Z");
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
 
-    /**
-     * El evento CAMBIO_ROL exitoso incluye quién lo hizo, a quién y lo que cambió
+        /**
+     * The successful CAMBIO_ROL event includes who did it, to whom and what changed
      */
     @Test
     void toJson_roleChangeSuccess_includesTheAffectedResourceAndTheChanges() {
@@ -36,8 +36,8 @@ class AuditEventJsonTest {
                 + "\"detalle\":\"agregados=PROFESOR;retirados=\"}", AuditEventPublisherImpl.toJson(event));
     }
 
-    /**
-     * Los roles del actor viajan solo como cabecera, nunca en el cuerpo
+        /**
+     * The roles of the actor travel only as a header, never in the body
      */
     @Test
     void toJson_neverIncludesTheActorRolesInTheBody() {
@@ -50,8 +50,8 @@ class AuditEventJsonTest {
         assertTrue(!json.contains("ADMIN"));
     }
 
-    /**
-     * Un evento anónimo sin recurso envía las claves opcionales con valor null
+        /**
+     * An anonymous event without a resource sends the optional keys with a null value
      */
     @Test
     void toJson_anonymousEvent_sendsExplicitNulls() {
@@ -64,8 +64,8 @@ class AuditEventJsonTest {
                 + "\"detalle\":\"CREDENCIALES_INCORRECTAS\"}", AuditEventPublisherImpl.toJson(event));
     }
 
-    /**
-     * Un rechazo del cambio de roles lleva el motivo en detalle y el usuario afectado en recurso_afectado
+        /**
+     * A rejection of the role change carries the reason in detalle and the affected user in recurso_afectado
      */
     @Test
     void toJson_roleChangeFailure_includesTheReason() {
@@ -79,8 +79,8 @@ class AuditEventJsonTest {
         assertTrue(json.contains("\"recurso_afectado\":\"usuario:" + ADMIN_ID + "\""));
     }
 
-    /**
-     * Los campos obligatorios siguen siendo obligatorios en el constructor
+        /**
+     * The required fields are still required in the constructor
      */
     @Test
     void constructor_requiresActionResultAndDate() {

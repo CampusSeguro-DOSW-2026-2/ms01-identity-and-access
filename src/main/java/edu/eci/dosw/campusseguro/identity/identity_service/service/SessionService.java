@@ -4,17 +4,17 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOp
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Cierre de sesión del usuario autenticado (RF-MS01-04)
+ * Logout of the authenticated user (RF-MS01-04)
  */
 public interface SessionService {
 
-    /**
-     * Cierra la sesión del solicitante y deja registrado el evento de auditoría (RF-MS01-04), el cierre no
-     * revoca el token ya emitido, que sigue siendo válido hasta que expire (RN-MS01-10)
+        /**
+     * Closes the session of the requester and records the audit event (RF-MS01-04), the logout does not revoke the
+     * token already issued, which remains valid until it expires (RN-MS01-10)
      *
-     * @param requester identidad de quien cierra la sesión
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido
+     * @param requester identity of whoever closes the session
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @throws ForbiddenOperationException if the requester does not have the required permission
      */
     void logout(RequesterIdentity requester, String correlationId);
 }

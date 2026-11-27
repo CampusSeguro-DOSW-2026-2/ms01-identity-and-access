@@ -10,8 +10,8 @@ import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 
 /**
- * Exige que dos propiedades de un objeto tengan el mismo valor, por ejemplo una contraseña y su
- * confirmación (F-01, F-05, F-06), el error se asocia a la propiedad de confirmación
+ * Requires that two properties of an object have the same value, for example a password and its confirmation (F-01,
+ * F-05, F-06), the error is associated with the confirmation property
  */
 @Documented
 @Constraint(validatedBy = FieldsMatchImpl.class)
@@ -19,38 +19,38 @@ import jakarta.validation.Payload;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface FieldsMatch {
 
-    /**
-     * Mensaje de error cuando los valores no coinciden
+        /**
+     * Error message when the values do not match
      *
-     * @return el mensaje de error
+     * @return the error message
      */
     String message() default "Los valores no coinciden.";
 
-    /**
-     * Nombre de la propiedad con el valor original
+        /**
+     * Name of the property with the original value
      *
-     * @return el nombre de la propiedad original
+     * @return the name of the original property
      */
     String field();
 
-    /**
-     * Nombre de la propiedad que debe ser idéntica a la original y a la que se asocia el error
+        /**
+     * Name of the property that must be identical to the original one and with which the error is associated
      *
-     * @return el nombre de la propiedad de confirmación
+     * @return the name of the confirmation property
      */
     String matchField();
 
-    /**
-     * Grupos de validación a los que pertenece la restricción
+        /**
+     * Validation groups to which the constraint belongs
      *
-     * @return los grupos de validación
+     * @return the validation groups
      */
     Class<?>[] groups() default {};
 
-    /**
-     * Información adicional para los clientes de la validación
+        /**
+     * Additional information for the validation clients
      *
-     * @return los payloads de la restricción
+     * @return the payloads of the constraint
      */
     Class<? extends Payload>[] payload() default {};
 }

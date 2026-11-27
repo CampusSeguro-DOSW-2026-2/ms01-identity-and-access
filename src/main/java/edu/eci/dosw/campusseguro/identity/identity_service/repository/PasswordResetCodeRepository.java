@@ -15,38 +15,38 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.PasswordResetC
 import jakarta.persistence.LockModeType;
 
 /**
- * Acceso a los códigos de recuperación de contraseña (tabla codigos_recuperacion del modelo de datos)
+ * Access to the password recovery codes (table password_reset_codes of the data model)
  */
 @Repository
 public interface PasswordResetCodeRepository extends JpaRepository<PasswordResetCodeEntity, UUID> {
 
-    /**
-     * Devuelve el código más reciente de un usuario sin importar si sigue vigente, se usa para respetar el
-     * tiempo mínimo entre una solicitud de código y la siguiente
+        /**
+     * Returns the most recent code of a user whether or not it is still valid, it is used to respect the minimum time
+     * between one code request and the next
      *
-     * @param userId id del usuario dueño de los códigos
-     * @return el último código generado para el usuario, o vacío si nunca se le generó uno
+     * @param userId id of the user that owns the codes
+     * @return the last code generated for the user, or empty if none was ever generated
      */
     Optional<PasswordResetCodeEntity> findFirstByUserIdOrderByCreatedAtDesc(UUID userId);
 
-    /**
-     * Devuelve el código más reciente de un usuario que todavía no se ha usado y bloquea su fila hasta que
-     * termine la transacción, así los intentos de verificación simultáneos se cuentan uno a uno y no se
-     * pueden usar para adivinar el código en paralelo, la vigencia por tiempo la evalúa quien llama
+        /**
+     * Returns the most recent code of a user that has not been used yet and locks its row until the transaction ends,
+     * so simultaneous verification attempts are counted one by one and cannot be used to guess the code in parallel,
+     * the validity by time is evaluated by the caller
      *
-     * @param userId id del usuario dueño de los códigos
-     * @return el último código sin usar del usuario, o vacío si no tiene ninguno
+     * @param userId id of the user that owns the codes
+     * @return the last unused code of the user, or empty if it has none
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<PasswordResetCodeEntity> findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(UUID userId);
 
-    /**
-     * Invalida todos los códigos sin usar de un usuario marcándolos como usados, se ejecuta antes de generar
-     * uno nuevo para que solo exista un código vigente por usuario (RN-MS01-21)
+        /**
+     * Invalidates all the unused codes of a user by marking them as used, it is run before generating a new one so that
+     * only one valid code exists per user (RN-MS01-21)
      *
-     * @param userId id del usuario dueño de los códigos
-     * @param usedAt instante en el que se invalidan los códigos
-     * @return la cantidad de códigos invalidados
+     * @param userId id of the user that owns the codes
+     * @param usedAt instant at which the codes are invalidated
+     * @return the number of invalidated codes
      */
     @Modifying
     @Query("update PasswordResetCodeEntity c set c.usedAt = :usedAt "

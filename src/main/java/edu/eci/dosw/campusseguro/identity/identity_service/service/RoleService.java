@@ -11,31 +11,31 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.UsersNotFou
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Consulta de roles con sus permisos y cambio de roles de los usuarios (RF-MS01-05)
+ * Query of roles with their permissions and role change of the users (RF-MS01-05)
  */
 public interface RoleService {
 
-    /**
-     * Consulta los roles con sus permisos, quien tenga el permiso de lectura de todos los roles recibe el
-     * catálogo completo y los demás reciben solo sus propios roles
+        /**
+     * Queries the roles with their permissions, whoever has the permission to read all the roles receives the complete
+     * catalog and the rest receive only their own roles
      *
-     * @param requester identidad de quien consulta
-     * @return los roles visibles para el solicitante, cada uno con los códigos de sus permisos
+     * @param requester identity of whoever queries
+     * @return the roles visible to the requester, each one with the codes of its permissions
      */
     List<RolePermissionsResponse> getRoles(RequesterIdentity requester);
 
-    /**
-     * Agrega y retira roles a uno o varios usuarios en una sola operación atómica, cada usuario
-     * procesado se audita en MS08
+        /**
+     * Adds and removes roles to one or several users in a single atomic operation, every processed user is audited in
+     * MS08
      *
-     * @param requester identidad de quien solicita
-     * @param request cuerpo con los usuarios a modificar y los roles a agregar y a retirar
-     * @param correlationId valor de X-Correlation-ID, si falta se genera uno para logs y auditoría
-     * @return los roles finales de cada usuario
-     * @throws ForbiddenOperationException si el solicitante no tiene el permiso requerido o se incluye a sí
-     *         mismo
-     * @throws InvalidRequestException si el cuerpo es inválido o algún usuario quedaría sin roles
-     * @throws UsersNotFoundException si algún usuario objetivo no existe
+     * @param requester identity of whoever requests
+     * @param request body with the users to modify and the roles to add and to remove
+     * @param correlationId value of X-Correlation-ID, if it is missing one is generated for logs and audit
+     * @return the final roles of each user
+     * @throws ForbiddenOperationException if the requester does not have the required permission or includes themselves
+     * @throws InvalidRequestException if the body is invalid, any role does not exist or any user would be left without
+     *         roles
+     * @throws UsersNotFoundException if any target user does not exist
      */
     ChangeRolesResponse changeRoles(RequesterIdentity requester, ChangeRolesRequest request, String correlationId);
 }

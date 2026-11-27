@@ -7,22 +7,20 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
 /**
- * Datos de un usuario (esquema User del contrato), se usa en la consulta y actualización del perfil, en
- * la consulta por id y en los elementos del listado, el segundo nombre y el segundo apellido se omiten
- * cuando están vacíos
+ * Data of a user (User schema of the contract), used in the profile query and update, in the query by id and in the
+ * elements of the list, the second name and the second lastname are omitted when they are empty
  *
- * @param id id del usuario
- * @param firstName primer nombre
- * @param secondName segundo nombre, omitido si no tiene
- * @param firstLastName primer apellido
- * @param secondLastName segundo apellido, omitido si no tiene
- * @param email correo institucional
- * @param roles roles del usuario, en orden alfabético
- * @param state estado de la cuenta
+ * @param id id of the user
+ * @param firstName first name
+ * @param secondName second name, omitted if it has none
+ * @param firstLastName first lastname
+ * @param secondLastName second lastname, omitted if it has none
+ * @param email institutional email
+ * @param roles roles of the user, in alphabetical order
+ * @param state status of the account
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record UserProfileResponse(
@@ -32,14 +30,14 @@ public record UserProfileResponse(
         @JsonProperty("primer_apellido") String firstLastName,
         @JsonProperty("segundo_apellido") String secondLastName,
         @JsonProperty("correo") String email,
-        List<UserRole> roles,
+        List<String> roles,
         @JsonProperty("estado") UserState state) {
 
-    /**
-     * Construye la respuesta a partir del usuario guardado
+        /**
+     * Builds the response from the saved user
      *
-     * @param entity usuario guardado
-     * @return la respuesta con todos los datos del usuario y sus roles ordenados
+     * @param entity saved user
+     * @return the response with all the data of the user and its sorted roles
      */
     public static UserProfileResponse fromEntity(UserEntity entity) {
         return new UserProfileResponse(
@@ -49,7 +47,7 @@ public record UserProfileResponse(
                 entity.getFirstLastName(),
                 entity.getSecondLastName(),
                 entity.getEmail(),
-                UserRole.sortedByName(entity.getRoles()),
+                entity.getRoleNames(),
                 entity.getState());
     }
 }

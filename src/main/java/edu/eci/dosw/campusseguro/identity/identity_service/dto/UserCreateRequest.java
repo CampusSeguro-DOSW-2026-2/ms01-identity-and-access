@@ -13,8 +13,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de POST /api/v1/auth/register (RF-MS01-01, formulario F-01), el rol y el estado nunca los
- * elige quien se registra y cualquier campo fuera del contrato se rechaza (RG-04)
+ * Body of POST /api/v1/auth/register (RF-MS01-01, form F-01), the role and the status are never chosen by whoever
+ * registers and any field outside the contract is rejected (RG-04)
  */
 @FieldsMatch(field = "password", matchField = "passwordConfirmation",
         message = FieldRules.PASSWORDS_MISMATCH_MESSAGE)
@@ -28,7 +28,7 @@ public class UserCreateRequest extends StrictRequest {
     private String firstName;
 
     @JsonProperty("segundo_nombre")
-    @Size(min = FieldRules.NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
+    @Size(min = FieldRules.OPTIONAL_NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
             message = FieldRules.SECOND_NAME_MESSAGE)
     @Pattern(regexp = FieldRules.NAME_PATTERN, message = FieldRules.SECOND_NAME_MESSAGE)
     private String secondName;
@@ -41,7 +41,7 @@ public class UserCreateRequest extends StrictRequest {
     private String firstLastName;
 
     @JsonProperty("segundo_apellido")
-    @Size(min = FieldRules.NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
+    @Size(min = FieldRules.OPTIONAL_NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
             message = FieldRules.SECOND_LAST_NAME_MESSAGE)
     @Pattern(regexp = FieldRules.NAME_PATTERN, message = FieldRules.SECOND_LAST_NAME_MESSAGE)
     private String secondLastName;
@@ -61,91 +61,91 @@ public class UserCreateRequest extends StrictRequest {
     @NotBlank(message = FieldRules.PASSWORDS_MISMATCH_MESSAGE)
     private String passwordConfirmation;
 
-    /**
-     * Devuelve el primer nombre
+        /**
+     * Returns the first name
      *
-     * @return el primer nombre sin espacios laterales, null si no se envió
+     * @return the first name without surrounding spaces, null if it was not sent
      */
     public String getFirstName() {
         return this.firstName;
     }
 
-    /**
-     * Coloca el primer nombre, recortado según RG-01
+        /**
+     * Sets the first name, trimmed according to RG-01
      *
-     * @param name primer nombre recibido
+     * @param name first name received
      */
     public void setFirstName(String name) {
         this.firstName = Texts.trimToNull(name);
     }
 
-    /**
-     * Devuelve el segundo nombre
+        /**
+     * Returns the second name
      *
-     * @return el segundo nombre sin espacios laterales, null si no se envió
+     * @return the second name without surrounding spaces, null if it was not sent
      */
     public String getSecondName() {
         return this.secondName;
     }
 
-    /**
-     * Coloca el segundo nombre, recortado según RG-01 y omitido si queda vacío
+        /**
+     * Sets the second name, trimmed according to RG-01 and omitted if it is left empty
      *
-     * @param name segundo nombre recibido
+     * @param name second name received
      */
     public void setSecondName(String name) {
         this.secondName = Texts.trimToNull(name);
     }
 
-    /**
-     * Devuelve el primer apellido
+        /**
+     * Returns the first lastname
      *
-     * @return el primer apellido sin espacios laterales, null si no se envió
+     * @return the first lastname without surrounding spaces, null if it was not sent
      */
     public String getFirstLastName() {
         return this.firstLastName;
     }
 
-    /**
-     * Coloca el primer apellido, recortado según RG-01
+        /**
+     * Sets the first lastname, trimmed according to RG-01
      *
-     * @param lastName primer apellido recibido
+     * @param lastName first lastname received
      */
     public void setFirstLastName(String lastName) {
         this.firstLastName = Texts.trimToNull(lastName);
     }
 
-    /**
-     * Devuelve el segundo apellido
+        /**
+     * Returns the second lastname
      *
-     * @return el segundo apellido sin espacios laterales, null si no se envió
+     * @return the second lastname without surrounding spaces, null if it was not sent
      */
     public String getSecondLastName() {
         return this.secondLastName;
     }
 
-    /**
-     * Coloca el segundo apellido, recortado según RG-01 y omitido si queda vacío
+        /**
+     * Sets the second lastname, trimmed according to RG-01 and omitted if it is left empty
      *
-     * @param lastName segundo apellido recibido
+     * @param lastName second lastname received
      */
     public void setSecondLastName(String lastName) {
         this.secondLastName = Texts.trimToNull(lastName);
     }
 
-    /**
-     * Devuelve el correo institucional
+        /**
+     * Returns the institutional email
      *
-     * @return el correo recortado y en minúsculas, null si no se envió
+     * @return the email trimmed and in lowercase, null if it was not sent
      */
     public String getEmail() {
         return this.email;
     }
 
-    /**
-     * Coloca el correo, recortado y normalizado a minúsculas según RG-01
+        /**
+     * Sets the email, trimmed and normalized to lowercase according to RG-01
      *
-     * @param email correo recibido
+     * @param email email received
      */
     public void setEmail(String email) {
         String trimmed = Texts.trimToNull(email);
@@ -156,37 +156,37 @@ public class UserCreateRequest extends StrictRequest {
         }
     }
 
-    /**
-     * Devuelve la contraseña tal como se recibió
+        /**
+     * Returns the password as it was received
      *
-     * @return la contraseña, null si no se envió
+     * @return the password, null if it was not sent
      */
     public String getPassword() {
         return this.password;
     }
 
-    /**
-     * Coloca la contraseña, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param password contraseña recibida
+     * @param password password received
      */
     public void setPassword(String password) {
         this.password = password;
     }
 
-    /**
-     * Devuelve la confirmación de la contraseña tal como se recibió
+        /**
+     * Returns the confirmation of the password as it was received
      *
-     * @return la confirmación, null si no se envió
+     * @return the confirmation, null if it was not sent
      */
     public String getPasswordConfirmation() {
         return this.passwordConfirmation;
     }
 
-    /**
-     * Coloca la confirmación de la contraseña, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the confirmation of the password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param passwordConfirmation confirmación recibida
+     * @param passwordConfirmation confirmation received
      */
     public void setPasswordConfirmation(String passwordConfirmation) {
         this.passwordConfirmation = passwordConfirmation;

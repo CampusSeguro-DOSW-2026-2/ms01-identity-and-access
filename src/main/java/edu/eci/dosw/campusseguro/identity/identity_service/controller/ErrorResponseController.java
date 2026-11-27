@@ -14,18 +14,18 @@ import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Destino de los errores que ocurren fuera de los controladores, por ejemplo en un filtro, para que
- * también salgan con el ErrorResponse del estándar y no con la página de error por defecto (RNF-MS01-04)
+ * Destination of the errors that occur outside the controllers, for example in a filter, so that they also come out
+ * with the ErrorResponse of the standard and not with the default error page (RNF-MS01-04)
  */
 @RestController
 public class ErrorResponseController implements ErrorController {
 
-    /**
-     * Construye el ErrorResponse a partir del estado que registró el contenedor, si la ruta se llama
-     * directamente y no hay un error en curso responde 404
+        /**
+     * Builds the ErrorResponse from the status registered by the container, if the route is called directly and there
+     * is no error in progress it answers 404
      *
-     * @param request petición de error, de la que se toma el estado y el correlation id
-     * @return la respuesta con el cuerpo de error normalizado
+     * @param request error request, from which the status and the correlation id are taken
+     * @return the response with the normalized error body
      */
     @RequestMapping("/error")
     public ResponseEntity<ErrorResponse> handleError(HttpServletRequest request) {

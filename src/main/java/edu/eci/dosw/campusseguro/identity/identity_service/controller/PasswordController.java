@@ -17,9 +17,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Recuperación y cambio de contraseña (RF-MS01-08), la solicitud y el restablecimiento con código son
- * públicos porque se usan sin sesión, el cambio de contraseña exige la identidad que inyecta el API Gateway
- * en las cabeceras
+ * Password recovery and change (RF-MS01-08), the request and the reset with a code are public because they are used
+ * without a session, the password change requires the identity that the API Gateway injects in the headers
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -31,24 +30,23 @@ public class PasswordController {
 
     private final PasswordService passwordService;
 
-    /**
-     * Crea el controlador con su servicio
+        /**
+     * Creates the controller with its service
      *
-     * @param passwordService servicio de recuperación y cambio de contraseña
+     * @param passwordService password recovery and change service
      */
     public PasswordController(PasswordService passwordService) {
         this.passwordService = passwordService;
     }
 
-    /**
-     * POST /api/v1/auth/password/forgot: solicita el código de recuperación de contraseña (RF-MS01-08,
-     * formulario F-04)
+        /**
+     * POST /api/v1/auth/password/forgot: requests the password recovery code (RF-MS01-08, form F-04)
      *
-     * 200 siempre con el mismo mensaje, exista o no el correo (RN-MS01-20), 400 correo con formato inválido
+     * 200 always with the same message, whether the email exists or not (RN-MS01-20), 400 email with an invalid format
      *
-     * @param request correo de la cuenta que se quiere recuperar
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el mensaje único de confirmación
+     * @param request email of the account to be recovered
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the single confirmation message
      */
     @PostMapping("/auth/password/forgot")
     public ResponseEntity<MessageResponse> forgot(@RequestBody ForgotPasswordRequest request,
@@ -57,16 +55,14 @@ public class PasswordController {
         return ResponseEntity.ok(new MessageResponse(FORGOT_MESSAGE));
     }
 
-    /**
-     * POST /api/v1/auth/password/reset: restablece la contraseña con el código recibido por correo
-     * (RF-MS01-08, formulario F-05)
+        /**
+     * POST /api/v1/auth/password/reset: resets the password with the code received by email (RF-MS01-08, form F-05)
      *
-     * 200 contraseña actualizada, 400 datos inválidos o código incorrecto, vencido o ya usado con mensaje
-     * genérico
+     * 200 password updated, 400 invalid data or incorrect, expired or already used code with a generic message
      *
-     * @param request correo, código y nueva contraseña con su confirmación
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el mensaje de confirmación
+     * @param request email, code and new password with its confirmation
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the confirmation message
      */
     @PostMapping("/auth/password/reset")
     public ResponseEntity<MessageResponse> reset(@RequestBody ResetPasswordRequest request,
@@ -75,17 +71,16 @@ public class PasswordController {
         return ResponseEntity.ok(new MessageResponse(RESET_MESSAGE));
     }
 
-    /**
-     * PUT /api/v1/users/me/password: cambia la contraseña del usuario autenticado (RF-MS01-08, formulario
-     * F-06)
+        /**
+     * PUT /api/v1/users/me/password: changes the password of the authenticated user (RF-MS01-08, form F-06)
      *
-     * 200 contraseña actualizada, 400 datos inválidos, contraseña actual incorrecta o nueva igual a la
-     * actual, 401 identidad ausente, 403 sin permiso, 404 usuario inexistente
+     * 200 password updated, 400 invalid data, incorrect current password or new password equal to the current one, 401
+     * missing identity, 403 no permission, 404 non-existent user
      *
-     * @param requester identidad del solicitante tomada de las cabeceras
-     * @param request contraseña actual, nueva contraseña y su confirmación
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el mensaje de confirmación
+     * @param requester identity of the requester taken from the headers
+     * @param request current password, new password and its confirmation
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the confirmation message
      */
     @PutMapping("/users/me/password")
     public ResponseEntity<MessageResponse> change(RequesterIdentity requester,

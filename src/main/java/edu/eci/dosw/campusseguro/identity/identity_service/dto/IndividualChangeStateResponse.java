@@ -8,23 +8,23 @@ import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 
 /**
- * Resultado del cambio de estado de un usuario (elemento de resultados de ChangeStatusResponse)
+ * Result of the status change of a user (element of the results of ChangeStatusResponse)
  *
- * @param id id del usuario
- * @param estadoAnterior estado que tenía antes del cambio
- * @param estadoNuevo estado que tiene después del cambio
+ * @param id id of the user
+ * @param estadoAnterior status it had before the change
+ * @param estadoNuevo status it has after the change
  */
 public record IndividualChangeStateResponse(
         UUID id,
         @JsonProperty("estado_anterior") UserState estadoAnterior,
         @JsonProperty("estado_nuevo") UserState estadoNuevo) {
 
-    /**
-     * Construye el resultado de un usuario
+        /**
+     * Builds the result of a user
      *
-     * @param entity usuario con el estado ya cambiado
-     * @param estadoPrevio estado que tenía antes del cambio
-     * @return el resultado con el estado anterior y el nuevo
+     * @param entity user with the status already changed
+     * @param estadoPrevio status it had before the change
+     * @return the result with the previous and the new status
      */
     public static IndividualChangeStateResponse fromEntity(UserEntity entity, UserState estadoPrevio) {
         return new IndividualChangeStateResponse(entity.getId(), estadoPrevio, entity.getState());

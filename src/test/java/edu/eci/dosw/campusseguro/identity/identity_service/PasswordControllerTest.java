@@ -15,8 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +38,6 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordReq
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequest;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.GlobalExceptionHandler;
@@ -51,9 +50,9 @@ import edu.eci.dosw.campusseguro.identity.identity_service.service.PasswordServi
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Pruebas de los tres endpoints de RF-MS01-08: POST /api/v1/auth/password/forgot, POST
- * /api/v1/auth/password/reset y PUT /api/v1/users/me/password, los dos primeros son públicos y el tercero
- * recibe la identidad solo por las cabeceras del Gateway
+ * Tests of the three endpoints of RF-MS01-08: POST /api/v1/auth/password/forgot, POST /api/v1/auth/password/reset and
+ * PUT /api/v1/users/me/password, the first two are public and the third receives the identity only through the Gateway
+ * headers
  */
 @ExtendWith(MockitoExtension.class)
 class PasswordControllerTest {
@@ -63,6 +62,7 @@ class PasswordControllerTest {
     private static final String CHANGE_URL = "/api/v1/users/me/password";
     private static final String ID_HEADER = "X-User-Id";
     private static final String ROLE_HEADER = "X-User-Role";
+    private static final String PERMISSION_HEADER = "X-User-Permission";
     private static final String CORRELATION_ID = "8d3f6c58-9a35-4b1c-8f0e-2f6d3a1b7c90";
     private static final String FORGOT_BODY = "{\"correo\":\"maria.perez@escuelaing.edu.co\"}";
     private static final String RESET_BODY = "{\"correo\":\"maria.perez@escuelaing.edu.co\",\"codigo\":\"482913\","
@@ -78,9 +78,8 @@ class PasswordControllerTest {
 
     private MockMvc mockMvc;
 
-    /**
-     * Prepara el controlador y el cliente de pruebas con el manejador global de errores y la resolución de
-     * identidad
+        /**
+     * Prepares the controller and the test client with the global error handler and the identity resolution
      */
     @BeforeEach
     void setUp() {
@@ -90,26 +89,27 @@ class PasswordControllerTest {
                 .build();
     }
 
-    /**
-     * Construye la petición de cambio de contraseña con la identidad de un solicitante
+        /**
+     * Builds the password change request with the identity of a requester
      *
-     * @param id identificador del solicitante
-     * @param role rol del solicitante
-     * @param body cuerpo JSON de la petición
-     * @return la petición lista para ejecutar
+     * @param id identifier of the requester
+     * @param role role of the requester
+     * @param body JSON body of the request
+     * @return the request ready to run
      */
     private MockHttpServletRequestBuilder changeRequest(UUID id, String role, String body) {
         return put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body)
                 .header(ID_HEADER, id.toString())
-                .header(ROLE_HEADER, role);
+                .header(ROLE_HEADER, role)
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader(role));
     }
 
-    /**
-     * Una solicitud de código responde 200 con el mensaje único del contrato y sin identidad en las cabeceras
+        /**
+     * A code request answers 200 with the single message of the contract and without identity in the headers
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void forgot_validBody_returns200WithTheSingleMessage() throws Exception {
@@ -120,10 +120,10 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
-    /**
-     * La solicitud entrega al servicio el correo del cuerpo y el correlation id recibido
+        /**
+     * The request delivers to the service the email of the body and the received correlation id
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void forgot_validBody_passesTheEmailAndTheCorrelationIdToTheService() throws Exception {
@@ -138,10 +138,10 @@ class PasswordControllerTest {
         assertEquals("maria.perez@escuelaing.edu.co", captor.getValue().getEmail());
     }
 
-    /**
-     * Sin X-Correlation-ID el controlador entrega al servicio uno generado
+        /**
+     * Without X-Correlation-ID the controller delivers a generated one to the service
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void forgot_withoutCorrelationId_passesAGeneratedOneToTheService() throws Exception {
@@ -154,11 +154,11 @@ class PasswordControllerTest {
         assertNotEquals(CORRELATION_ID, captor.getValue());
     }
 
-    /**
-     * Un campo que el contrato no define no hace fallar la deserialización: llega registrado al servicio, que
-     * lo rechaza (RG-04)
+        /**
+     * A field that the contract does not define does not make the deserialization fail: it reaches the service
+     * registered, which rejects it (RG-04)
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void forgot_unknownField_reachesTheServiceRegisteredAsUnknown() throws Exception {
@@ -172,10 +172,10 @@ class PasswordControllerTest {
         assertTrue(captor.getValue().unknownFieldNames().contains("rol"));
     }
 
-    /**
-     * Si el servicio rechaza el correo la respuesta es 400 con el detalle por campo
+        /**
+     * If the service rejects the email the response is 400 with the detail by field
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void forgot_serviceRejectsTheEmail_returns400WithTheFieldError() throws Exception {
@@ -192,11 +192,11 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.correlation_id").exists());
     }
 
-    /**
-     * Un JSON mal formado o sin cuerpo responde 400 sin llamar al servicio
+        /**
+     * A malformed JSON or one without a body answers 400 without calling the service
      *
-     * @param content cuerpo enviado, vacío si no se envía
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @param content body sent, empty if it is not sent
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @ParameterizedTest
     @CsvSource(value = { "'{ \"correo\": '", "''" })
@@ -213,10 +213,10 @@ class PasswordControllerTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Un método distinto de POST responde 405 con el ErrorResponse y la cabecera Allow
+        /**
+     * A method other than POST answers 405 with the ErrorResponse and the Allow header
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void forgot_wrongHttpMethod_returns405WithAllowHeader() throws Exception {
@@ -228,10 +228,10 @@ class PasswordControllerTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Un restablecimiento correcto responde 200 con el mensaje de confirmación
+        /**
+     * A successful reset answers 200 with the confirmation message
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void reset_validBody_returns200WithTheConfirmationMessage() throws Exception {
@@ -241,11 +241,11 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
-    /**
-     * Los nombres del contrato se mapean a la petición: correo, codigo, nueva_contrasena y
+        /**
+     * The names of the contract are mapped to the request: correo, codigo, nueva_contrasena and
      * confirmar_nueva_contrasena
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void reset_validBody_mapsEveryContractFieldAndPassesTheCorrelationId() throws Exception {
@@ -264,11 +264,11 @@ class PasswordControllerTest {
         assertTrue(captor.getValue().unknownFieldNames().isEmpty());
     }
 
-    /**
-     * El nombre de confirmación de la contraseña del registro no es el de este formulario: se registra como
-     * campo desconocido y no como confirmación
+        /**
+     * The password confirmation name of the registration is not the one of this form: it is registered as an unknown
+     * field and not as a confirmation
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void reset_registrationConfirmationName_isRegisteredAsUnknown() throws Exception {
@@ -284,11 +284,11 @@ class PasswordControllerTest {
         assertEquals(null, captor.getValue().getNewPasswordConfirmation());
     }
 
-    /**
-     * Un código incorrecto, vencido o usado responde 400 con CODIGO_INVALIDO, el mensaje genérico y sin errores
-     * por campo
+        /**
+     * An incorrect, expired or used code answers 400 with CODIGO_INVALIDO, the generic message and without errors by
+     * field
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void reset_invalidCode_returns400WithTheGenericCodeError() throws Exception {
@@ -307,10 +307,10 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.correlation_id").value(CORRELATION_ID));
     }
 
-    /**
-     * Si el servicio rechaza los datos la respuesta es 400 con VALIDACION y el detalle por campo
+        /**
+     * If the service rejects the data the response is 400 with VALIDACION and the detail by field
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void reset_serviceRejectsTheData_returns400WithTheFieldErrors() throws Exception {
@@ -325,10 +325,10 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.errores[0].mensaje").value("Las contraseñas no coinciden."));
     }
 
-    /**
-     * Un JSON mal formado responde 400 sin llamar al servicio
+        /**
+     * A malformed JSON answers 400 without calling the service
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void reset_malformedJson_returns400WithoutCallingTheService() throws Exception {
@@ -339,10 +339,10 @@ class PasswordControllerTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Un método distinto de POST responde 405 con el ErrorResponse y la cabecera Allow
+        /**
+     * A method other than POST answers 405 with the ErrorResponse and the Allow header
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void reset_wrongHttpMethod_returns405WithAllowHeader() throws Exception {
@@ -354,10 +354,10 @@ class PasswordControllerTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Un cambio correcto responde 200 con el mensaje de confirmación
+        /**
+     * A successful change answers 200 with the confirmation message
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_validRequest_returns200WithTheConfirmationMessage() throws Exception {
@@ -367,11 +367,11 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
-    /**
-     * El servicio recibe la identidad de las cabeceras con todos sus roles, el cuerpo con los nombres del
-     * contrato y el correlation id recibido
+        /**
+     * The service receives the identity from the headers with all its roles, the body with the names of the contract
+     * and the received correlation id
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_validRequest_passesTheIdentityTheBodyAndTheCorrelationIdToTheService() throws Exception {
@@ -385,17 +385,17 @@ class PasswordControllerTest {
         ArgumentCaptor<ChangePasswordRequest> body = ArgumentCaptor.forClass(ChangePasswordRequest.class);
         verify(passwordService).changePassword(identity.capture(), body.capture(), eq(CORRELATION_ID));
         assertEquals(id, identity.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.BRIGADISTA, UserRole.ESTUDIANTE), identity.getValue().roles());
+        assertEquals(Set.of("BRIGADISTA", "ESTUDIANTE"), identity.getValue().roles());
         assertEquals("Campus#2026", body.getValue().getCurrentPassword());
         assertEquals("Nueva#2026x", body.getValue().getNewPassword());
         assertEquals("Nueva#2026x", body.getValue().getNewPasswordConfirmation());
     }
 
-    /**
-     * Un id de usuario en el cuerpo no cambia a quién se cambia la contraseña: se registra como campo
-     * desconocido y la identidad sigue siendo la de las cabeceras
+        /**
+     * A user id in the body does not change whose password is changed: it is registered as an unknown field and the
+     * identity remains the one from the headers
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_userIdInTheBody_isRegisteredAsUnknownAndTheHeaderIdentityIsUsed() throws Exception {
@@ -414,10 +414,10 @@ class PasswordControllerTest {
         assertTrue(body.getValue().unknownFieldNames().contains("id"));
     }
 
-    /**
-     * Sin cabeceras de identidad la respuesta es 401 con el ErrorResponse y no se llama al servicio
+        /**
+     * Without identity headers the response is 401 with the ErrorResponse and the service is not called
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_withoutIdentityHeaders_returns401AndDoesNotCallTheService() throws Exception {
@@ -431,12 +431,12 @@ class PasswordControllerTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Una identidad incompleta o con valores inválidos responde 401 y no se llama al servicio
+        /**
+     * An incomplete identity or one with invalid values answers 401 and the service is not called
      *
-     * @param userId valor de X-User-Id, vacío si no se envía
-     * @param roles valor de X-User-Role, vacío si no se envía
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @param userId value of X-User-Id, empty if it is not sent
+     * @param roles value of X-User-Role, empty if it is not sent
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @ParameterizedTest
     @CsvSource(value = {
@@ -452,7 +452,8 @@ class PasswordControllerTest {
             request = request.header(ID_HEADER, userId);
         }
         if (!roles.isEmpty()) {
-            request = request.header(ROLE_HEADER, roles);
+            request = request.header(ROLE_HEADER, roles)
+            .header(PERMISSION_HEADER, TestIdentities.permissionHeader(roles));
         }
 
         mockMvc.perform(request)
@@ -462,10 +463,10 @@ class PasswordControllerTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Si el servicio rechaza por falta de permiso la respuesta es 403 con el ErrorResponse
+        /**
+     * If the service rejects for lack of permission the response is 403 with the ErrorResponse
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_serviceRejectsForbidden_returns403() throws Exception {
@@ -479,11 +480,11 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.codigo").value("PROHIBIDO"));
     }
 
-    /**
-     * Si el servicio rechaza los datos, por ejemplo la contraseña actual incorrecta, la respuesta es 400 con el
-     * detalle por campo
+        /**
+     * If the service rejects the data, for example the incorrect current password, the response is 400 with the detail
+     * by field
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_serviceRejectsTheData_returns400WithTheFieldError() throws Exception {
@@ -499,10 +500,10 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.errores[0].mensaje").value("La contraseña actual es incorrecta."));
     }
 
-    /**
-     * Si el usuario del token ya no existe la respuesta es 404
+        /**
+     * If the user of the token no longer exists the response is 404
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_userNoLongerExists_returns404() throws Exception {
@@ -515,11 +516,11 @@ class PasswordControllerTest {
                 .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"));
     }
 
-    /**
-     * Un JSON mal formado o sin cuerpo responde 400 sin llamar al servicio
+        /**
+     * A malformed JSON or one without a body answers 400 without calling the service
      *
-     * @param content cuerpo enviado, vacío si no se envía
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @param content body sent, empty if it is not sent
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @ParameterizedTest
     @CsvSource(value = { "'{ \"contrasena_actual\": '", "''" })
@@ -527,7 +528,8 @@ class PasswordControllerTest {
         MockHttpServletRequestBuilder request = put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE");
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"));
         if (!content.isEmpty()) {
             request = request.content(content);
         }
@@ -539,10 +541,10 @@ class PasswordControllerTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Un método distinto de PUT responde 405 con el ErrorResponse y la cabecera Allow
+        /**
+     * A method other than PUT answers 405 with the ErrorResponse and the Allow header
      *
-     * @throws Exception si falla la petición simulada o la lectura de la respuesta
+     * @throws Exception if the simulated request or the reading of the response fails
      */
     @Test
     void change_wrongHttpMethod_returns405WithAllowHeader() throws Exception {
@@ -550,7 +552,8 @@ class PasswordControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(CHANGE_BODY)
                 .header(ID_HEADER, UUID.randomUUID().toString())
-                .header(ROLE_HEADER, "ESTUDIANTE"))
+                .header(ROLE_HEADER, "ESTUDIANTE")
+                .header(PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE")))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(header().string("Allow", "PUT"))
                 .andExpect(jsonPath("$.codigo").value("METODO_NO_PERMITIDO"));

@@ -22,7 +22,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 
 /**
- * Reglas del formulario F-01 de registro y de las reglas generales RG-01, RG-02 y RG-04
+ * Rules of registration form F-01 and of the general rules RG-01, RG-02 and RG-04
  */
 class UserCreateRequestValidationTest {
 
@@ -33,8 +33,8 @@ class UserCreateRequestValidationTest {
     private static ValidatorFactory factory;
     private static RequestValidator validator;
 
-    /**
-     * Crea el validador que se comparte entre las pruebas
+        /**
+     * Creates the validator that is shared between the tests
      */
     @BeforeAll
     static void init() {
@@ -42,36 +42,36 @@ class UserCreateRequestValidationTest {
         validator = new RequestValidator(factory.getValidator());
     }
 
-    /**
-     * Libera la fábrica de validadores
+        /**
+     * Releases the validator factory
      */
     @AfterAll
     static void close() {
         factory.close();
     }
 
-    /**
-     * Proporciona primeros nombres que incumplen las reglas
+        /**
+     * Provides first names that break the rules
      *
-     * @return los valores inválidos
+     * @return the invalid values
      */
     private static Stream<String> invalidFirstNames() {
         return Stream.of("A", "Ana123", "Ana#", "a".repeat(31));
     }
 
-    /**
-     * Proporciona primeros nombres que cumplen las reglas
+        /**
+     * Provides first names that meet the rules
      *
-     * @return los valores válidos
+     * @return the valid values
      */
     private static Stream<String> validFirstNames() {
         return Stream.of("Ana", "Jean-Luc", "D'Artagnan", "De la Cruz", "Ñandú", "ab", "a".repeat(30));
     }
 
-    /**
-     * Construye una petición de registro válida
+        /**
+     * Builds a valid registration request
      *
-     * @return la petición válida
+     * @return the valid request
      */
     private static UserCreateRequest valid() {
         UserCreateRequest request = new UserCreateRequest();
@@ -85,11 +85,11 @@ class UserCreateRequestValidationTest {
         return request;
     }
 
-    /**
-     * Obtiene el mensaje de error de cada campo inválido
+        /**
+     * Gets the error message of each invalid field
      *
-     * @param request petición que se valida
-     * @return mapa de nombre de campo a mensaje, ordenado por campo
+     * @param request request that is validated
+     * @return map from field name to message, sorted by field
      */
     private static Map<String, String> errors(UserCreateRequest request) {
         Map<String, String> result = new TreeMap<>();
@@ -99,16 +99,16 @@ class UserCreateRequestValidationTest {
         return result;
     }
 
-    /**
-     * Una petición válida no produce errores
+        /**
+     * A valid request produces no errors
      */
     @Test
     void validRequest_hasNoErrors() {
         assertTrue(errors(valid()).isEmpty());
     }
 
-    /**
-     * Los nombres opcionales pueden omitirse
+        /**
+     * The optional names can be omitted
      */
     @Test
     void optionalNamesMayBeOmitted() {
@@ -119,8 +119,8 @@ class UserCreateRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * Los nombres opcionales en blanco se tratan como ausentes (RG-02)
+        /**
+     * The blank optional names are treated as absent (RG-02)
      */
     @Test
     void blankOptionalNames_areTreatedAsAbsent_RG02() {
@@ -133,8 +133,8 @@ class UserCreateRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * Los campos de texto se recortan (RG-01)
+        /**
+     * The text fields are trimmed (RG-01)
      */
     @Test
     void textFields_areTrimmed_RG01() {
@@ -144,8 +144,8 @@ class UserCreateRequestValidationTest {
         assertEquals("Ana", request.getFirstName());
     }
 
-    /**
-     * El correo se recorta y se pasa a minúsculas (RG-01)
+        /**
+     * The email is trimmed and converted to lowercase (RG-01)
      */
     @Test
     void email_isTrimmedAndLowercased_RG01() {
@@ -156,8 +156,8 @@ class UserCreateRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * La contraseña nunca se recorta (RG-01)
+        /**
+     * The password is never trimmed (RG-01)
      */
     @Test
     void password_isNeverTrimmed_RG01() {
@@ -167,8 +167,8 @@ class UserCreateRequestValidationTest {
         assertEquals(" " + PASSWORD + " ", request.getPassword());
     }
 
-    /**
-     * Los campos obligatorios ausentes producen un mensaje por campo
+        /**
+     * The absent required fields produce one message per field
      */
     @Test
     void missingRequiredFields_reportOneMessagePerField() {
@@ -182,10 +182,10 @@ class UserCreateRequestValidationTest {
         assertEquals(5, result.size());
     }
 
-    /**
-     * Un primer nombre que incumple las reglas se rechaza
+        /**
+     * A first name that breaks the rules is rejected
      *
-     * @param value primer nombre que se prueba
+     * @param value first name that is tested
      */
     @ParameterizedTest
     @MethodSource("invalidFirstNames")
@@ -196,10 +196,10 @@ class UserCreateRequestValidationTest {
         assertEquals(Map.of("primer_nombre", "El primer nombre debe tener entre 2 y 30 letras."), errors(request));
     }
 
-    /**
-     * Un primer nombre que cumple las reglas se acepta
+        /**
+     * A first name that meets the rules is accepted
      *
-     * @param value primer nombre que se prueba
+     * @param value first name that is tested
      */
     @ParameterizedTest
     @MethodSource("validFirstNames")
@@ -210,13 +210,13 @@ class UserCreateRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * Los nombres opcionales presentes siguen las mismas reglas
+        /**
+     * The present optional names with digits are rejected with the message of 2 to 30 letters
      */
     @Test
     void optionalNamesPresent_followTheSameRules() {
         UserCreateRequest request = valid();
-        request.setSecondName("J");
+        request.setSecondName("J9");
         request.setSecondLastName("Pérez9");
 
         Map<String, String> result = errors(request);
@@ -226,10 +226,47 @@ class UserCreateRequestValidationTest {
         assertEquals(2, result.size());
     }
 
-    /**
-     * Un correo con formato inválido usa el mensaje genérico
+        /**
+     * The second name and the second lastname follow the same 2 to 30 letters as the first ones: a single letter is
+     * rejected and two letters are accepted
+     */
+    @Test
+    void optionalNames_withASingleLetter_areRejected() {
+        UserCreateRequest request = valid();
+        request.setSecondName("J");
+        request.setSecondLastName("Z");
+
+        Map<String, String> result = errors(request);
+
+        assertEquals("El segundo nombre debe tener entre 2 y 30 letras.", result.get("segundo_nombre"));
+        assertEquals("El segundo apellido debe tener entre 2 y 30 letras.", result.get("segundo_apellido"));
+        assertEquals(2, result.size());
+
+        request.setSecondName("Jo");
+        request.setSecondLastName("Za");
+        assertTrue(errors(request).isEmpty());
+    }
+
+        /**
+     * The second name and the second lastname of more than 30 letters are rejected
+     */
+    @Test
+    void optionalNames_withMoreThanThirtyLetters_areRejected() {
+        UserCreateRequest request = valid();
+        request.setSecondName("a".repeat(31));
+        request.setSecondLastName("b".repeat(31));
+
+        Map<String, String> result = errors(request);
+
+        assertEquals("El segundo nombre debe tener entre 2 y 30 letras.", result.get("segundo_nombre"));
+        assertEquals("El segundo apellido debe tener entre 2 y 30 letras.", result.get("segundo_apellido"));
+        assertEquals(2, result.size());
+    }
+
+        /**
+     * An email with an invalid format uses the generic message
      *
-     * @param value correo que se prueba
+     * @param value email that is tested
      */
     @ParameterizedTest
     @ValueSource(strings = { "no-es-un-correo", "sin-arroba.escuelaing.edu.co", "@escuelaing.edu.co" })
@@ -240,8 +277,8 @@ class UserCreateRequestValidationTest {
         assertEquals(Map.of("correo", "Correo no válido."), errors(request));
     }
 
-    /**
-     * Un correo de más de 100 caracteres se rechaza
+        /**
+     * An email of more than 100 characters is rejected
      */
     @Test
     void emailLongerThan100Characters_isRejected() {
@@ -251,10 +288,10 @@ class UserCreateRequestValidationTest {
         assertEquals(Map.of("correo", "Correo no válido."), errors(request));
     }
 
-    /**
-     * Una contraseña fuera de la política se rechaza con el mensaje de la política
+        /**
+     * A password outside the policy is rejected with the message of the policy
      *
-     * @param value contraseña que se prueba
+     * @param value password that is tested
      */
     @ParameterizedTest
     @ValueSource(strings = { "Corta1#", "sinmayuscula1#", "SINMINUSCULA1#", "SinNumero#abc", "SinEspecial123",
@@ -267,8 +304,8 @@ class UserCreateRequestValidationTest {
         assertEquals(Map.of("contrasena", PASSWORD_MESSAGE), errors(request));
     }
 
-    /**
-     * Una contraseña de más de 64 caracteres se rechaza
+        /**
+     * A password of more than 64 characters is rejected
      */
     @Test
     void passwordLongerThan64Characters_isRejected() {
@@ -280,8 +317,8 @@ class UserCreateRequestValidationTest {
         assertEquals(Map.of("contrasena", PASSWORD_MESSAGE), errors(request));
     }
 
-    /**
-     * Una contraseña de 64 caracteres se acepta
+        /**
+     * A password of 64 characters is accepted
      */
     @Test
     void passwordOf64Characters_isAccepted() {
@@ -293,8 +330,8 @@ class UserCreateRequestValidationTest {
         assertTrue(errors(request).isEmpty());
     }
 
-    /**
-     * Una confirmación distinta se informa sobre el campo de confirmación
+        /**
+     * A different confirmation is reported on the confirmation field
      */
     @Test
     void differentConfirmation_isReportedOnTheConfirmationField() {
@@ -304,8 +341,8 @@ class UserCreateRequestValidationTest {
         assertEquals(Map.of("confirmar_contrasena", "Las contraseñas no coinciden."), errors(request));
     }
 
-    /**
-     * Un campo que no está en el contrato se rechaza (RG-04)
+        /**
+     * A field that is not in the contract is rejected (RG-04)
      */
     @Test
     void unknownField_isRejected_RG04() {
@@ -315,8 +352,8 @@ class UserCreateRequestValidationTest {
         assertEquals(Map.of("roles", "El campo no está permitido."), errors(request));
     }
 
-    /**
-     * Los errores se ordenan por nombre de campo
+        /**
+     * The errors are sorted by field name
      */
     @Test
     void errorsAreSortedByFieldName() {

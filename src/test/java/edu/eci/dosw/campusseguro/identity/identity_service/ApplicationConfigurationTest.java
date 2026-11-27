@@ -14,16 +14,15 @@ import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.core.io.ClassPathResource;
 
 /**
- * Configuración base del servicio exigida por los estándares generales, puerto del módulo, credenciales de
- * la base de datos con valores por defecto de desarrollo, esquema controlado por scripts, métricas mínimas y
- * documentación de la API apagada por defecto
+ * Base configuration of the service required by the general standards, port of the module, database credentials with
+ * development default values, schema controlled by scripts, minimal metrics and API documentation turned off by default
  */
 class ApplicationConfigurationTest {
 
     private static Properties properties;
 
-    /**
-     * Carga el application.yaml que usa el servicio
+        /**
+     * Loads the application.yaml used by the service
      */
     @BeforeAll
     static void load() {
@@ -33,17 +32,17 @@ class ApplicationConfigurationTest {
         assertNotNull(properties);
     }
 
-    /**
-     * El servicio escucha en el puerto asignado al módulo
+        /**
+     * The service listens on the port assigned to the module
      */
     @Test
     void server_listensOnThePortOfTheModule() {
         assertEquals("8081", properties.getProperty("server.port"));
     }
 
-    /**
-     * Las credenciales de la base de datos se pueden sobrescribir con variables de entorno y, si no se definen,
-     * se usan las de desarrollo
+        /**
+     * The database credentials can be overridden with environment variables and, if they are not defined, the
+     * development ones are used
      */
     @Test
     void datasourceCredentials_defaultToTheDevelopmentOnes() {
@@ -51,8 +50,8 @@ class ApplicationConfigurationTest {
         assertEquals("${DB_PASSWORD:campus_password}", properties.getProperty("spring.datasource.password"));
     }
 
-    /**
-     * El esquema lo crean los scripts, Hibernate solo lo valida
+        /**
+     * The schema is created by the scripts, Hibernate only validates it
      */
     @Test
     void jpa_onlyValidatesTheSchema() {
@@ -60,16 +59,16 @@ class ApplicationConfigurationTest {
         assertEquals("false", properties.getProperty("spring.jpa.open-in-view"));
     }
 
-    /**
-     * Las fechas se manejan en UTC
+        /**
+     * Dates are handled in UTC
      */
     @Test
     void jpa_usesUtc() {
         assertEquals("UTC", properties.getProperty("spring.jpa.properties.hibernate.jdbc.time_zone"));
     }
 
-    /**
-     * Solo se expone el estado de salud, sin detalles
+        /**
+     * Only the health status is exposed, without details
      */
     @Test
     void actuator_exposesOnlyTheHealthWithoutDetails() {
@@ -78,8 +77,8 @@ class ApplicationConfigurationTest {
         assertEquals("never", properties.getProperty("management.endpoint.health.show-components"));
     }
 
-    /**
-     * La documentación de la API solo se activa de forma explícita
+        /**
+     * The API documentation is only activated explicitly
      */
     @Test
     void swagger_isDisabledByDefault() {
@@ -87,8 +86,8 @@ class ApplicationConfigurationTest {
         assertEquals("${SWAGGER_ENABLED:false}", properties.getProperty("springdoc.swagger-ui.enabled"));
     }
 
-    /**
-     * Cada línea de log lleva el correlation id
+        /**
+     * Each log line carries the correlation id
      */
     @Test
     void logPattern_includesTheCorrelationId() {
@@ -98,25 +97,25 @@ class ApplicationConfigurationTest {
         assertTrue(pattern.contains("%X{correlation_id"));
     }
 
-    /**
-     * La página de error por defecto está apagada para responder siempre con el cuerpo estándar
+        /**
+     * The default error page is turned off to always answer with the standard body
      */
     @Test
     void whitelabelErrorPage_isDisabled() {
         assertEquals("false", properties.getProperty("server.error.whitelabel.enabled"));
     }
 
-    /**
-     * Los dominios institucionales salen de variables de entorno
+        /**
+     * The institutional domains come from environment variables
      */
     @Test
     void institutionalDomains_areConfiguredFromTheEnvironment() {
         assertTrue(properties.getProperty("identity.institutional-domains").contains("INSTITUTIONAL_EMAIL_DOMAINS"));
     }
 
-    /**
-     * Los valores globales de los estándares no se configuran: el emisor, la audiencia y la vigencia del JWT
-     * y el timeout de las llamadas internas viven en el código
+        /**
+     * The global values of the standards are not configured: the issuer, the audience and the validity of the JWT and
+     * the timeout of the internal calls live in the code
      */
     @Test
     void globalValues_areNotConfigurable() {
@@ -126,8 +125,8 @@ class ApplicationConfigurationTest {
         assertNull(properties.getProperty("gateway.timeout-ms"));
     }
 
-    /**
-     * Si la variable de dominios no está definida se permiten los dos dominios institucionales
+        /**
+     * If the domains variable is not defined both institutional domains are allowed
      */
     @Test
     void institutionalDomains_defaultToBothInstitutionalDomains() {
@@ -135,8 +134,8 @@ class ApplicationConfigurationTest {
                 properties.getProperty("identity.institutional-domains"));
     }
 
-    /**
-     * La llave privada del JWT no tiene un valor por defecto embebido
+        /**
+     * The JWT private key has no embedded default value
      */
     @Test
     void jwtPrivateKey_hasNoEmbeddedDefault() {

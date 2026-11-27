@@ -9,60 +9,105 @@ import org.springframework.web.bind.annotation.RestController;
 
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.LoginResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.MessageResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.RegistrationAcceptedResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResendRegistrationCodeRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserCreateRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserResponse;
+import edu.eci.dosw.campusseguro.identity.identity_service.dto.VerifyRegistrationRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.AuthService;
-import edu.eci.dosw.campusseguro.identity.identity_service.service.UserService;
+import edu.eci.dosw.campusseguro.identity.identity_service.service.RegistrationService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Endpoints públicos de registro (RF-MS01-01) y autenticación (RF-MS01-02), no requieren las cabeceras de
- * identidad porque se invocan antes de tener una sesión
+ * Public endpoints for registration (RF-MS01-01) and authentication (RF-MS01-02), they do not require the identity
+ * headers because they are invoked before having a session
  */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    private final UserService userService;
+    public static final String REGISTER_MESSAGE =
+            "Enviamos un código de verificación a su correo. Ingréselo para crear la cuenta.";
+    public static final String RESEND_MESSAGE =
+            "Si hay un registro pendiente para este correo, enviamos un nuevo código de verificación.";
+
+    private final RegistrationService registrationService;
     private final AuthService authService;
 
-    /**
-     * Crea el controlador con sus servicios
+        /**
+     * Creates the controller with its services
      *
-     * @param userService servicio de registro de usuarios
-     * @param authService servicio de autenticación
+     * @param registrationService user registration service
+     * @param authService authentication service
      */
-    public AuthController(UserService userService, AuthService authService) {
-        this.userService = userService;
+    public AuthController(RegistrationService registrationService, AuthService authService) {
+        this.registrationService = registrationService;
         this.authService = authService;
     }
 
-    /**
-     * POST /api/v1/auth/register: registra un usuario institucional (RF-MS01-01)
+        /**
+     * POST /api/v1/auth/register: receives the registration of an institutional user and sends a verification code to
+     * the email, the user is not created yet (RF-MS01-01)
      *
-     * 201 usuario creado, 400 datos inválidos, 409 correo ya registrado
+     * 202 code sent and registration pending, with the registration token that the verification requires, 400 invalid
+     * data, 409 email already registered
      *
-     * @param request datos del formulario de registro
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el usuario creado
+     * @param request data of the registration form
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the confirmation message and the registration token
      */
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> register(@RequestBody UserCreateRequest request,
+    public ResponseEntity<RegistrationAcceptedResponse> register(@RequestBody UserCreateRequest request,
             HttpServletRequest httpRequest) {
-        UserResponse created = userService.create(request, CorrelationIds.current(httpRequest));
+        String token = registrationService.requestRegistration(request, CorrelationIds.current(httpRequest));
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(new RegistrationAcceptedResponse(REGISTER_MESSAGE, token));
+    }
+
+        /**
+     * POST /api/v1/auth/register/verify: confirms the code sent to the email and creates the user (RF-MS01-01)
+     *
+     * 201 user created, 400 invalid data or incorrect or expired code, 409 email already registered
+     *
+     * @param request email and code
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the created user
+     */
+    @PostMapping("/register/verify")
+    public ResponseEntity<UserResponse> verify(@RequestBody VerifyRegistrationRequest request,
+            HttpServletRequest httpRequest) {
+        UserResponse created = registrationService.verify(request, CorrelationIds.current(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    /**
-     * POST /api/v1/auth/login: autentica a un usuario y emite su token JWT (RF-MS01-02)
+        /**
+     * POST /api/v1/auth/register/resend: sends a new verification code to an email with a pending registration
+     * (RF-MS01-01), the response is always the same so it does not reveal whether the registration exists
      *
-     * 200 token con su tipo, expiración y datos básicos, 400 datos inválidos, 401 credenciales incorrectas,
-     * idéntico para correo inexistente y contraseña errónea, 403 cuenta inactiva
+     * 200 fixed message, 400 invalid email
      *
-     * @param request correo y contraseña
-     * @param httpRequest petición en curso, de la que se obtiene el correlation id
-     * @return el token y los datos básicos del usuario
+     * @param request email of the pending registration
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the fixed message
+     */
+    @PostMapping("/register/resend")
+    public ResponseEntity<MessageResponse> resend(@RequestBody ResendRegistrationCodeRequest request,
+            HttpServletRequest httpRequest) {
+        registrationService.resendCode(request, CorrelationIds.current(httpRequest));
+        return ResponseEntity.ok(new MessageResponse(RESEND_MESSAGE));
+    }
+
+        /**
+     * POST /api/v1/auth/login: authenticates a user and issues their JWT token (RF-MS01-02)
+     *
+     * 200 token with its type, expiration and basic data, 400 invalid data, 401 incorrect credentials, identical for a
+     * non-existent email and a wrong password, 403 inactive account
+     *
+     * @param request email and password
+     * @param httpRequest request in progress, from which the correlation id is obtained
+     * @return the token and the basic data of the user
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {

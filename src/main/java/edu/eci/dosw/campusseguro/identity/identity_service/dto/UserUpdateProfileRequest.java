@@ -9,8 +9,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de PUT /api/v1/users/me (RF-MS01-06, formulario F-03), solo se editan los nombres y apellidos,
- * el correo, los roles, el estado y el id se rechazan con HTTP 400 (RN-MS01-15, RN-MS01-16, RG-04)
+ * Body of PUT /api/v1/users/me (RF-MS01-06, form F-03), only the names and lastnames are edited, the email, the roles,
+ * the status and the id are rejected with HTTP 400 (RN-MS01-15, RN-MS01-16, RG-04)
  */
 public class UserUpdateProfileRequest extends StrictRequest {
 
@@ -26,7 +26,7 @@ public class UserUpdateProfileRequest extends StrictRequest {
     private String firstName;
 
     @JsonProperty("segundo_nombre")
-    @Size(min = FieldRules.NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
+    @Size(min = FieldRules.OPTIONAL_NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
             message = FieldRules.SECOND_NAME_MESSAGE)
     @Pattern(regexp = FieldRules.NAME_PATTERN, message = FieldRules.SECOND_NAME_MESSAGE)
     private String secondName;
@@ -39,17 +39,17 @@ public class UserUpdateProfileRequest extends StrictRequest {
     private String firstLastName;
 
     @JsonProperty("segundo_apellido")
-    @Size(min = FieldRules.NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
+    @Size(min = FieldRules.OPTIONAL_NAME_MIN_LENGTH, max = FieldRules.NAME_MAX_LENGTH,
             message = FieldRules.SECOND_LAST_NAME_MESSAGE)
     @Pattern(regexp = FieldRules.NAME_PATTERN, message = FieldRules.SECOND_LAST_NAME_MESSAGE)
     private String secondLastName;
 
-    /**
-     * Explica por qué se rechazan el correo, los roles y el estado, el resto de campos no definidos
-     * usan el mensaje general
+        /**
+     * Explains why the email, the roles and the status are rejected, the rest of the undefined fields use the general
+     * message
      *
-     * @param fieldName nombre de la propiedad no definida
-     * @return el mensaje de error de esa propiedad
+     * @param fieldName name of the undefined property
+     * @return the error message of that property
      */
     @Override
     public String messageForUnknownField(String fieldName) {
@@ -65,73 +65,73 @@ public class UserUpdateProfileRequest extends StrictRequest {
         return super.messageForUnknownField(fieldName);
     }
 
-    /**
-     * Devuelve el primer nombre
+        /**
+     * Returns the first name
      *
-     * @return el primer nombre sin espacios laterales, null si no se envió
+     * @return the first name without surrounding spaces, null if it was not sent
      */
     public String getFirstName() {
         return this.firstName;
     }
 
-    /**
-     * Coloca el primer nombre, recortado según RG-01
+        /**
+     * Sets the first name, trimmed according to RG-01
      *
-     * @param name primer nombre recibido
+     * @param name first name received
      */
     public void setFirstName(String name) {
         this.firstName = Texts.trimToNull(name);
     }
 
-    /**
-     * Devuelve el segundo nombre
+        /**
+     * Returns the second name
      *
-     * @return el segundo nombre sin espacios laterales, null si no se envió
+     * @return the second name without surrounding spaces, null if it was not sent
      */
     public String getSecondName() {
         return this.secondName;
     }
 
-    /**
-     * Coloca el segundo nombre, recortado según RG-01 y omitido si queda vacío
+        /**
+     * Sets the second name, trimmed according to RG-01 and omitted if it is left empty
      *
-     * @param name segundo nombre recibido
+     * @param name second name received
      */
     public void setSecondName(String name) {
         this.secondName = Texts.trimToNull(name);
     }
 
-    /**
-     * Devuelve el primer apellido
+        /**
+     * Returns the first lastname
      *
-     * @return el primer apellido sin espacios laterales, null si no se envió
+     * @return the first lastname without surrounding spaces, null if it was not sent
      */
     public String getFirstLastName() {
         return this.firstLastName;
     }
 
-    /**
-     * Coloca el primer apellido, recortado según RG-01
+        /**
+     * Sets the first lastname, trimmed according to RG-01
      *
-     * @param lastName primer apellido recibido
+     * @param lastName first lastname received
      */
     public void setFirstLastName(String lastName) {
         this.firstLastName = Texts.trimToNull(lastName);
     }
 
-    /**
-     * Devuelve el segundo apellido
+        /**
+     * Returns the second lastname
      *
-     * @return el segundo apellido sin espacios laterales, null si no se envió
+     * @return the second lastname without surrounding spaces, null if it was not sent
      */
     public String getSecondLastName() {
         return this.secondLastName;
     }
 
-    /**
-     * Coloca el segundo apellido, recortado según RG-01 y omitido si queda vacío
+        /**
+     * Sets the second lastname, trimmed according to RG-01 and omitted if it is left empty
      *
-     * @param lastName segundo apellido recibido
+     * @param lastName second lastname received
      */
     public void setSecondLastName(String lastName) {
         this.secondLastName = Texts.trimToNull(lastName);

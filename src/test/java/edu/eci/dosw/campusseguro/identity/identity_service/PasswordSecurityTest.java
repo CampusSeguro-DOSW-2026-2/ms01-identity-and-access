@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -28,16 +28,15 @@ import edu.eci.dosw.campusseguro.identity.identity_service.controller.PasswordCo
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ChangePasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ForgotPasswordRequest;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.ResetPasswordRequest;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.IdentityHeaderParser;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.PasswordService;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Seguridad HTTP de la recuperación y el cambio de contraseña con la cadena de filtros real (RF-MS01-08,
- * RN-MS01-23), la solicitud del código y el restablecimiento son públicos porque se usan sin sesión, el cambio
- * de contraseña exige las cabeceras de identidad que inyecta el Gateway
+ * HTTP security of the password recovery and change with the real filter chain (RF-MS01-08, RN-MS01-23), the code
+ * request and the reset are public because they are used without a session, the password change requires the identity
+ * headers injected by the Gateway
  */
 @WebMvcTest(PasswordController.class)
 @Import(SecurityConfig.class)
@@ -59,10 +58,10 @@ class PasswordSecurityTest {
     @MockitoBean
     private PasswordService passwordService;
 
-    /**
-     * La solicitud del código es pública: funciona sin cabeceras de identidad y sin token
+        /**
+     * The code request is public: it works without identity headers and without a token
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void forgot_withoutIdentityHeaders_isPublicAndReachesTheService() throws Exception {
@@ -74,10 +73,10 @@ class PasswordSecurityTest {
         verify(passwordService).requestRecoveryCode(any(ForgotPasswordRequest.class), any(String.class));
     }
 
-    /**
-     * El restablecimiento con código es público: funciona sin cabeceras de identidad y sin token
+        /**
+     * The reset with a code is public: it works without identity headers and without a token
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void reset_withoutIdentityHeaders_isPublicAndReachesTheService() throws Exception {
@@ -88,10 +87,10 @@ class PasswordSecurityTest {
         verify(passwordService).resetPassword(any(ResetPasswordRequest.class), any(String.class));
     }
 
-    /**
-     * Las dos rutas públicas devuelven el mismo correlation id que recibieron
+        /**
+     * The two public routes return the same correlation id that they received
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void publicRoutes_echoTheCorrelationId() throws Exception {
@@ -111,11 +110,11 @@ class PasswordSecurityTest {
                 .andExpect(header().string(CorrelationIds.HEADER, correlationId));
     }
 
-    /**
-     * El cambio de contraseña no es público: sin cabeceras de identidad responde 401 con el ErrorResponse y el
-     * servicio no se ejecuta
+        /**
+     * The password change is not public: without identity headers it answers 401 with the ErrorResponse and the service
+     * is not run
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void change_withoutIdentityHeaders_returns401WithErrorResponse() throws Exception {
@@ -130,10 +129,11 @@ class PasswordSecurityTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Un token en Authorization sin las cabeceras del Gateway no autentica: MS01 no lo recibe ni lo valida
+        /**
+     * A token in Authorization without the Gateway headers does not authenticate: MS01 neither receives nor validates
+     * it
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void change_withOnlyABearerToken_returns401AndDoesNotReachTheService() throws Exception {
@@ -147,29 +147,30 @@ class PasswordSecurityTest {
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Un rol fuera del catálogo responde 401 con el motivo y el servicio no se ejecuta
+        /**
+     * A role name with an invalid format answers 401 with the reason and the service is not run
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
-    void change_withUnknownRole_returns401WithTheReason() throws Exception {
+    void change_withInvalidRoleFormat_returns401WithTheReason() throws Exception {
         mockMvc.perform(put(CHANGE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(CHANGE_BODY)
                 .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
-                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPERUSUARIO"))
+                .header(IdentityHeaderParser.USER_ROLE_HEADER, "SUPER-USUARIO")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, "ms01:role:read_own"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value(IdentityHeaderParser.INVALID_ROLE_MESSAGE));
 
         verifyNoInteractions(passwordService);
     }
 
-    /**
-     * Con cabeceras válidas la petición llega al servicio con la identidad y el correlation id recibidos, y la
-     * respuesta devuelve el mismo correlation id
+        /**
+     * With valid headers the request reaches the service with the received identity and correlation id, and the
+     * response returns the same correlation id
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void change_withIdentityHeaders_reachesTheServiceAndEchoesTheCorrelationId() throws Exception {
@@ -180,6 +181,7 @@ class PasswordSecurityTest {
                 .content(CHANGE_BODY)
                 .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
                 .header(IdentityHeaderParser.USER_ROLE_HEADER, "ESTUDIANTE")
+                .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader("ESTUDIANTE"))
                 .header(CorrelationIds.HEADER, correlationId))
                 .andExpect(status().isOk())
                 .andExpect(header().string(CorrelationIds.HEADER, correlationId))
@@ -189,31 +191,32 @@ class PasswordSecurityTest {
         verify(passwordService).changePassword(captor.capture(), any(ChangePasswordRequest.class),
                 eq(correlationId));
         assertEquals(UUID.fromString(USER_ID), captor.getValue().userId());
-        assertEquals(EnumSet.of(UserRole.ESTUDIANTE), captor.getValue().roles());
+        assertEquals(Set.of("ESTUDIANTE"), captor.getValue().roles());
     }
 
-    /**
-     * Todos los roles del catálogo pueden cambiar su contraseña: la ruta no restringe por rol
+        /**
+     * All the roles of the catalog can change their password: the route does not restrict by role
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void change_everyRoleInTheCatalog_isAccepted() throws Exception {
-        for (UserRole role : UserRole.values()) {
+        for (String role : SeedRoles.PERMISSIONS.keySet()) {
             mockMvc.perform(put(CHANGE_URL)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(CHANGE_BODY)
                     .header(IdentityHeaderParser.USER_ID_HEADER, USER_ID)
-                    .header(IdentityHeaderParser.USER_ROLE_HEADER, role.name()))
+                    .header(IdentityHeaderParser.USER_ROLE_HEADER, role)
+                    .header(IdentityHeaderParser.USER_PERMISSION_HEADER, TestIdentities.permissionHeader(role)))
                     .andExpect(status().isOk());
         }
     }
 
-    /**
-     * Las rutas públicas solo lo son con su método: un GET a la solicitud del código no es público y responde
-     * 401 sin identidad
+        /**
+     * The public routes are only public with their method: a GET to the code request is not public and answers 401
+     * without identity
      *
-     * @throws Exception si falla la petición simulada
+     * @throws Exception if the simulated request fails
      */
     @Test
     void forgot_withAnotherHttpMethod_isNotPublic() throws Exception {

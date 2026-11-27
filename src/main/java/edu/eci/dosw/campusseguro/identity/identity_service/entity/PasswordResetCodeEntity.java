@@ -11,160 +11,160 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Código de un solo uso para restablecer la contraseña (tabla codigos_recuperacion del modelo de datos,
- * RF-MS01-08), el código en claro nunca se guarda: solo su hash
+ * Single-use code to reset the password (table password_reset_codes of the data model, RF-MS01-08), the code in clear
+ * text is never stored: only its hash
  *
- * Un código está vigente mientras no se haya usado y no haya expirado, un código usado es un código
- * consumido o invalidado
+ * A code is valid as long as it has not been used and has not expired, a used code is a code that was consumed or
+ * invalidated
  */
 @Entity
-@Table(name = "codigos_recuperacion")
+@Table(name = "password_reset_codes")
 public class PasswordResetCodeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "usuario_id", nullable = false, updatable = false)
+    @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
 
-    @Column(name = "codigo_hash", nullable = false, length = 100)
+    @Column(name = "code_hash", nullable = false, length = 100)
     private String codeHash;
 
-    @Column(name = "intentos", nullable = false)
+    @Column(name = "attempts", nullable = false)
     private int attempts;
 
-    @Column(name = "expira_en", nullable = false, updatable = false)
+    @Column(name = "expires_at", nullable = false, updatable = false)
     private Instant expiresAt;
 
-    @Column(name = "usado_en")
+    @Column(name = "used_at")
     private Instant usedAt;
 
-    @Column(name = "creado_en", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    /**
-     * Devuelve el identificador del código
+        /**
+     * Returns the identifier of the code
      *
-     * @return el id del código, null si todavía no se guardó
+     * @return the id of the code, null if it has not been saved yet
      */
     public UUID getId() {
         return this.id;
     }
 
-    /**
-     * Devuelve el identificador del usuario dueño del código
+        /**
+     * Returns the identifier of the user that owns the code
      *
-     * @return el id del usuario
+     * @return the id of the user
      */
     public UUID getUserId() {
         return this.userId;
     }
 
-    /**
-     * Coloca el identificador del usuario dueño del código
+        /**
+     * Sets the identifier of the user that owns the code
      *
-     * @param userId id del usuario
+     * @param userId id of the user
      */
     public void setUserId(UUID userId) {
         this.userId = userId;
     }
 
-    /**
-     * Devuelve el hash del código de seis dígitos
+        /**
+     * Returns the hash of the six-digit code
      *
-     * @return el hash del código, nunca el código en claro
+     * @return the hash of the code, never the code in clear text
      */
     public String getCodeHash() {
         return this.codeHash;
     }
 
-    /**
-     * Coloca el hash del código de seis dígitos
+        /**
+     * Sets the hash of the six-digit code
      *
-     * @param codeHash hash del código
+     * @param codeHash hash of the code
      */
     public void setCodeHash(String codeHash) {
         this.codeHash = codeHash;
     }
 
-    /**
-     * Devuelve la cantidad de intentos fallidos de verificación del código
+        /**
+     * Returns the number of failed attempts to verify the code
      *
-     * @return los intentos fallidos acumulados
+     * @return the accumulated failed attempts
      */
     public int getAttempts() {
         return this.attempts;
     }
 
-    /**
-     * Coloca la cantidad de intentos fallidos de verificación del código
+        /**
+     * Sets the number of failed attempts to verify the code
      *
-     * @param attempts intentos fallidos acumulados
+     * @param attempts accumulated failed attempts
      */
     public void setAttempts(int attempts) {
         this.attempts = attempts;
     }
 
-    /**
-     * Devuelve el instante en el que el código deja de ser válido
+        /**
+     * Returns the instant at which the code stops being valid
      *
-     * @return el instante de expiración
+     * @return the expiration instant
      */
     public Instant getExpiresAt() {
         return this.expiresAt;
     }
 
-    /**
-     * Coloca el instante en el que el código deja de ser válido
+        /**
+     * Sets the instant at which the code stops being valid
      *
-     * @param expiresAt instante de expiración
+     * @param expiresAt expiration instant
      */
     public void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
     }
 
-    /**
-     * Devuelve el instante en el que el código se consumió o se invalidó
+        /**
+     * Returns the instant at which the code was consumed or invalidated
      *
-     * @return el instante de uso, null si el código no se ha usado
+     * @return the instant of use, null if the code has not been used
      */
     public Instant getUsedAt() {
         return this.usedAt;
     }
 
-    /**
-     * Coloca el instante en el que el código se consumió o se invalidó
+        /**
+     * Sets the instant at which the code was consumed or invalidated
      *
-     * @param usedAt instante de uso, null si el código no se ha usado
+     * @param usedAt instant of use, null if the code has not been used
      */
     public void setUsedAt(Instant usedAt) {
         this.usedAt = usedAt;
     }
 
-    /**
-     * Devuelve el instante de creación del código
+        /**
+     * Returns the creation instant of the code
      *
-     * @return el instante en el que se generó el código
+     * @return the instant at which the code was generated
      */
     public Instant getCreatedAt() {
         return this.createdAt;
     }
 
-    /**
-     * Coloca el instante de creación del código
+        /**
+     * Sets the creation instant of the code
      *
-     * @param createdAt instante en el que se generó el código
+     * @param createdAt instant at which the code was generated
      */
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
 
-    /**
-     * Indica si el código está vigente en un instante, es decir si no se ha usado y todavía no expira
+        /**
+     * Tells whether the code is valid at an instant, that is, whether it has not been used and has not yet expired
      *
-     * @param now instante contra el que se evalúa la vigencia
-     * @return true si el código no se ha usado y su expiración es posterior al instante
+     * @param now instant against which the validity is evaluated
+     * @return true if the code has not been used and its expiration is later than the instant
      */
     public boolean isActiveAt(Instant now) {
         if (this.usedAt != null) {

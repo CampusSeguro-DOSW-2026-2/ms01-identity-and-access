@@ -8,7 +8,7 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 /**
- * Valida la restricción FieldsMatch comparando el valor de dos propiedades del objeto
+ * Validates the FieldsMatch constraint by comparing the value of two properties of the object
  */
 public class FieldsMatchImpl implements ConstraintValidator<FieldsMatch, Object> {
 
@@ -16,10 +16,10 @@ public class FieldsMatchImpl implements ConstraintValidator<FieldsMatch, Object>
     private String matchField;
     private String message;
 
-    /**
-     * Guarda los nombres de las propiedades y el mensaje configurados en la anotación
+        /**
+     * Stores the property names and the message configured in the annotation
      *
-     * @param constraintAnnotation anotación con la configuración de la restricción
+     * @param constraintAnnotation annotation with the configuration of the constraint
      */
     @Override
     public void initialize(FieldsMatch constraintAnnotation) {
@@ -28,13 +28,13 @@ public class FieldsMatchImpl implements ConstraintValidator<FieldsMatch, Object>
         this.message = constraintAnnotation.message();
     }
 
-    /**
-     * Comprueba que las dos propiedades tengan el mismo valor, si alguna falta no se reporta aquí
-     * porque la obligatoriedad se valida en cada propiedad
+        /**
+     * Checks that the two properties have the same value, if one is missing it is not reported here because the
+     * requirement is validated in each property
      *
-     * @param value objeto que se valida
-     * @param context contexto donde se registra el error asociado a la propiedad de confirmación
-     * @return true si los valores coinciden o si alguno de los dos no fue enviado
+     * @param value object being validated
+     * @param context context where the error associated with the confirmation property is recorded
+     * @return true if the values match or if either of the two was not sent
      */
     @Override
     public boolean isValid(Object value, ConstraintValidatorContext context) {

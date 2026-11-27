@@ -18,8 +18,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.ForbiddenAcc
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Un acceso denegado por la capa de seguridad responde 403 con el ErrorResponse de los estándares de
- * integración
+ * An access denied by the security layer answers 403 with the ErrorResponse of the integration standards
  */
 class ForbiddenAccessDeniedHandlerTest {
 
@@ -29,8 +28,8 @@ class ForbiddenAccessDeniedHandlerTest {
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
 
-    /**
-     * Prepara el manejador, una petición y una respuesta vacías
+        /**
+     * Prepares the handler, an empty request and an empty response
      */
     @BeforeEach
     void setUp() {
@@ -39,16 +38,16 @@ class ForbiddenAccessDeniedHandlerTest {
         response = new MockHttpServletResponse();
     }
 
-    /**
-     * La respuesta es 403 en JSON con el código y el mensaje del catálogo
+        /**
+     * The response is 403 in JSON with the code and the message of the catalog
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     @Test
     void handle_returns403WithTheCatalogBody() throws Exception {
         request.addHeader(CorrelationIds.HEADER, CORRELATION_ID);
 
-        handler.handle(request, response, new AccessDeniedException("denegado"));
+        handler.handle(request, response, new AccessDeniedException("denied"));
 
         String body = response.getContentAsString();
         assertEquals(403, response.getStatus());
@@ -60,16 +59,16 @@ class ForbiddenAccessDeniedHandlerTest {
         assertEquals(CORRELATION_ID, JsonPath.<String>read(body, "$.correlation_id"));
     }
 
-    /**
-     * El correlation id también se devuelve en la cabecera de la respuesta
+        /**
+     * The correlation id is also returned in the header of the response
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     @Test
     void handle_returnsTheCorrelationIdHeader() throws Exception {
         request.addHeader(CorrelationIds.HEADER, CORRELATION_ID);
 
-        handler.handle(request, response, new AccessDeniedException("denegado"));
+        handler.handle(request, response, new AccessDeniedException("denied"));
 
         assertEquals(CORRELATION_ID, response.getHeader(CorrelationIds.HEADER));
     }

@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,12 +19,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
+import edu.eci.dosw.campusseguro.identity.identity_service.TestIdentities;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 
 /**
- * Construcción y emisión de los eventos de auditoría hacia MS08 (RNF-MS01-05, Estándares de Integración,
- * sección 7)
+ * Construction and emission of the audit events towards MS08 (RNF-MS01-05, Integration Standards, section 7)
  */
 @ExtendWith(MockitoExtension.class)
 class AuditRecorderTest {
@@ -39,18 +37,18 @@ class AuditRecorderTest {
 
     private AuditRecorder recorder;
 
-    /**
-     * Prepara el registrador con un reloj fijo
+        /**
+     * Prepares the recorder with a fixed clock
      */
     @BeforeEach
     void setUp() {
         recorder = new AuditRecorder(publisher, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
-    /**
-     * Obtiene el evento que se entregó al publicador
+        /**
+     * Gets the event that was delivered to the publisher
      *
-     * @return el evento emitido
+     * @return the emitted event
      */
     private AuditEvent publishedEvent() {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -58,8 +56,8 @@ class AuditRecorderTest {
         return captor.getValue();
     }
 
-    /**
-     * Un evento anónimo no lleva roles y usa la hora del reloj
+        /**
+     * An anonymous event carries no roles and uses the time of the clock
      */
     @Test
     void recordAnonymous_publishesTheEventWithoutRoles() {
@@ -77,8 +75,8 @@ class AuditRecorderTest {
         assertEquals(NOW, event.fecha());
     }
 
-    /**
-     * Un evento anónimo con usuario conserva el usuario y el recurso
+        /**
+     * An anonymous event with a user keeps the user and the resource
      */
     @Test
     void recordAnonymous_withUser_keepsTheUserAndTheResource() {
@@ -91,12 +89,12 @@ class AuditRecorderTest {
         assertNull(event.detalle());
     }
 
-    /**
-     * Un evento de un solicitante lleva su identificador y sus roles en el orden alfabético de la cabecera
+        /**
+     * An event of a requester carries their identifier and their roles in the alphabetical order of the header
      */
     @Test
     void recordAs_publishesTheRequesterAndItsRolesInHeaderOrder() {
-        RequesterIdentity requester = new RequesterIdentity(USER_ID, Set.of(UserRole.PROFESOR, UserRole.ADMIN));
+        RequesterIdentity requester = TestIdentities.of(USER_ID, "PROFESOR", "ADMIN");
 
         recorder.recordAs(AuditAction.CAMBIO_ESTADO, AuditResult.EXITO, requester, "usuario:otro", "ACTIVO",
                 CORRELATION_ID);
@@ -109,28 +107,28 @@ class AuditRecorderTest {
         assertEquals(NOW, event.fecha());
     }
 
-    /**
-     * El recurso de un usuario usa el tipo y el identificador separados por dos puntos
+        /**
+     * The resource of a user uses the type and the identifier separated by a colon
      */
     @Test
     void userResource_usesTheTypeAndTheIdentifier() {
         assertEquals("usuario:" + USER_ID, AuditRecorder.userResource(USER_ID));
     }
 
-    /**
-     * Sin identificador no hay recurso afectado
+        /**
+     * Without an identifier there is no affected resource
      */
     @Test
     void userResource_withoutIdentifier_isNull() {
         assertNull(AuditRecorder.userResource(null));
     }
 
-    /**
-     * Un fallo del publicador nunca interrumpe la operación auditada
+        /**
+     * A failure of the publisher never interrupts the audited operation
      */
     @Test
     void publisherFailure_isSwallowed() {
-        doThrow(new IllegalStateException("MS08 no disponible")).when(publisher).publish(any(AuditEvent.class));
+        doThrow(new IllegalStateException("MS08 unavailable")).when(publisher).publish(any(AuditEvent.class));
 
         assertDoesNotThrow(() -> recorder.recordAnonymous(AuditAction.LOGIN, AuditResult.EXITO, USER_ID,
                 AuditRecorder.userResource(USER_ID), null, CORRELATION_ID));

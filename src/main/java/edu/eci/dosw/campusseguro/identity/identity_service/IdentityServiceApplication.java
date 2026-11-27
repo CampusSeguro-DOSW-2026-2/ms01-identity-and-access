@@ -4,15 +4,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Punto de entrada del microservicio de identidad y acceso (MS01)
+ * Entry point of the identity and access microservice (MS01)
  */
 @SpringBootApplication
 public class IdentityServiceApplication {
 
-	/**
-	 * Arranca la aplicación Spring Boot del microservicio
+		/**
+	 * Starts the Spring Boot application of the microservice
 	 *
-	 * @param args argumentos de línea de comandos recibidos al arrancar
+	 * @param args command line arguments received at startup
 	 */
 	public static void main(String[] args) {
 		SpringApplication.run(IdentityServiceApplication.class, args);

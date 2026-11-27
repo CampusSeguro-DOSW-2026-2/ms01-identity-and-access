@@ -14,8 +14,6 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,10 +31,10 @@ import edu.eci.dosw.campusseguro.identity.identity_service.dto.ErrorResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.PageResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.dto.UserProfileResponse;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserState;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.ForbiddenOperationException;
 import edu.eci.dosw.campusseguro.identity.identity_service.exception.InvalidRequestException;
+import edu.eci.dosw.campusseguro.identity.identity_service.repository.RoleRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.repository.UserRepository;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentity;
 import edu.eci.dosw.campusseguro.identity.identity_service.service.UserServiceImpl;
@@ -44,77 +42,81 @@ import edu.eci.dosw.campusseguro.identity.identity_service.validation.RequestVal
 import jakarta.validation.Validation;
 
 /**
- * Pruebas de la búsqueda y listado de usuarios (RF-MS01-07, formulario F-07)
+ * Tests of the search and listing of users (RF-MS01-07, form F-07)
  */
 class UserSearchServiceTest {
 
     private UserRepository userRepository;
+    private RoleRepository roleRepository;
     private UserServiceImpl userService;
 
-    private final RequesterIdentity admin = identity(UserRole.ADMIN);
-    private final RequesterIdentity auditor = identity(UserRole.AUDITOR);
-    private final RequesterIdentity student = identity(UserRole.ESTUDIANTE);
+    private final RequesterIdentity admin = identity("ADMIN");
+    private final RequesterIdentity auditor = identity("AUDITOR");
+    private final RequesterIdentity student = identity("ESTUDIANTE");
 
-    /**
-     * Construye la identidad de un solicitante con un rol
+        /**
+     * Builds the identity of a requester with a role
      *
-     * @param role rol del solicitante
-     * @return la identidad del solicitante
+     * @param role role of the requester
+     * @return the identity of the requester
      */
-    private static RequesterIdentity identity(UserRole role) {
-        return new RequesterIdentity(UUID.randomUUID(), EnumSet.of(role));
+    private static RequesterIdentity identity(String role) {
+        return TestIdentities.of(UUID.randomUUID(), role);
     }
 
-    /**
-     * Prepara el servicio con sus dependencias simuladas
+        /**
+     * Prepares the service with its simulated dependencies
      */
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
+        roleRepository = mock(RoleRepository.class);
+        when(roleRepository.existsByName("ESTUDIANTE")).thenReturn(true);
+        when(roleRepository.existsByName("MONITOR_EVACUACION")).thenReturn(true);
         Clock clock = Clock.fixed(Instant.parse("2026-03-01T10:00:00Z"), ZoneOffset.UTC);
         AuditRecorder auditRecorder = new AuditRecorder(mock(AuditEventPublisher.class), clock);
         RequestValidator requestValidator = new RequestValidator(
                 Validation.buildDefaultValidatorFactory().getValidator());
-        userService = new UserServiceImpl(userRepository, mock(PasswordEncoder.class), auditRecorder,
-                requestValidator, List.of("escuelaing.edu.co"));
+        userService = new UserServiceImpl(userRepository, roleRepository, auditRecorder, requestValidator,
+                FixedDatabaseTime.at(Instant.parse("2026-03-01T10:00:00Z")));
     }
 
-    /**
-     * Construye un usuario de prueba
+        /**
+     * Builds a test user
      *
-     * @param email correo del usuario
-     * @param state estado del usuario
-     * @param roles roles del usuario
-     * @return el usuario de prueba
+     * @param email email of the user
+     * @param state status of the user
+     * @param roles roles of the user
+     * @return the test user
      */
-    private UserEntity user(String email, UserState state, UserRole... roles) {
+    private UserEntity user(String email, UserState state, String... roles) {
         UserEntity u = new UserEntity();
         u.setId(UUID.randomUUID());
         u.setFirstName("Carlos");
         u.setFirstLastName("Gomez");
         u.setEmail(email);
         u.setPassword("$2a$10$hash");
-        u.setRoles(new HashSet<>(List.of(roles)));
+        u.setRoles(TestEntities.roles(roles));
         u.setState(state);
         return u;
     }
 
-    /**
-     * Configura el repositorio para devolver una página vacía
+        /**
+     * Configures the repository to return an empty page
      */
     private void stubEmptyPage() {
         when(userRepository.searchUsers(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
     }
 
-    /**
-     * La búsqueda devuelve la página con los perfiles completos y los datos de paginación
+        /**
+     * The search returns the page with the complete profiles and the pagination data
      */
     @Test
     void search_asAdmin_returnsPageWithFullProfilesAndPaginationData() {
-        UserEntity a = user("ana@escuelaing.edu.co", UserState.ACTIVO, UserRole.ESTUDIANTE);
-        UserEntity b = user("beto@escuelaing.edu.co", UserState.INACTIVO, UserRole.PROFESOR,
-                UserRole.BRIGADISTA);
+        UserEntity a = user("ana@escuelaing.edu.co", UserState.ACTIVO, "ESTUDIANTE");
+        UserEntity b = user("beto@escuelaing.edu.co", UserState.INACTIVO, "PROFESOR",
+                "BRIGADISTA");
         when(userRepository.searchUsers(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(a, b), PageRequest.of(1, 2), 5));
 
@@ -127,12 +129,12 @@ class UserSearchServiceTest {
         assertEquals(1, result.page());
         assertEquals(2, result.size());
         assertEquals(UserState.INACTIVO, result.contenido().get(1).state());
-        assertEquals(List.of(UserRole.BRIGADISTA, UserRole.PROFESOR), result.contenido().get(1).roles());
+        assertEquals(List.of("BRIGADISTA", "PROFESOR"), result.contenido().get(1).roles());
         assertEquals("Carlos", result.contenido().get(0).firstName());
     }
 
-    /**
-     * La búsqueda entrega los filtros y ordena por fecha de creación descendente y luego por id
+        /**
+     * The search delivers the filters and sorts by creation date descending and then by id
      */
     @Test
     void search_passesFiltersAndSortsByCreationDateDescendingThenId() {
@@ -141,7 +143,7 @@ class UserSearchServiceTest {
         userService.search(admin, "  Ana  ", "ACTIVO", "ESTUDIANTE", "1", "2");
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(userRepository).searchUsers(eq("ana"), eq(UserState.ACTIVO), eq(UserRole.ESTUDIANTE),
+        verify(userRepository).searchUsers(eq("ana"), eq(UserState.ACTIVO), eq("ESTUDIANTE"),
                 captor.capture());
         Pageable pageable = captor.getValue();
         assertEquals(1, pageable.getPageNumber());
@@ -150,8 +152,8 @@ class UserSearchServiceTest {
         assertTrue(pageable.getSort().getOrderFor("id").isAscending());
     }
 
-    /**
-     * Sin parámetros se usan la página y el tamaño por defecto
+        /**
+     * Without parameters the default page and size are used
      */
     @Test
     void search_withoutParameters_usesDefaultPageAndSize() {
@@ -165,8 +167,8 @@ class UserSearchServiceTest {
         assertEquals(20, captor.getValue().getPageSize());
     }
 
-    /**
-     * El valor Todos y los filtros en blanco significan sin filtro
+        /**
+     * The value Todos and the blank filters mean no filter
      */
     @Test
     void search_todosAndBlankFilters_meanNoFilter() {
@@ -177,8 +179,8 @@ class UserSearchServiceTest {
         verify(userRepository).searchUsers(eq(null), eq(null), eq(null), any(Pageable.class));
     }
 
-    /**
-     * Un solicitante sin permiso de lectura se prohíbe y no se consulta la base de datos
+        /**
+     * A requester without read permission is forbidden and the database is not queried
      */
     @Test
     void search_requesterWithoutReadPermission_isForbiddenAndDoesNotQuery() {
@@ -188,22 +190,22 @@ class UserSearchServiceTest {
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
     }
 
-    /**
-     * El permiso se verifica antes de validar los parámetros
+        /**
+     * The permission is verified before validating the parameters
      */
     @Test
     void search_permissionIsCheckedBeforeValidatingParameters() {
         assertThrows(ForbiddenOperationException.class,
-                () -> userService.search(student, null, "XYZ", "SUPERMAN", "-1", "1000"));
+                () -> userService.search(student, null, "XYZ", "SUPER-MAN", "-1", "1000"));
     }
 
-    /**
-     * Los filtros inválidos informan un error por campo con los mensajes del formulario
+        /**
+     * The invalid filters report one error per field with the messages of the form
      */
     @Test
     void search_invalidFilters_reportOneErrorPerFieldWithTheFormMessages() {
         InvalidRequestException error = assertThrows(InvalidRequestException.class,
-                () -> userService.search(admin, "a<b", "XYZ", "SUPERMAN", "-1", "101"));
+                () -> userService.search(admin, "a<b", "XYZ", "SUPER-MAN", "-1", "101"));
 
         assertEquals(5, error.getErrors().size());
         assertTrue(error.getErrors().contains(new ErrorResponse.ErrorDetail("correo", "Búsqueda no válida.")));
@@ -215,8 +217,62 @@ class UserSearchServiceTest {
         verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
     }
 
-    /**
-     * Una página o un tamaño que no son números se rechazan
+        /**
+     * The role of the filter must arrive with the stored format: in lowercase or with symbols it is rejected without
+     * querying the roles table
+     */
+    @Test
+    void search_roleFilterWithoutTheStoredFormat_isRejectedWithoutQueryingRoles() {
+        InvalidRequestException lowercase = assertThrows(InvalidRequestException.class,
+                () -> userService.search(admin, null, null, "estudiante", null, null));
+        InvalidRequestException symbols = assertThrows(InvalidRequestException.class,
+                () -> userService.search(admin, null, null, "ROL-1", null, null));
+
+        assertEquals("Rol no válido.", lowercase.getErrors().get(0).mensaje());
+        assertEquals("Rol no válido.", symbols.getErrors().get(0).mensaje());
+        verify(roleRepository, never()).existsByName(any());
+    }
+
+        /**
+     * A role with a valid format that does not exist in the roles table is rejected and users are not looked up
+     */
+    @Test
+    void search_roleFilterThatDoesNotExist_isRejected() {
+        InvalidRequestException error = assertThrows(InvalidRequestException.class,
+                () -> userService.search(admin, null, null, "FANTASMA", null, null));
+
+        assertEquals("Datos inválidos.", error.getMessage());
+        assertEquals(new ErrorResponse.ErrorDetail("rol", "Rol no válido."), error.getErrors().get(0));
+        verify(roleRepository).existsByName("FANTASMA");
+        verify(userRepository, never()).searchUsers(any(), any(), any(), any(Pageable.class));
+    }
+
+        /**
+     * A custom role that exists works as a filter
+     */
+    @Test
+    void search_roleFilterWithACustomRole_isAccepted() {
+        stubEmptyPage();
+
+        userService.search(admin, null, null, "MONITOR_EVACUACION", null, null);
+
+        verify(userRepository).searchUsers(eq(null), eq(null), eq("MONITOR_EVACUACION"), any(Pageable.class));
+    }
+
+        /**
+     * Without a role filter the roles table is not queried
+     */
+    @Test
+    void search_withoutRoleFilter_doesNotQueryTheRolesTable() {
+        stubEmptyPage();
+
+        userService.search(admin, null, null, "Todos", null, null);
+
+        verify(roleRepository, never()).existsByName(any());
+    }
+
+        /**
+     * A page or a size that are not numbers are rejected
      */
     @Test
     void search_nonNumericPageOrSize_areRejected() {
@@ -226,8 +282,8 @@ class UserSearchServiceTest {
         assertEquals(2, error.getErrors().size());
     }
 
-    /**
-     * Los límites del tamaño de página son inclusivos
+        /**
+     * The limits of the page size are inclusive
      */
     @Test
     void search_sizeBoundaries_areInclusive() {
@@ -240,8 +296,8 @@ class UserSearchServiceTest {
                 () -> userService.search(admin, null, null, null, "0", "101"));
     }
 
-    /**
-     * Un filtro de correo de más de 100 caracteres se rechaza
+        /**
+     * An email filter of more than 100 characters is rejected
      */
     @Test
     void search_emailLongerThan100Characters_isRejected() {
@@ -253,8 +309,8 @@ class UserSearchServiceTest {
         assertEquals("correo", error.getErrors().get(0).campo());
     }
 
-    /**
-     * Un resultado vacío devuelve una página vacía y no un error
+        /**
+     * An empty result returns an empty page and not an error
      */
     @Test
     void search_emptyResult_returnsEmptyPageNotAnError() {

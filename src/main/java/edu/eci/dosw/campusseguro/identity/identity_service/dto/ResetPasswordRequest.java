@@ -13,8 +13,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de POST /api/v1/auth/password/reset (RF-MS01-08, formulario F-05), cualquier campo fuera del
- * contrato se rechaza (RG-04)
+ * Body of POST /api/v1/auth/password/reset (RF-MS01-08, form F-05), any field outside the contract is rejected (RG-04)
  */
 @FieldsMatch(field = "newPassword", matchField = "newPasswordConfirmation",
         message = FieldRules.PASSWORDS_MISMATCH_MESSAGE)
@@ -40,19 +39,19 @@ public class ResetPasswordRequest extends StrictRequest {
     @NotBlank(message = FieldRules.PASSWORDS_MISMATCH_MESSAGE)
     private String newPasswordConfirmation;
 
-    /**
-     * Devuelve el correo de la cuenta cuya contraseña se restablece
+        /**
+     * Returns the email of the account whose password is reset
      *
-     * @return el correo recortado y en minúsculas, null si no se envió
+     * @return the email trimmed and in lowercase, null if it was not sent
      */
     public String getEmail() {
         return this.email;
     }
 
-    /**
-     * Coloca el correo, recortado y normalizado a minúsculas según RG-01
+        /**
+     * Sets the email, trimmed and normalized to lowercase according to RG-01
      *
-     * @param email correo recibido
+     * @param email email received
      */
     public void setEmail(String email) {
         String trimmed = Texts.trimToNull(email);
@@ -63,55 +62,55 @@ public class ResetPasswordRequest extends StrictRequest {
         }
     }
 
-    /**
-     * Devuelve el código de recuperación recibido por correo
+        /**
+     * Returns the recovery code received by email
      *
-     * @return el código sin espacios laterales, null si no se envió
+     * @return the code without surrounding spaces, null if it was not sent
      */
     public String getCode() {
         return this.code;
     }
 
-    /**
-     * Coloca el código de recuperación, recortado según RG-01
+        /**
+     * Sets the recovery code, trimmed according to RG-01
      *
-     * @param code código recibido
+     * @param code code received
      */
     public void setCode(String code) {
         this.code = Texts.trimToNull(code);
     }
 
-    /**
-     * Devuelve la nueva contraseña tal como se recibió
+        /**
+     * Returns the new password as it was received
      *
-     * @return la nueva contraseña, null si no se envió
+     * @return the new password, null if it was not sent
      */
     public String getNewPassword() {
         return this.newPassword;
     }
 
-    /**
-     * Coloca la nueva contraseña, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the new password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param newPassword nueva contraseña recibida
+     * @param newPassword new password received
      */
     public void setNewPassword(String newPassword) {
         this.newPassword = newPassword;
     }
 
-    /**
-     * Devuelve la confirmación de la nueva contraseña tal como se recibió
+        /**
+     * Returns the confirmation of the new password as it was received
      *
-     * @return la confirmación, null si no se envió
+     * @return the confirmation, null if it was not sent
      */
     public String getNewPasswordConfirmation() {
         return this.newPasswordConfirmation;
     }
 
-    /**
-     * Coloca la confirmación de la nueva contraseña, que no se recorta ni se normaliza según RG-01
+        /**
+     * Sets the confirmation of the new password, which is neither trimmed nor normalized according to RG-01
      *
-     * @param newPasswordConfirmation confirmación recibida
+     * @param newPasswordConfirmation confirmation received
      */
     public void setNewPasswordConfirmation(String newPasswordConfirmation) {
         this.newPasswordConfirmation = newPasswordConfirmation;

@@ -1,24 +1,23 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.util;
 
 /**
- * Utilidades de texto para aplicar la regla general de entrada RG-01 (los textos se recortan antes de
- * validar)
+ * Text utilities to apply the general input rule RG-01 (texts are trimmed before validating)
  */
 public final class Texts {
 
-    /**
-     * Clase de utilidad, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private Texts() {
     }
 
-    /**
-     * Recorta los espacios al inicio y al final de un texto y lo deja en null si queda vacío, así un
-     * campo obligatorio vacío o con solo espacios se considera faltante (RG-02) y un campo opcional vacío se
-     * considera omitido
+        /**
+     * Trims the spaces at the beginning and at the end of a text and leaves it as null if it ends up empty, so a
+     * required field that is empty or has only spaces is considered missing (RG-02) and an optional field that is empty
+     * is considered omitted
      *
-     * @param value texto recibido, puede ser null
-     * @return el texto recortado, o null si el valor era null o quedó vacío
+     * @param value text received, may be null
+     * @return the trimmed text, or null if the value was null or ended up empty
      */
     public static String trimToNull(String value) {
         if (value == null) {

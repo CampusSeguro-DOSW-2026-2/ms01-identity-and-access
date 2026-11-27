@@ -3,10 +3,10 @@ package edu.eci.dosw.campusseguro.identity.identity_service.security;
 import java.time.Instant;
 
 /**
- * JWT ya firmado y su instante de expiracion en segundos exactos
+ * Already signed JWT and its expiration instant in exact seconds
  *
- * @param token JWT compacto firmado
- * @param expiresAt instante de expiracion del token, en segundos exactos
+ * @param token signed compact JWT
+ * @param expiresAt expiration instant of the token, in exact seconds
  */
 public record IssuedToken(String token, Instant expiresAt) {
 }

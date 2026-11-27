@@ -11,8 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Cuerpo de POST /api/v1/auth/password/forgot (RF-MS01-08, formulario F-04), cualquier campo fuera del
- * contrato se rechaza (RG-04)
+ * Body of POST /api/v1/auth/password/forgot (RF-MS01-08, form F-04), any field outside the contract is rejected (RG-04)
  */
 public class ForgotPasswordRequest extends StrictRequest {
 
@@ -22,19 +21,19 @@ public class ForgotPasswordRequest extends StrictRequest {
     @Size(max = FieldRules.EMAIL_MAX_LENGTH, message = FieldRules.EMAIL_RECOVERY_MESSAGE)
     private String email;
 
-    /**
-     * Devuelve el correo al que se enviará el código de recuperación
+        /**
+     * Returns the email to which the recovery code will be sent
      *
-     * @return el correo recortado y en minúsculas, null si no se envió
+     * @return the email trimmed and in lowercase, null if it was not sent
      */
     public String getEmail() {
         return this.email;
     }
 
-    /**
-     * Coloca el correo, recortado y normalizado a minúsculas según RG-01
+        /**
+     * Sets the email, trimmed and normalized to lowercase according to RG-01
      *
-     * @param email correo recibido
+     * @param email email received
      */
     public void setEmail(String email) {
         String trimmed = Texts.trimToNull(email);

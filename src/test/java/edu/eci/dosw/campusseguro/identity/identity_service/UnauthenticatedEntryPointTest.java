@@ -21,8 +21,8 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.Unauthentica
 import edu.eci.dosw.campusseguro.identity.identity_service.util.CorrelationIds;
 
 /**
- * Una ruta protegida sin identidad responde 401 con el ErrorResponse de los estandares de integracion (4 y
- * 5, RNF-MS01-04): status, codigo NO_AUTENTICADO, mensaje, errores y correlation_id
+ * A protected route without identity answers 401 with the ErrorResponse of the integration standards (4 and 5,
+ * RNF-MS01-04): status, code NO_AUTENTICADO, message, errors and correlation_id
  */
 class UnauthenticatedEntryPointTest {
 
@@ -30,8 +30,8 @@ class UnauthenticatedEntryPointTest {
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
 
-    /**
-     * Prepara el punto de entrada, una peticion y una respuesta vacias
+        /**
+     * Prepares the entry point, a request and an empty response
      */
     @BeforeEach
     void setUp() {
@@ -40,19 +40,19 @@ class UnauthenticatedEntryPointTest {
         response = new MockHttpServletResponse();
     }
 
-    /**
-     * Ejecuta el punto de entrada
+        /**
+     * Runs the entry point
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     private void commence() throws Exception {
-        entryPoint.commence(request, response, new InsufficientAuthenticationException("sin identidad"));
+        entryPoint.commence(request, response, new InsufficientAuthenticationException("without identity"));
     }
 
-    /**
-     * La respuesta es 401 en JSON con el cuerpo normalizado
+        /**
+     * The response is 401 in JSON with the normalized body
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     @Test
     void commence_returns401WithTheNormalizedBody() throws Exception {
@@ -67,10 +67,10 @@ class UnauthenticatedEntryPointTest {
         assertEquals(5, JsonPath.<java.util.Map<String, Object>>read(body, "$").size());
     }
 
-    /**
-     * Sin motivo guardado por el filtro se informa que faltan las cabeceras de identidad
+        /**
+     * Without a reason stored by the filter it is reported that the identity headers are missing
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     @Test
     void commence_withoutStoredReason_reportsMissingHeaders() throws Exception {
@@ -80,10 +80,10 @@ class UnauthenticatedEntryPointTest {
                 JsonPath.<String>read(response.getContentAsString(), "$.mensaje"));
     }
 
-    /**
-     * Con un motivo guardado por el filtro se informa ese motivo
+        /**
+     * With a reason stored by the filter that reason is reported
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     @Test
     void commence_withStoredReason_reportsThatReason() throws Exception {
@@ -96,10 +96,10 @@ class UnauthenticatedEntryPointTest {
                 JsonPath.<String>read(response.getContentAsString(), "$.mensaje"));
     }
 
-    /**
-     * El correlation id de la peticion se devuelve en el cuerpo
+        /**
+     * The correlation id of the request is returned in the body
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     @Test
     void commence_withCorrelationHeader_returnsItInTheBody() throws Exception {
@@ -111,10 +111,10 @@ class UnauthenticatedEntryPointTest {
                 JsonPath.<String>read(response.getContentAsString(), "$.correlation_id"));
     }
 
-    /**
-     * Sin correlation id en la peticion el cuerpo lleva uno generado, porque el campo es obligatorio
+        /**
+     * Without a correlation id in the request the body carries a generated one, because the field is required
      *
-     * @throws Exception si falla la escritura de la respuesta
+     * @throws Exception if writing the response fails
      */
     @Test
     void commence_withoutCorrelationHeader_returnsAGeneratedOne() throws Exception {

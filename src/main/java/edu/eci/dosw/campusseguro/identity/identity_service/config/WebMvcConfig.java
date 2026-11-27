@@ -9,16 +9,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import edu.eci.dosw.campusseguro.identity.identity_service.security.RequesterIdentityArgumentResolver;
 
 /**
- * Configuración de Spring MVC, MS01 no configura CORS porque se gestiona únicamente en el API Gateway
- * (RNF-MS01-03, Estándares de Integración, sección 2.1)
+ * Spring MVC configuration, MS01 does not configure CORS because it is managed only in the API Gateway (RNF-MS01-03,
+ * Integration Standards, section 2.1)
  */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    /**
-     * Registra el resolvedor que entrega la identidad del solicitante a los controladores
+        /**
+     * Registers the resolver that delivers the identity of the requester to the controllers
      *
-     * @param resolvers lista de resolvedores de argumentos a la que se agrega el de la identidad
+     * @param resolvers list of argument resolvers to which the identity one is added
      */
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {

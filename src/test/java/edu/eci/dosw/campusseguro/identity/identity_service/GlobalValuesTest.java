@@ -7,12 +7,12 @@ import org.junit.jupiter.api.Test;
 import edu.eci.dosw.campusseguro.identity.identity_service.util.GlobalValues;
 
 /**
- * Valores globales que fijan los estándares de integración (sección 1)
+ * Global values set by the integration standards (section 1)
  */
 class GlobalValuesTest {
 
-    /**
-     * El emisor y la audiencia del JWT son los valores globales de los estándares
+        /**
+     * The issuer and the audience of the JWT are the global values of the standards
      */
     @Test
     void jwtIssuerAndAudience_areTheOnesOfTheStandards() {
@@ -20,19 +20,27 @@ class GlobalValuesTest {
         assertEquals("campusseguro", GlobalValues.JWT_AUDIENCE);
     }
 
-    /**
-     * La vigencia del JWT es de 3600 segundos
+        /**
+     * The validity of the JWT is 3600 seconds
      */
     @Test
     void jwtLifetime_is3600Seconds() {
         assertEquals(3600, GlobalValues.JWT_LIFETIME_SECONDS);
     }
 
-    /**
-     * El timeout del cliente HTTP en las llamadas internas es de 2000 milisegundos
+        /**
+     * The timeout of the HTTP client in the internal calls is 2000 milliseconds
      */
     @Test
     void internalClientTimeout_is2000Milliseconds() {
         assertEquals(2000, GlobalValues.INTERNAL_CLIENT_TIMEOUT_MS);
+    }
+
+        /**
+     * A user can have at most 50 roles
+     */
+    @Test
+    void maxRolesPerUser_is50() {
+        assertEquals(50, GlobalValues.MAX_ROLES_PER_USER);
     }
 }

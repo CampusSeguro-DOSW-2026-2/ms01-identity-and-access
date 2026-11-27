@@ -2,15 +2,15 @@ package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,201 +19,216 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 /**
- * Usuario registrado en MS01 (tabla usuarios del modelo de datos), el correo se guarda siempre en
- * minúsculas y la contraseña solo como hash
+ * User registered in MS01 (table users of the data model), the email is always stored in lowercase and the password
+ * only as a hash
  */
 @Entity
-@Table(name = "usuarios")
+@Table(name = "users")
 public class UserEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "primer_nombre", nullable = false, length = 30)
+    @Column(name = "first_name", nullable = false, length = 30)
     private String firstName;
 
-    @Column(name = "segundo_nombre", length = 30)
+    @Column(name = "second_name", length = 30)
     private String secondName;
 
-    @Column(name = "primer_apellido", nullable = false, length = 30)
+    @Column(name = "first_lastname", nullable = false, length = 30)
     private String firstLastName;
 
-    @Column(name = "segundo_apellido", length = 30)
+    @Column(name = "second_lastname", length = 30)
     private String secondLastName;
 
-    @Column(name = "correo", nullable = false, length = 100)
+    @Column(name = "email", nullable = false, length = 100)
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 100)
     private String password;
 
-    @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
-    @CollectionTable(name = "usuario_rol", joinColumns = @JoinColumn(name = "usuario_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "rol", nullable = false, length = 20)
-    private Set<UserRole> roles = new HashSet<>();
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Set<RoleEntity> roles = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false, length = 10)
+    @Column(name = "status", nullable = false, length = 20)
     private UserState state;
 
     @CreationTimestamp
-    @Column(name = "creado_en", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "actualizado_en", nullable = false)
+    @Generated(event = { EventType.INSERT, EventType.UPDATE })
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private Instant updatedAt;
 
-    /**
-     * Devuelve el identificador del usuario
+    @Column(name = "valid_from")
+    private Instant validFrom;
+
+        /**
+     * Returns the identifier of the user
      *
-     * @return el id del usuario, null si todavía no se guardó
+     * @return the id of the user, null if it has not been saved yet
      */
     public UUID getId() {
         return this.id;
     }
 
-    /**
-     * Coloca el identificador del usuario
+        /**
+     * Sets the identifier of the user
      *
-     * @param id id del usuario
+     * @param id id of the user
      */
     public void setId(UUID id) {
         this.id = id;
     }
 
-    /**
-     * Devuelve el primer nombre
+        /**
+     * Returns the first name
      *
-     * @return el primer nombre del usuario
+     * @return the first name of the user
      */
     public String getFirstName() {
         return this.firstName;
     }
 
-    /**
-     * Coloca el primer nombre
+        /**
+     * Sets the first name
      *
-     * @param name primer nombre del usuario
+     * @param name first name of the user
      */
     public void setFirstName(String name) {
         this.firstName = name;
     }
 
-    /**
-     * Devuelve el segundo nombre
+        /**
+     * Returns the second name
      *
-     * @return el segundo nombre, null si no tiene
+     * @return the second name, null if there is none
      */
     public String getSecondName() {
         return this.secondName;
     }
 
-    /**
-     * Coloca el segundo nombre
+        /**
+     * Sets the second name
      *
-     * @param name segundo nombre del usuario, null si no tiene
+     * @param name second name of the user, null if there is none
      */
     public void setSecondName(String name) {
         this.secondName = name;
     }
 
-    /**
-     * Devuelve el primer apellido
+        /**
+     * Returns the first lastname
      *
-     * @return el primer apellido del usuario
+     * @return the first lastname of the user
      */
     public String getFirstLastName() {
         return this.firstLastName;
     }
 
-    /**
-     * Coloca el primer apellido
+        /**
+     * Sets the first lastname
      *
-     * @param lastName primer apellido del usuario
+     * @param lastName first lastname of the user
      */
     public void setFirstLastName(String lastName) {
         this.firstLastName = lastName;
     }
 
-    /**
-     * Devuelve el segundo apellido
+        /**
+     * Returns the second lastname
      *
-     * @return el segundo apellido, null si no tiene
+     * @return the second lastname, null if there is none
      */
     public String getSecondLastName() {
         return this.secondLastName;
     }
 
-    /**
-     * Coloca el segundo apellido
+        /**
+     * Sets the second lastname
      *
-     * @param lastName segundo apellido del usuario, null si no tiene
+     * @param lastName second lastname of the user, null if there is none
      */
     public void setSecondLastName(String lastName) {
         this.secondLastName = lastName;
     }
 
-    /**
-     * Devuelve el correo institucional
+        /**
+     * Returns the institutional email
      *
-     * @return el correo del usuario, en minúsculas
+     * @return the email of the user, in lowercase
      */
     public String getEmail() {
         return this.email;
     }
 
-    /**
-     * Coloca el correo institucional
+        /**
+     * Sets the institutional email
      *
-     * @param email correo del usuario, ya normalizado a minúsculas
+     * @param email email of the user, already normalized to lowercase
      */
     public void setEmail(String email) {
         this.email = email;
     }
 
-    /**
-     * Devuelve el hash de la contraseña
+        /**
+     * Returns the hash of the password
      *
-     * @return el hash BCrypt de la contraseña, nunca el texto plano
+     * @return the BCrypt hash of the password, never the plain text
      */
     public String getPassword() {
         return this.password;
     }
 
-    /**
-     * Coloca el hash de la contraseña
+        /**
+     * Sets the hash of the password
      *
-     * @param password hash BCrypt de la contraseña
+     * @param password BCrypt hash of the password
      */
     public void setPassword(String password) {
         this.password = password;
     }
 
-    /**
-     * Devuelve los roles del usuario, nunca es null y no tiene un orden definido, para entregarlos
-     * ordenados se usa UserRole.sortedByName
+        /**
+     * Returns the roles of the user, it is never null and has no defined order
      *
-     * @return conjunto de roles del usuario
+     * @return set of roles of the user
      */
-    public Set<UserRole> getRoles() {
+    public Set<RoleEntity> getRoles() {
         return this.roles;
     }
 
-    /**
-     * Deja al usuario con los roles recibidos sincronizando la coleccion en sitio, asi Hibernate solo
-     * inserta en usuario_rol los roles nuevos y borra los retirados, sin tocar los que se conservan ni su
-     * fecha de asignacion (5_modelo_datos, cambio de roles en lote). Asignar una coleccion nueva a un
-     * usuario ya cargado haria que borre e inserte de nuevo todas sus filas
+        /**
+     * Returns the names of the roles of the user as they appear in the API and in the token
      *
-     * @param roles roles finales del usuario, null equivale a ninguno
+     * @return the role names in alphabetical order
      */
-    public void setRoles(Set<UserRole> roles) {
+    public List<String> getRoleNames() {
+        return this.roles.stream()
+                .map(RoleEntity::getName)
+                .sorted()
+                .toList();
+    }
+
+        /**
+     * Leaves the user with the received roles by synchronizing the collection in place, so Hibernate only inserts into
+     * user_roles the new roles and deletes the removed ones, without touching the ones that are kept or their
+     * assignment date (4_modelo-datos, batch role change). Assigning a new collection to an already loaded user would
+     * make it delete and insert again all of its rows
+     *
+     * @param roles final roles of the user, null is equivalent to none
+     */
+    public void setRoles(Set<RoleEntity> roles) {
         if (roles == null) {
             this.roles.clear();
             return;
@@ -221,44 +236,62 @@ public class UserEntity {
         if (roles == this.roles) {
             return;
         }
-        Set<UserRole> finalRoles = new HashSet<>(roles);
+        Set<RoleEntity> finalRoles = new HashSet<>(roles);
         this.roles.retainAll(finalRoles);
         this.roles.addAll(finalRoles);
     }
 
-    /**
-     * Devuelve el estado de la cuenta
+        /**
+     * Returns the status of the account
      *
-     * @return el estado del usuario
+     * @return the status of the user
      */
     public UserState getState() {
         return this.state;
     }
 
-    /**
-     * Coloca el estado de la cuenta
+        /**
+     * Sets the status of the account
      *
-     * @param state estado del usuario
+     * @param state status of the user
      */
     public void setState(UserState state) {
         this.state = state;
     }
 
-    /**
-     * Devuelve la fecha de registro
+        /**
+     * Returns the registration date
      *
-     * @return el instante en que se creó el usuario, null si todavía no se guardó
+     * @return the instant at which the user was created, null if it has not been saved yet
      */
     public Instant getCreatedAt() {
         return this.createdAt;
     }
 
-    /**
-     * Devuelve la fecha de la última modificación
+        /**
+     * Returns the date of the last modification
      *
-     * @return el instante de la última modificación, null si todavía no se guardó
+     * @return the instant of the last modification, null if it has not been saved yet
      */
     public Instant getUpdatedAt() {
         return this.updatedAt;
+    }
+
+        /**
+     * Returns the session cut of the user
+     *
+     * @return the instant from which the credentials of the user are valid, null if there is no cut
+     */
+    public Instant getValidFrom() {
+        return this.validFrom;
+    }
+
+        /**
+     * Sets the session cut of the user, the credentials issued before that instant are rejected
+     *
+     * @param validFrom cut instant truncated to seconds, null to remove it
+     */
+    public void setValidFrom(Instant validFrom) {
+        this.validFrom = validFrom;
     }
 }

@@ -16,26 +16,25 @@ import edu.eci.dosw.campusseguro.identity.identity_service.exception.ErrorCode;
 import jakarta.validation.ConstraintViolation;
 
 /**
- * Convierte los resultados de la validación en los errores por campo del ErrorResponse (RG-05, RG-06),
- * el campo se informa con el nombre que tiene en el contrato y no con el de la clase Java, y se deja un
- * solo mensaje por campo
+ * Converts the validation results into the errors by field of the ErrorResponse (RG-05, RG-06), the field is reported
+ * with the name it has in the contract and not the one of the Java class, and a single message is left per field
  */
 public final class ValidationErrors {
 
     public static final String INVALID_DATA_MESSAGE = ErrorCode.VALIDATION.getMessage();
 
-    /**
-     * Clase de utilidad, no se instancia
+        /**
+     * Utility class, it is not instantiated
      */
     private ValidationErrors() {
     }
 
-    /**
-     * Convierte las violaciones de Bean Validation en errores por campo
+        /**
+     * Converts the Bean Validation violations into errors by field
      *
-     * @param type clase del objeto validado, de la que se toman los nombres del contrato
-     * @param violations violaciones encontradas
-     * @return errores por campo, uno por campo y ordenados por nombre
+     * @param type class of the validated object, from which the contract names are taken
+     * @param violations violations found
+     * @return errors by field, one per field and sorted by name
      */
     public static List<ErrorResponse.ErrorDetail> fromViolations(Class<?> type,
             Collection<? extends ConstraintViolation<?>> violations) {
@@ -47,12 +46,12 @@ public final class ValidationErrors {
         return toSortedDetails(messageByField);
     }
 
-    /**
-     * Convierte los errores de campo de Spring en errores por campo del contrato
+        /**
+     * Converts the Spring field errors into errors by field of the contract
      *
-     * @param type clase del objeto validado, de la que se toman los nombres del contrato
-     * @param fieldErrors errores de campo encontrados por Spring
-     * @return errores por campo, uno por campo y ordenados por nombre
+     * @param type class of the validated object, from which the contract names are taken
+     * @param fieldErrors field errors found by Spring
+     * @return errors by field, one per field and sorted by name
      */
     public static List<ErrorResponse.ErrorDetail> fromFieldErrors(Class<?> type, List<FieldError> fieldErrors) {
         Map<String, String> messageByField = new LinkedHashMap<>();
@@ -63,12 +62,12 @@ public final class ValidationErrors {
         return toSortedDetails(messageByField);
     }
 
-    /**
-     * Une varias listas de errores por campo dejando un solo mensaje por campo, el primero que se
-     * encuentre, y ordenándolos por nombre de campo
+        /**
+     * Joins several lists of errors by field leaving a single message per field, the first one found, and sorting them
+     * by field name
      *
-     * @param errors errores por campo, posiblemente con campos repetidos
-     * @return errores por campo sin repetidos y ordenados por nombre
+     * @param errors errors by field, possibly with repeated fields
+     * @return errors by field without repeated ones and sorted by name
      */
     public static List<ErrorResponse.ErrorDetail> merge(List<ErrorResponse.ErrorDetail> errors) {
         Map<String, String> messageByField = new LinkedHashMap<>();
@@ -78,12 +77,12 @@ public final class ValidationErrors {
         return toSortedDetails(messageByField);
     }
 
-    /**
-     * Obtiene el nombre que un campo tiene en el contrato
+        /**
+     * Gets the name that a field has in the contract
      *
-     * @param type clase que declara el campo
-     * @param path ruta de la propiedad validada, por ejemplo firstName o ids[0]
-     * @return el valor de JsonProperty del campo, o el nombre del primer tramo de la ruta si no tiene uno
+     * @param type class that declares the field
+     * @param path path of the validated property, for example firstName or ids[0]
+     * @return the JsonProperty value of the field, or the name of the first segment of the path if it has none
      */
     static String wireName(Class<?> type, String path) {
         String name = firstSegment(path);
@@ -103,11 +102,11 @@ public final class ValidationErrors {
         return name;
     }
 
-    /**
-     * Obtiene el primer tramo de una ruta de propiedad, sin índices ni subpropiedades
+        /**
+     * Gets the first segment of a property path, without indexes or subproperties
      *
-     * @param path ruta de la propiedad validada
-     * @return el nombre de la propiedad de primer nivel
+     * @param path path of the validated property
+     * @return the name of the first-level property
      */
     private static String firstSegment(String path) {
         int end = path.length();
@@ -122,11 +121,11 @@ public final class ValidationErrors {
         return path.substring(0, end);
     }
 
-    /**
-     * Ordena por nombre de campo y convierte a la representación del contrato
+        /**
+     * Sorts by field name and converts to the representation of the contract
      *
-     * @param messageByField mensaje de cada campo
-     * @return la lista de errores por campo ordenada por nombre de campo
+     * @param messageByField message of each field
+     * @return the list of errors by field sorted by field name
      */
     private static List<ErrorResponse.ErrorDetail> toSortedDetails(Map<String, String> messageByField) {
         return messageByField.entrySet().stream()

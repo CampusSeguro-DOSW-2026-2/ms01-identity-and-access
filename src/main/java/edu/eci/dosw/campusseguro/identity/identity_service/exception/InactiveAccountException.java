@@ -1,22 +1,22 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.exception;
 
 /**
- * La cuenta existe y las credenciales son correctas, pero esta en estado INACTIVA
+ * The account exists and the credentials are correct, but it is in INACTIVA status
  *
- * RF-MS01-02 (flujo alterno A2 y RN-MS01-06)
+ * RF-MS01-02 (alternate flow A2 and RN-MS01-06)
  *
- * Flujo Alterno A2: El sistema responde 403, indica que debe contactar a un administrador
- * y emite a MS08 el evento de auditoría
+ * Alternate Flow A2: The system answers 403, indicates that an administrator must be contacted and emits the audit
+ * event to MS08
  *
- * RN-MS01-06: Una cuenta INACTIVA nunca inicia sesión, aunque las credenciales sean correctas
+ * RN-MS01-06: An INACTIVA account never logs in, even if the credentials are correct
  */
 public class InactiveAccountException extends RuntimeException {
 
     public static final String MESSAGE = "Cuenta inactiva. Contacte al administrador.";
 
-    /**
-     * Crea la excepción con el mensaje del formulario F-02, sin traza de pila porque es un resultado
-     * esperado del negocio
+        /**
+     * Creates the exception with the message of form F-02, without a stack trace because it is an expected business
+     * result
      */
     public InactiveAccountException() {
         super(MESSAGE, null, false, false);

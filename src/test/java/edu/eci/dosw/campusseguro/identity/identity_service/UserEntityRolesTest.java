@@ -6,24 +6,29 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import edu.eci.dosw.campusseguro.identity.identity_service.entity.RoleEntity;
 import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserEntity;
-import edu.eci.dosw.campusseguro.identity.identity_service.entity.UserRole;
 
 /**
- * Los roles del usuario son un conjunto que se sincroniza en sitio (5_modelo_datos, cambio de roles en
- * lote): la coleccion que carga Hibernate no se reemplaza, asi solo se insertan los roles nuevos y se borran
- * los retirados de usuario_rol
+ * The roles of the user are a set of entities that is synchronized in place (4_modelo-datos, batch role change): the
+ * collection loaded by Hibernate is not replaced, so only the new roles are inserted and the removed ones are deleted
+ * from user_roles
  */
 class UserEntityRolesTest {
 
-    /**
-     * Un usuario nuevo tiene un conjunto de roles vacio y nunca null
+    private final RoleEntity student = TestEntities.role("ESTUDIANTE", "ms01:profile:read");
+    private final RoleEntity professor = TestEntities.role("PROFESOR", "ms01:profile:read");
+    private final RoleEntity brigadier = TestEntities.role("BRIGADISTA", "ms01:profile:read");
+    private final RoleEntity admin = TestEntities.role("ADMIN", "ms01:profile:read");
+
+        /**
+     * A new user has an empty set of roles and never null
      */
     @Test
     void newUser_hasAnEmptyRoleSet() {
@@ -33,55 +38,55 @@ class UserEntityRolesTest {
         assertTrue(user.getRoles().isEmpty());
     }
 
-    /**
-     * Asignar roles deja la misma coleccion con el contenido nuevo, no la reemplaza
+        /**
+     * Assigning roles leaves the same collection with the new content, it does not replace it
      */
     @Test
     void setRoles_keepsTheSameCollectionInstance() {
         UserEntity user = new UserEntity();
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE, UserRole.PROFESOR));
-        Set<UserRole> loaded = user.getRoles();
+        user.setRoles(Set.of(student, professor));
+        Set<RoleEntity> loaded = user.getRoles();
 
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE, UserRole.BRIGADISTA));
+        user.setRoles(Set.of(student, brigadier));
 
         assertSame(loaded, user.getRoles());
-        assertEquals(Set.of(UserRole.ESTUDIANTE, UserRole.BRIGADISTA), user.getRoles());
+        assertEquals(Set.of(student, brigadier), user.getRoles());
     }
 
-    /**
-     * Se agregan los roles que faltaban y se retiran los que ya no estan
+        /**
+     * The roles that were missing are added and those that are no longer there are removed
      */
     @Test
     void setRoles_addsTheNewRolesAndRemovesTheMissingOnes() {
         UserEntity user = new UserEntity();
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE, UserRole.PROFESOR));
+        user.setRoles(Set.of(student, professor));
 
-        user.setRoles(EnumSet.of(UserRole.PROFESOR, UserRole.ADMIN));
+        user.setRoles(Set.of(professor, admin));
 
-        assertEquals(Set.of(UserRole.PROFESOR, UserRole.ADMIN), user.getRoles());
+        assertEquals(Set.of(professor, admin), user.getRoles());
     }
 
-    /**
-     * Asignar los mismos roles no cambia nada
+        /**
+     * Assigning the same roles changes nothing
      */
     @Test
     void setRoles_withTheSameRoles_changesNothing() {
         UserEntity user = new UserEntity();
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        user.setRoles(Set.of(student));
 
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
+        user.setRoles(Set.of(student));
 
-        assertEquals(Set.of(UserRole.ESTUDIANTE), user.getRoles());
+        assertEquals(Set.of(student), user.getRoles());
     }
 
-    /**
-     * Asignar null deja al usuario sin roles y conserva la coleccion
+        /**
+     * Assigning null leaves the user without roles and keeps the collection
      */
     @Test
     void setRoles_null_leavesNoRolesAndKeepsTheCollection() {
         UserEntity user = new UserEntity();
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE));
-        Set<UserRole> loaded = user.getRoles();
+        user.setRoles(Set.of(student));
+        Set<RoleEntity> loaded = user.getRoles();
 
         user.setRoles(null);
 
@@ -89,44 +94,63 @@ class UserEntityRolesTest {
         assertTrue(user.getRoles().isEmpty());
     }
 
-    /**
-     * La entidad copia los roles recibidos, modificar el conjunto original despues no afecta al usuario
+        /**
+     * The entity copies the received roles, modifying the original set afterwards does not affect the user
      */
     @Test
     void setRoles_copiesTheReceivedSet() {
         UserEntity user = new UserEntity();
-        Set<UserRole> received = new HashSet<>();
-        received.add(UserRole.ESTUDIANTE);
+        Set<RoleEntity> received = new HashSet<>();
+        received.add(student);
         user.setRoles(received);
 
-        received.add(UserRole.ADMIN);
+        received.add(admin);
 
-        assertEquals(Set.of(UserRole.ESTUDIANTE), user.getRoles());
+        assertEquals(Set.of(student), user.getRoles());
     }
 
-    /**
-     * Asignar su propia coleccion no la vacia ni la modifica
+        /**
+     * Assigning its own collection does not empty or modify it
      */
     @Test
     void setRoles_withItsOwnCollection_keepsTheRoles() {
         UserEntity user = new UserEntity();
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE, UserRole.PROFESOR));
+        user.setRoles(Set.of(student, professor));
 
         user.setRoles(user.getRoles());
 
-        assertEquals(Set.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), user.getRoles());
+        assertEquals(Set.of(student, professor), user.getRoles());
     }
 
-    /**
-     * Asignar una vista de su propia coleccion tampoco pierde roles
+        /**
+     * Assigning a view of its own collection does not lose roles either
      */
     @Test
     void setRoles_withAViewOfItsOwnCollection_keepsTheRoles() {
         UserEntity user = new UserEntity();
-        user.setRoles(EnumSet.of(UserRole.ESTUDIANTE, UserRole.PROFESOR));
+        user.setRoles(Set.of(student, professor));
 
         user.setRoles(Collections.unmodifiableSet(user.getRoles()));
 
-        assertEquals(Set.of(UserRole.ESTUDIANTE, UserRole.PROFESOR), user.getRoles());
+        assertEquals(Set.of(student, professor), user.getRoles());
+    }
+
+        /**
+     * The names of the roles come out sorted alphabetically
+     */
+    @Test
+    void getRoleNames_returnsTheNamesSorted() {
+        UserEntity user = new UserEntity();
+        user.setRoles(Set.of(professor, admin, student));
+
+        assertEquals(List.of("ADMIN", "ESTUDIANTE", "PROFESOR"), user.getRoleNames());
+    }
+
+        /**
+     * A user without roles has no role names
+     */
+    @Test
+    void getRoleNames_withoutRoles_isEmpty() {
+        assertTrue(new UserEntity().getRoleNames().isEmpty());
     }
 }
