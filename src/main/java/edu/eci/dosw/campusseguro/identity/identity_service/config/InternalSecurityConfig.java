@@ -23,7 +23,7 @@ import edu.eci.dosw.campusseguro.identity.identity_service.security.Unauthentica
 @Configuration
 public class InternalSecurityConfig {
 
-    public static final String[] INTERNAL_PATHS = {"/api/v1/users/batch", "/api/v1/users/by-role"};
+    private static final String[] INTERNAL_PATHS = {"/api/v1/users/batch", "/api/v1/users/by-role"};
     public static final String SESSION_CUTS_PATH = "/api/v1/internal/session-cuts";
     public static final String GATEWAY_SERVICE = "gateway";
 

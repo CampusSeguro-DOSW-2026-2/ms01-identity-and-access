@@ -1,6 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -200,12 +201,13 @@ public class UserEntity {
     }
 
         /**
-     * Returns the roles of the user, it is never null and has no defined order
+     * Returns the roles of the user as a read-only view, it is never null and has no defined order; they change only
+     * through setRoles
      *
      * @return set of roles of the user
      */
     public Set<RoleEntity> getRoles() {
-        return this.roles;
+        return Collections.unmodifiableSet(this.roles);
     }
 
         /**

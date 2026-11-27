@@ -1,6 +1,7 @@
 package edu.eci.dosw.campusseguro.identity.identity_service.entity;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -104,12 +105,12 @@ public class RoleEntity {
     }
 
         /**
-     * Returns the permissions of the role
+     * Returns the permissions of the role as a read-only view; they change only through setPermissions
      *
      * @return set of permissions of the catalog that the role has, it is never null
      */
     public Set<PermissionEntity> getPermissions() {
-        return this.permissions;
+        return Collections.unmodifiableSet(this.permissions);
     }
 
         /**

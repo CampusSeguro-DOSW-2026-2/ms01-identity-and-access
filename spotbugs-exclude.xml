@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusions of MS01. Only EI_EXPOSE_REP and EI_EXPOSE_REP2 are excluded, and only in the classes where
+  sharing the reference is the intended design. Any other class that exposes a mutable object is still reported.
+-->
+<FindBugsFilter xmlns="https://github.com/spotbugs/filter/3.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/3.1.0/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- Beans injected by Spring (repositories, JdbcTemplate, services): shared singletons by design -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Or>
+            <Field name="userRepository"/>
+            <Field name="pendingRepository"/>
+            <Field name="permissionRepository"/>
+            <Field name="jdbcTemplate"/>
+            <Field name="roleAdminService"/>
+        </Or>
+    </Match>
+
+    <!-- Contract DTOs: request bodies that extend StrictRequest to report every unknown field, and response records
+         built and serialized within the same request -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Package name="edu.eci.dosw.campusseguro.identity.identity_service.dto"/>
+    </Match>
+</FindBugsFilter>
